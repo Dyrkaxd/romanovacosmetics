@@ -1,18 +1,34 @@
-import React from 'react';
-import { SearchIcon, BellIcon } from './Icons'; // Removed ChevronDownIcon, XMarkIcon
-// import { useAuth } from '../AuthContext'; // Removed useAuth import
+
+import React, { useState, useRef, useEffect } from 'react';
+import { SearchIcon, BellIcon, ChevronDownIcon, XMarkIcon } from './Icons';
+import { useAuth } from '../AuthContext'; 
 
 interface HeaderProps {
   title: string;
 }
 
 const Header: React.FC<HeaderProps> = ({ title }) => {
-  // const { user, signOut } = useAuth(); // Removed auth logic
-  // const [dropdownOpen, setDropdownOpen] = useState(false); // Removed dropdown state
+  const { user, signOut } = useAuth();
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // const handleSignOut = () => { // Removed sign out handler
-  //   signOut();
-  // };
+  const toggleDropdown = () => setDropdownOpen(!dropdownOpen);
+
+  const handleSignOut = () => {
+    signOut();
+    setDropdownOpen(false); // Close dropdown on sign out
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
 
   return (
     <header className="bg-white shadow-sm p-4 sticky top-0 z-20">
@@ -33,7 +49,51 @@ const Header: React.FC<HeaderProps> = ({ title }) => {
             <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white" />
           </button>
           
-          {/* User profile dropdown removed */}
+          {user && (
+            <div className="relative" ref={dropdownRef}>
+              <button 
+                onClick={toggleDropdown} 
+                className="flex items-center space-x-2 text-slate-700 hover:text-indigo-600 focus:outline-none"
+                aria-expanded={dropdownOpen}
+                aria-haspopup="true"
+                aria-label="Меню користувача"
+              >
+                {user.picture ? (
+                  <img src={user.picture} alt={user.name || 'Аватар користувача'} className="w-8 h-8 rounded-full" />
+                ) : (
+                  <span className="w-8 h-8 rounded-full bg-indigo-500 text-white flex items-center justify-center text-sm">
+                    {user.name ? user.name.charAt(0).toUpperCase() : '?'}
+                  </span>
+                )}
+                <span className="hidden md:inline text-sm font-medium">{user.name || user.email}</span>
+                <ChevronDownIcon className={`w-4 h-4 transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {dropdownOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-30 ring-1 ring-black ring-opacity-5">
+                  <div className="px-4 py-2 text-sm text-slate-700">
+                    <p className="font-medium">{user.name || 'Користувач'}</p>
+                    <p className="text-xs text-slate-500 truncate">{user.email}</p>
+                  </div>
+                  <hr className="my-1 border-slate-200"/>
+                  {/* <a href="#profile" className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 hover:text-indigo-600">
+                    Мій профіль
+                  </a>
+                  <a href="#settings" className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 hover:text-indigo-600">
+                    Налаштування
+                  </a> 
+                  <hr className="my-1 border-slate-200"/>
+                  */}
+                  <button
+                    onClick={handleSignOut}
+                    className="w-full text-left block px-4 py-2 text-sm text-red-600 hover:bg-slate-100 hover:text-red-700"
+                    role="menuitem"
+                  >
+                    Вийти
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </header>
