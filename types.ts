@@ -59,4 +59,9 @@ export interface DashboardStat {
   isPositive?: boolean;
 }
 
-// AuthenticatedUser interface removed
+export interface AuthenticatedUser {
+  email: string;
+  name?: string;
+  picture?: string;
+  // Add other fields from Google's token as needed
+}
