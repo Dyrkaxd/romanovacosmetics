@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Customer } from '../types';
 import { PlusIcon, XMarkIcon, EyeIcon, PencilIcon, TrashIcon } from '../components/Icons';
@@ -19,7 +18,7 @@ const CustomersPage: React.FC = () => {
         return JSON.parse(storedCustomers);
       } catch (error) {
         console.error("Помилка розбору клієнтів з localStorage:", error);
-        return initialCustomersData; // Fallback to initial if parsing fails
+        return initialCustomersData; 
       }
     }
     return initialCustomersData;
@@ -111,21 +110,23 @@ const CustomersPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-3 sm:space-y-0">
         <h2 className="text-xl font-semibold text-slate-700">Список клієнтів</h2>
         <button
           onClick={openAddModal}
           aria-label="Додати нового клієнта"
-          className="flex items-center bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg shadow-md transition-colors"
+          className="flex items-center bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg shadow-md transition-colors w-full sm:w-auto justify-center"
         >
-          <PlusIcon className="w-5 h-5 mr-2" /> Додати нового клієнта
+          <PlusIcon className="w-5 h-5" />
+          <span className="hidden sm:inline ml-2">Додати нового клієнта</span>
+          <span className="sm:hidden ml-2">Додати</span>
         </button>
       </div>
 
       <input
         type="search"
         aria-label="Пошук клієнтів"
-        placeholder="Пошук клієнтів за ім'ям, email або телефоном..."
+        placeholder="Пошук клієнтів..."
         className="w-full p-2 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
@@ -136,24 +137,24 @@ const CustomersPage: React.FC = () => {
           <table className="min-w-full divide-y divide-slate-200">
             <thead className="bg-slate-50">
               <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Ім'я</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Email</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Телефон</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Дата реєстрації</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Дії</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">Ім'я</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider hidden sm:table-cell">Email</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider hidden md:table-cell">Телефон</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider hidden md:table-cell">Дата реєстрації</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">Дії</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-slate-200">
               {filteredCustomers.map((customer) => (
                 <tr key={customer.id} className="hover:bg-slate-50 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{customer.name}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{customer.email}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{customer.phone || 'Н/Д'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{customer.joinDate}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700 hidden sm:table-cell">{customer.email}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700 hidden md:table-cell">{customer.phone || 'Н/Д'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700 hidden md:table-cell">{customer.joinDate}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                    <button onClick={() => openViewModal(customer)} className="text-sky-600 hover:text-sky-800 transition-colors" title="Переглянути деталі клієнта" aria-label={`Переглянути деталі для ${customer.name}`}><EyeIcon className="w-5 h-5 inline"/></button>
-                    <button onClick={() => openEditModal(customer)} className="text-indigo-600 hover:text-indigo-800 transition-colors" title="Редагувати клієнта" aria-label={`Редагувати ${customer.name}`}><PencilIcon className="w-5 h-5 inline"/></button>
-                    <button onClick={() => handleDeleteCustomer(customer.id)} className="text-red-600 hover:text-red-800 transition-colors" title="Видалити клієнта" aria-label={`Видалити ${customer.name}`}><TrashIcon className="w-5 h-5 inline"/></button>
+                    <button onClick={() => openViewModal(customer)} className="text-sky-600 hover:text-sky-800 transition-colors p-1" title="Переглянути деталі клієнта" aria-label={`Переглянути деталі для ${customer.name}`}><EyeIcon className="w-5 h-5 inline"/></button>
+                    <button onClick={() => openEditModal(customer)} className="text-indigo-600 hover:text-indigo-800 transition-colors p-1" title="Редагувати клієнта" aria-label={`Редагувати ${customer.name}`}><PencilIcon className="w-5 h-5 inline"/></button>
+                    <button onClick={() => handleDeleteCustomer(customer.id)} className="text-red-600 hover:text-red-800 transition-colors p-1" title="Видалити клієнта" aria-label={`Видалити ${customer.name}`}><TrashIcon className="w-5 h-5 inline"/></button>
                   </td>
                 </tr>
               ))}
@@ -172,9 +173,9 @@ const CustomersPage: React.FC = () => {
       {/* Add/Edit Customer Modal */}
       {isModalOpen && (
         <div role="dialog" aria-modal="true" aria-labelledby="customer-modal-title" className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+          <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md md:max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
-              <h3 id="customer-modal-title" className="text-lg font-semibold">{editingCustomer ? 'Редагувати клієнта' : 'Додати нового клієнта'}</h3>
+              <h3 id="customer-modal-title" className="text-lg font-semibold text-slate-800">{editingCustomer ? 'Редагувати клієнта' : 'Додати нового клієнта'}</h3>
               <button onClick={closeModal} aria-label="Закрити модальне вікно"><XMarkIcon className="w-6 h-6 text-slate-500 hover:text-slate-700"/></button>
             </div>
             <form onSubmit={handleSubmitCustomer} className="space-y-4">
@@ -220,9 +221,9 @@ const CustomersPage: React.FC = () => {
                 </div>
               </fieldset>
               
-              <div className="flex justify-end pt-2 space-x-3">
-                <button type="button" onClick={closeModal} className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2 px-4 rounded-md shadow-sm transition-colors">Скасувати</button>
-                <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-md shadow-sm transition-colors">
+              <div className="flex flex-col sm:flex-row justify-end pt-2 space-y-2 sm:space-y-0 sm:space-x-3">
+                <button type="button" onClick={closeModal} className="w-full sm:w-auto bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2 px-4 rounded-md shadow-sm transition-colors">Скасувати</button>
+                <button type="submit" className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-md shadow-sm transition-colors">
                   {editingCustomer ? 'Зберегти зміни' : 'Додати клієнта'}
                 </button>
               </div>
@@ -240,19 +241,19 @@ const CustomersPage: React.FC = () => {
               <button onClick={closeModal} aria-label="Закрити модальне вікно"><XMarkIcon className="w-6 h-6 text-slate-500 hover:text-slate-700"/></button>
             </div>
             <div className="space-y-3 text-sm">
-              <p><span className="font-semibold text-slate-600">ID Клієнта:</span> {currentCustomer.id}</p>
-              <p><span className="font-semibold text-slate-600">Email:</span> {currentCustomer.email}</p>
-              <p><span className="font-semibold text-slate-600">Телефон:</span> {currentCustomer.phone || 'Н/Д'}</p>
-              <p><span className="font-semibold text-slate-600">Дата реєстрації:</span> {currentCustomer.joinDate}</p>
+              <p><span className="font-semibold text-slate-700">ID Клієнта:</span> <span className="text-slate-800">{currentCustomer.id}</span></p>
+              <p><span className="font-semibold text-slate-700">Email:</span> <span className="text-slate-800">{currentCustomer.email}</span></p>
+              <p><span className="font-semibold text-slate-700">Телефон:</span> <span className="text-slate-800">{currentCustomer.phone || 'Н/Д'}</span></p>
+              <p><span className="font-semibold text-slate-700">Дата реєстрації:</span> <span className="text-slate-800">{currentCustomer.joinDate}</span></p>
               <div className="mt-2 pt-2 border-t">
-                <p className="font-semibold text-slate-600 mb-1">Адреса:</p>
+                <p className="font-semibold text-slate-700 mb-1">Адреса:</p>
                 {currentCustomer.address && (currentCustomer.address.street || currentCustomer.address.city) ? (
                   <>
-                    <p>{currentCustomer.address.street}</p>
-                    <p>{currentCustomer.address.city}{currentCustomer.address.state && `, ${currentCustomer.address.state}`} {currentCustomer.address.zip}</p>
-                    <p>{currentCustomer.address.country}</p>
+                    <p className="text-slate-800">{currentCustomer.address.street}</p>
+                    <p className="text-slate-800">{currentCustomer.address.city}{currentCustomer.address.state && `, ${currentCustomer.address.state}`} {currentCustomer.address.zip}</p>
+                    <p className="text-slate-800">{currentCustomer.address.country}</p>
                   </>
-                ) : <p>Інформація про адресу відсутня.</p>}
+                ) : <p className="text-slate-800">Інформація про адресу відсутня.</p>}
               </div>
             </div>
             <div className="mt-6 text-right">
