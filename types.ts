@@ -4,9 +4,8 @@ import type { FC, SVGProps } from 'react';
 export interface Product {
   id: string;
   name: string;
-  category: string;
+  // category: string; // Removed category
   price: number;
-  // stock: number; // Removed stock
   description: string;
   imageUrl?: string;
 }
@@ -59,4 +58,18 @@ export interface DashboardStat {
   isPositive?: boolean;
 }
 
-// AuthenticatedUser interface removed
+export interface AuthenticatedUser {
+  email: string;
+  name?: string;
+  picture?: string;
+  role?: 'admin' | 'manager'; // Added role
+  // Add other fields from Google's token as needed
+}
+
+export interface ManagedUser {
+  id: string;
+  name: string;
+  email: string;
+  dateAdded: string;
+  notes?: string; // Added notes field
+}

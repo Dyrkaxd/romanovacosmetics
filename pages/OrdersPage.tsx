@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Order, OrderItem, Customer, Product } from '../types';
 import { EyeIcon, XMarkIcon, PlusIcon, TrashIcon, PencilIcon, DocumentTextIcon, PrinterIcon } from '../components/Icons';
@@ -99,15 +98,14 @@ const OrdersPage: React.FC = () => {
     const storedProducts = localStorage.getItem(PRODUCTS_STORAGE_KEY);
     if (storedProducts) {
       try {
-        // Ensure products loaded don't expect 'stock'
         const parsedProducts = JSON.parse(storedProducts).map((p: any) => ({
           id: p.id,
           name: p.name,
-          category: p.category,
+          // category: p.category, // Category removed from Product type
           price: p.price,
           description: p.description,
           imageUrl: p.imageUrl
-        }));
+        } as Product)); // Cast to Product type
         setAvailableProducts(parsedProducts);
       } catch (error) {
         console.error("Помилка розбору товарів з localStorage:", error);
@@ -137,8 +135,8 @@ const OrdersPage: React.FC = () => {
       if (event.key === PRODUCTS_STORAGE_KEY && event.newValue) {
          try {
            const updatedProducts = JSON.parse(event.newValue).map((p: any) => ({
-              id: p.id, name: p.name, category: p.category, price: p.price, description: p.description, imageUrl: p.imageUrl
-           }));
+              id: p.id, name: p.name, /* category: p.category, */ price: p.price, description: p.description, imageUrl: p.imageUrl
+           } as Product));
           setAvailableProducts(updatedProducts);
         } catch (error) { console.error("Помилка оновлення товарів з події сховища:", error); }
       }
@@ -346,7 +344,7 @@ const OrdersPage: React.FC = () => {
   const openBillOfLadingModal = (order: Order) => {
     const customerDetail = customers.find(c => c.id === order.customerId);
     setSelectedOrderForBoL(order);
-    setCustomerForBoL(customerDetail || null); // Handle case where customer might not be found
+    setCustomerForBoL(customerDetail || null); 
     setIsBillOfLadingModalOpen(true);
   };
 
@@ -356,24 +354,32 @@ const OrdersPage: React.FC = () => {
     setCustomerForBoL(null);
   };
 
+  const handleDeleteOrder = (orderId: string) => {
+    if (window.confirm('Ви впевнені, що хочете видалити це замовлення? Цю дію неможливо скасувати.')) {
+      setOrders(prevOrders => prevOrders.filter(order => order.id !== orderId));
+    }
+  };
+
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-3 sm:space-y-0">
         <h2 className="text-xl font-semibold text-slate-700">Список замовлень</h2>
         <button
           onClick={openAddOrderModal}
           aria-label="Додати нове замовлення"
-          className="flex items-center bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg shadow-md transition-colors"
+          className="flex items-center bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg shadow-md transition-colors w-full sm:w-auto justify-center"
         >
-          <PlusIcon className="w-5 h-5 mr-2" /> Додати нове замовлення
+          <PlusIcon className="w-5 h-5" />
+          <span className="hidden sm:inline ml-2">Додати нове замовлення</span>
+          <span className="sm:hidden ml-2">Додати</span>
         </button>
       </div>
 
       <input
         type="search"
         aria-label="Пошук замовлень"
-        placeholder="Пошук замовлень за ID або ім'ям клієнта..."
+        placeholder="Пошук замовлень..."
         className="w-full p-2 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
@@ -384,35 +390,38 @@ const OrdersPage: React.FC = () => {
           <table className="min-w-full divide-y divide-slate-200">
             <thead className="bg-slate-50">
               <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">ID Замовлення</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Клієнт</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Дата</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Статус</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Сума</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Дії</th>
+                <th scope="col" className="px-3 py-3 md:px-6 md:py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">ID</th>
+                <th scope="col" className="px-3 py-3 md:px-6 md:py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">Клієнт</th>
+                <th scope="col" className="px-3 py-3 md:px-6 md:py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider hidden sm:table-cell">Дата</th>
+                <th scope="col" className="px-3 py-3 md:px-6 md:py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">Статус</th>
+                <th scope="col" className="px-3 py-3 md:px-6 md:py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider hidden sm:table-cell">Сума</th>
+                <th scope="col" className="px-3 py-3 md:px-6 md:py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">Дії</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-slate-200">
               {filteredOrders.map((order) => (
                 <tr key={order.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-indigo-600">{order.id}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{order.customerName}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{order.date}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  <td className="px-3 py-4 md:px-6 md:py-4 whitespace-nowrap text-sm font-medium text-indigo-600">{order.id}</td>
+                  <td className="px-3 py-4 md:px-6 md:py-4 text-sm text-slate-900">{order.customerName}</td>
+                  <td className="px-3 py-4 md:px-6 md:py-4 whitespace-nowrap text-sm text-slate-700 hidden sm:table-cell">{order.date}</td>
+                  <td className="px-3 py-4 md:px-6 md:py-4 whitespace-nowrap text-sm">
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(order.status)}`}>
                       {orderStatusTranslations[order.status] || order.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${order.totalAmount.toFixed(2)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-1 md:space-x-2">
-                    <button onClick={() => handleViewOrder(order)} className="text-sky-600 hover:text-sky-800 transition-colors px-1 py-1" aria-label={`Переглянути деталі замовлення ${order.id}`}>
-                       <EyeIcon className="w-5 h-5 inline mr-1" /> <span className="hidden sm:inline">Перегляд</span>
+                  <td className="px-3 py-4 md:px-6 md:py-4 whitespace-nowrap text-sm text-slate-700 hidden sm:table-cell">${order.totalAmount.toFixed(2)}</td>
+                  <td className="px-3 py-4 md:px-6 md:py-4 whitespace-nowrap text-sm font-medium space-x-1">
+                    <button onClick={() => handleViewOrder(order)} className="text-sky-600 hover:text-sky-800 transition-colors p-1" aria-label={`Переглянути деталі замовлення ${order.id}`}>
+                       <EyeIcon className="w-5 h-5 inline" /> <span className="hidden lg:inline">Перегляд</span>
                     </button>
-                    <button onClick={() => openEditModal(order)} className="text-indigo-600 hover:text-indigo-800 transition-colors px-1 py-1" aria-label={`Редагувати замовлення ${order.id}`}>
-                       <PencilIcon className="w-5 h-5 inline mr-1" /> <span className="hidden sm:inline">Редагувати</span>
+                    <button onClick={() => openEditModal(order)} className="text-indigo-600 hover:text-indigo-800 transition-colors p-1" aria-label={`Редагувати замовлення ${order.id}`}>
+                       <PencilIcon className="w-5 h-5 inline" /> <span className="hidden lg:inline">Редагувати</span>
                     </button>
-                     <button onClick={() => openBillOfLadingModal(order)} className="text-teal-600 hover:text-teal-800 transition-colors px-1 py-1" aria-label={`Переглянути накладну для замовлення ${order.id}`}>
-                       <DocumentTextIcon className="w-5 h-5 inline mr-1" /> <span className="hidden sm:inline">Накладна</span>
+                     <button onClick={() => openBillOfLadingModal(order)} className="text-teal-600 hover:text-teal-800 transition-colors p-1" aria-label={`Переглянути накладну для замовлення ${order.id}`}>
+                       <DocumentTextIcon className="w-5 h-5 inline" /> <span className="hidden lg:inline">Накладна</span>
+                    </button>
+                    <button onClick={() => handleDeleteOrder(order.id)} className="text-red-600 hover:text-red-800 transition-colors p-1" aria-label={`Видалити замовлення ${order.id}`}>
+                       <TrashIcon className="w-5 h-5 inline" /> <span className="hidden lg:inline">Видалити</span>
                     </button>
                   </td>
                 </tr>
@@ -432,7 +441,7 @@ const OrdersPage: React.FC = () => {
       {/* Add Order Modal */}
       {isAddOrderModalOpen && (
         <div role="dialog" aria-modal="true" aria-labelledby="add-order-modal-title" className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-lg md:max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6 border-b pb-4">
               <h3 id="add-order-modal-title" className="text-xl font-semibold text-slate-800">Додати нове замовлення</h3>
               <button onClick={closeAddOrderModal} aria-label="Закрити модальне вікно додавання замовлення" className="text-slate-400 hover:text-slate-600">
@@ -461,8 +470,8 @@ const OrdersPage: React.FC = () => {
               <div>
                 <h4 className="text-md font-medium text-slate-700 mb-2">Товари в замовленні <span aria-hidden="true" className="text-red-500">*</span></h4>
                 {(newOrderData.items || []).map((item, index) => (
-                  <div key={index} className="grid grid-cols-12 gap-2 mb-3 items-center p-3 border rounded-md bg-slate-50">
-                    <div className="col-span-12 sm:col-span-5">
+                  <div key={index} className="grid grid-cols-1 sm:grid-cols-12 gap-2 mb-3 items-center p-3 border rounded-md bg-slate-50">
+                    <div className="col-span-1 sm:col-span-12 md:col-span-5">
                       <label htmlFor={`product-add-${index}`} className="sr-only">Товар</label>
                        <select
                         id={`product-add-${index}`}
@@ -480,7 +489,7 @@ const OrdersPage: React.FC = () => {
                         )) : <option disabled>Товари відсутні. Додайте товари на сторінці 'Товари'.</option>}
                       </select>
                     </div>
-                     <div className="col-span-6 sm:col-span-2">
+                     <div className="col-span-1 sm:col-span-4 md:col-span-2">
                        <label htmlFor={`quantity-add-${index}`} className="sr-only">Кількість</label>
                        <input
                         id={`quantity-add-${index}`}
@@ -495,7 +504,7 @@ const OrdersPage: React.FC = () => {
                         className="block w-full border-slate-300 rounded-md shadow-sm sm:text-sm p-2 disabled:bg-slate-100"
                       />
                     </div>
-                    <div className="col-span-6 sm:col-span-3">
+                    <div className="col-span-1 sm:col-span-5 md:col-span-3">
                       <label htmlFor={`price-add-${index}`} className="sr-only">Ціна</label>
                       <input
                         id={`price-add-${index}`}
@@ -511,7 +520,7 @@ const OrdersPage: React.FC = () => {
                         className="block w-full border-slate-300 rounded-md shadow-sm sm:text-sm p-2 disabled:bg-slate-100"
                       />
                     </div>
-                    <div className="col-span-12 sm:col-span-2 flex justify-end">
+                    <div className="col-span-1 sm:col-span-3 md:col-span-2 flex justify-end">
                       { (newOrderData.items || []).length > 1 &&
                         <button type="button" onClick={() => removeNewOrderItem(index)} aria-label={`Видалити товар ${index + 1}`} className="text-red-500 hover:text-red-700 p-1">
                           <TrashIcon className="w-5 h-5"/>
@@ -529,7 +538,7 @@ const OrdersPage: React.FC = () => {
                 </button>
               </div>
               
-              <div className="grid grid-cols-2 gap-4 items-end">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
                 <div>
                   <label htmlFor="status-add" className="block text-sm font-medium text-slate-700">Статус</label>
                   <select
@@ -550,17 +559,17 @@ const OrdersPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="mt-8 flex justify-end space-x-3">
+              <div className="mt-8 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3">
                  <button 
                     type="button"
                     onClick={closeAddOrderModal} 
-                    className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2 px-4 rounded-md shadow-sm transition-colors"
+                    className="w-full sm:w-auto bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2 px-4 rounded-md shadow-sm transition-colors"
                   >
                     Скасувати
                   </button>
                 <button 
                   type="submit" 
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-md shadow-sm transition-colors"
+                  className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-md shadow-sm transition-colors"
                   disabled={!newOrderData.customerId || (customers.length === 0 && !mockCustomersData.find(c => c.id === newOrderData.customerId)) || (newOrderData.items || []).some(item => !item.productId || item.quantity <= 0)}
                 >
                   Зберегти замовлення
@@ -574,7 +583,7 @@ const OrdersPage: React.FC = () => {
       {/* Edit Order Modal */}
       {isEditOrderModalOpen && editingOrder && (
         <div role="dialog" aria-modal="true" aria-labelledby={`edit-order-modal-title-${editingOrder.id}`} className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-lg md:max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6 border-b pb-4">
               <h3 id={`edit-order-modal-title-${editingOrder.id}`} className="text-xl font-semibold text-slate-800">Редагувати замовлення: {editingOrder.id}</h3>
               <button onClick={closeEditModal} aria-label="Закрити модальне вікно редагування замовлення" className="text-slate-400 hover:text-slate-600">
@@ -590,8 +599,8 @@ const OrdersPage: React.FC = () => {
               <div>
                 <h4 className="text-md font-medium text-slate-700 mb-2">Товари в замовленні <span aria-hidden="true" className="text-red-500">*</span></h4>
                 {(currentOrderData.items || []).map((item, index) => (
-                  <div key={index} className="grid grid-cols-12 gap-2 mb-3 items-center p-3 border rounded-md bg-slate-50">
-                    <div className="col-span-12 sm:col-span-5">
+                  <div key={index} className="grid grid-cols-1 sm:grid-cols-12 gap-2 mb-3 items-center p-3 border rounded-md bg-slate-50">
+                    <div className="col-span-1 sm:col-span-12 md:col-span-5">
                       <label htmlFor={`product-edit-${index}`} className="sr-only">Товар</label>
                        <select
                         id={`product-edit-${index}`}
@@ -613,7 +622,7 @@ const OrdersPage: React.FC = () => {
                          {availableProducts.length === 0 && <option disabled>Товари відсутні</option>}
                       </select>
                     </div>
-                     <div className="col-span-6 sm:col-span-2">
+                     <div className="col-span-1 sm:col-span-4 md:col-span-2">
                        <label htmlFor={`quantity-edit-${index}`} className="sr-only">Кількість</label>
                        <input
                         id={`quantity-edit-${index}`}
@@ -628,7 +637,7 @@ const OrdersPage: React.FC = () => {
                         className="block w-full border-slate-300 rounded-md shadow-sm sm:text-sm p-2 disabled:bg-slate-100"
                       />
                     </div>
-                    <div className="col-span-6 sm:col-span-3">
+                    <div className="col-span-1 sm:col-span-5 md:col-span-3">
                       <label htmlFor={`price-edit-${index}`} className="sr-only">Ціна</label>
                       <input
                         id={`price-edit-${index}`}
@@ -644,7 +653,7 @@ const OrdersPage: React.FC = () => {
                         className="block w-full border-slate-300 rounded-md shadow-sm sm:text-sm p-2 disabled:bg-slate-100"
                       />
                     </div>
-                    <div className="col-span-12 sm:col-span-2 flex justify-end">
+                    <div className="col-span-1 sm:col-span-3 md:col-span-2 flex justify-end">
                       { (currentOrderData.items || []).length > 1 &&
                         <button type="button" onClick={() => removeEditOrderItem(index)} aria-label={`Видалити товар ${index + 1}`} className="text-red-500 hover:text-red-700 p-1">
                           <TrashIcon className="w-5 h-5"/>
@@ -662,7 +671,7 @@ const OrdersPage: React.FC = () => {
                 </button>
               </div>
               
-              <div className="grid grid-cols-2 gap-4 items-end">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
                 <div>
                   <label htmlFor="status-edit" className="block text-sm font-medium text-slate-700">Статус</label>
                   <select
@@ -683,17 +692,17 @@ const OrdersPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="mt-8 flex justify-end space-x-3">
+              <div className="mt-8 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3">
                  <button 
                     type="button"
                     onClick={closeEditModal} 
-                    className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2 px-4 rounded-md shadow-sm transition-colors"
+                    className="w-full sm:w-auto bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2 px-4 rounded-md shadow-sm transition-colors"
                   >
                     Скасувати
                   </button>
                 <button 
                   type="submit" 
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-md shadow-sm transition-colors"
+                  className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-md shadow-sm transition-colors"
                   disabled={(currentOrderData.items || []).some(item => !item.productId || item.quantity <= 0)}
                 >
                   Зберегти зміни
@@ -708,7 +717,7 @@ const OrdersPage: React.FC = () => {
       {/* View Order Modal */}
       {viewOrder && (
         <div role="dialog" aria-modal="true" aria-labelledby={`view-order-modal-title-${viewOrder.id}`} className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+          <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md md:max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6 border-b pb-4">
               <h3 id={`view-order-modal-title-${viewOrder.id}`} className="text-xl font-semibold text-slate-800">Деталі замовлення: {viewOrder.id}</h3>
               <button onClick={closeModal} aria-label="Закрити модальне вікно перегляду замовлення" className="text-slate-400 hover:text-slate-600">
@@ -718,19 +727,19 @@ const OrdersPage: React.FC = () => {
             <div className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-slate-500">Ім'я клієнта</p>
-                  <p className="font-medium text-slate-700">{viewOrder.customerName}</p>
+                  <p className="text-sm text-slate-600">Ім'я клієнта</p>
+                  <p className="font-medium text-slate-800">{viewOrder.customerName}</p>
                 </div>
                  <div>
-                  <p className="text-sm text-slate-500">ID Клієнта</p>
-                  <p className="font-medium text-slate-700">{viewOrder.customerId}</p>
+                  <p className="text-sm text-slate-600">ID Клієнта</p>
+                  <p className="font-medium text-slate-800">{viewOrder.customerId}</p>
                 </div>
                  <div>
-                  <p className="text-sm text-slate-500">Дата замовлення</p>
-                  <p className="font-medium text-slate-700">{viewOrder.date}</p>
+                  <p className="text-sm text-slate-600">Дата замовлення</p>
+                  <p className="font-medium text-slate-800">{viewOrder.date}</p>
                 </div>
                  <div>
-                    <label htmlFor="view-order-status" className="block text-sm text-slate-500">Статус</label>
+                    <label htmlFor="view-order-status" className="block text-sm text-slate-600">Статус</label>
                     <select
                         id="view-order-status"
                         value={editableOrderStatus}
@@ -743,37 +752,37 @@ const OrdersPage: React.FC = () => {
                     </select>
                 </div>
                  <div className="sm:col-span-2">
-                  <p className="text-sm text-slate-500">Загальна сума замовлення</p>
-                  <p className="font-medium text-slate-700 text-lg">${viewOrder.totalAmount.toFixed(2)}</p>
+                  <p className="text-sm text-slate-600">Загальна сума замовлення</p>
+                  <p className="font-medium text-slate-800 text-lg">${viewOrder.totalAmount.toFixed(2)}</p>
                 </div>
               </div>
               
               <div>
-                <p className="text-sm font-semibold text-slate-600 mb-2">Замовлені товари ({viewOrder.items.length}):</p>
+                <p className="text-sm font-semibold text-slate-700 mb-2">Замовлені товари ({viewOrder.items.length}):</p>
                 <ul className="divide-y divide-slate-200 border border-slate-200 rounded-md max-h-60 overflow-y-auto">
                   {viewOrder.items.map((item, index) => (
                     <li key={index} className="p-3 flex justify-between items-center text-sm bg-slate-50 even:bg-white">
                       <div>
-                        <p className="font-medium text-slate-700">{item.productName}</p>
-                        <p className="text-xs text-slate-500">ID: {item.productId} &bull; К-сть: {item.quantity} @ ${item.price.toFixed(2)} за од.</p>
+                        <p className="font-medium text-slate-800">{item.productName}</p>
+                        <p className="text-xs text-slate-600">ID: {item.productId} &bull; К-сть: {item.quantity} @ ${item.price.toFixed(2)} за од.</p>
                       </div>
-                      <p className="text-slate-600 font-medium">${(item.price * item.quantity).toFixed(2)}</p>
+                      <p className="text-slate-700 font-medium">${(item.price * item.quantity).toFixed(2)}</p>
                     </li>
                   ))}
                 </ul>
               </div>
             </div>
-            <div className="mt-8 flex justify-between items-center">
+            <div className="mt-8 flex flex-col sm:flex-row justify-between items-center space-y-2 sm:space-y-0">
                <button 
                 onClick={closeModal} 
-                className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2 px-4 rounded-md shadow-sm transition-colors"
+                className="w-full sm:w-auto bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2 px-4 rounded-md shadow-sm transition-colors"
               >
                 Закрити
               </button>
               <button 
                 onClick={handleUpdateOrderStatusInViewModal} 
                 disabled={editableOrderStatus === viewOrder.status}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-md shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-md shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Оновити статус
               </button>
@@ -804,13 +813,13 @@ const BillOfLadingModal: React.FC<BillOfLadingModalProps> = ({ order, customer, 
   if (!order) return null;
 
   const shipper = {
-    name: 'E-Commerce Store Deluxe', // Example name, can be localized or configured
+    name: 'E-Commerce Store Deluxe', 
     address: 'вул. Веб-Магазинна 123, м. Технологічне, ТХ 75001, США',
     contact: '(555) 123-4567',
   };
 
   const carrier = {
-    name: 'Global Logistics Inc.', // Example name
+    name: 'Global Logistics Inc.',
     contact: '(555) 987-6543',
   };
   
@@ -823,26 +832,41 @@ const BillOfLadingModal: React.FC<BillOfLadingModalProps> = ({ order, customer, 
     if (printableArea) {
       const printWindow = window.open('', '_blank');
       printWindow?.document.write('<html><head><title>Накладна</title>');
-      printWindow?.document.write('<link href="https://cdn.tailwindcss.com" rel="stylesheet">');
+      // Tailwind will not be available in printWindow by default unless linked.
+      // For simplicity in this context, we use a separate style block.
+      // printWindow?.document.write('<link href="https://cdn.tailwindcss.com" rel="stylesheet">');
       printWindow?.document.write(`
         <style>
-          body { margin: 20px; font-family: Arial, sans-serif; font-size: 10pt; }
+          body { margin: 20px; font-family: Arial, sans-serif; font-size: 10pt; color: #333; } /* Default text color for print */
           .bol-container { border: 1px solid #ccc; padding: 20px; }
           .bol-header { text-align: center; font-size: 1.5em; font-weight: bold; margin-bottom: 20px; }
           .bol-section { margin-bottom: 15px; padding: 10px; border: 1px solid #eee; }
           .bol-section-title { font-weight: bold; margin-bottom: 5px; font-size: 0.9em; text-transform: uppercase; color: #333; }
-          .bol-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+          .bol-grid-print { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; } /* Specific for print */
           .bol-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 9pt; }
           .bol-table th, .bol-table td { border: 1px solid #ddd; padding: 6px; text-align: left; }
           .bol-table th { background-color: #f8f8f8; }
-          .signatures { margin-top: 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; font-size: 9pt;}
-          .signatures div { margin-top: 20px; }
-          .no-print { display: none !important; }
-          p { margin: 2px 0; }
+          .signatures-print { margin-top: 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; font-size: 9pt;} /* Specific for print */
+          .signatures-print div { margin-top: 20px; }
+          .no-print { display: none !important; } /* Applied by Tailwind's print:hidden to buttons */
+          p { margin: 2px 0; color: #333; } /* Ensure p tags have dark color for print */
+
+          @media print {
+            body { color: #000 !important; } /* Ensure black text on white for print */
+            p { color: #000 !important; }
+            .bol-grid-print { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 20px !important; }
+            .signatures-print { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 20px !important; }
+            .bol-section-title { color: #000 !important; }
+          }
         </style>
       `);
       printWindow?.document.write('</head><body>');
-      printWindow?.document.write(printableArea.innerHTML);
+      
+      // Clone the content and remove elements not for printing (like buttons)
+      const contentToPrint = printableArea.cloneNode(true) as HTMLElement;
+      contentToPrint.querySelectorAll('.print-hidden').forEach(el => el.remove()); // Remove elements marked for hiding on print
+
+      printWindow?.document.write(contentToPrint.innerHTML);
       printWindow?.document.write('</body></html>');
       printWindow?.document.close();
       printWindow?.focus();
@@ -854,29 +878,29 @@ const BillOfLadingModal: React.FC<BillOfLadingModalProps> = ({ order, customer, 
 
 
   return (
-    <div role="dialog" aria-modal="true" aria-labelledby="bol-modal-title" className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[60] p-4">
-      <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-3xl max-h-[95vh] flex flex-col">
-        <div className="flex justify-between items-center mb-4 border-b pb-3">
-          <h3 id="bol-modal-title" className="text-xl font-semibold text-slate-800">Накладна - Замовлення: {order.id}</h3>
+    <div role="dialog" aria-modal="true" aria-labelledby="bol-modal-title" className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[60] p-2 sm:p-4">
+      <div className="bg-white p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-sm sm:max-w-md md:max-w-xl lg:max-w-3xl max-h-[95vh] flex flex-col">
+        <div className="flex justify-between items-center mb-4 border-b pb-3 print-hidden">
+          <h3 id="bol-modal-title" className="text-lg sm:text-xl font-semibold text-slate-800">Накладна: {order.id}</h3>
           <button onClick={onClose} aria-label="Закрити модальне вікно накладної" className="text-slate-400 hover:text-slate-600">
             <XMarkIcon className="w-6 h-6"/>
           </button>
         </div>
         
-        <div className="overflow-y-auto flex-grow pr-2 text-sm">
-          <div id="billOfLadingContent" className="bol-container">
-            <div className="bol-header">НАКЛАДНА</div>
-            <div className="text-right mb-4"><strong>Дата видачі:</strong> {new Date().toLocaleDateString()}</div>
+        <div className="overflow-y-auto flex-grow pr-0 sm:pr-2 text-xs sm:text-sm text-slate-700"> {/* Default text color for BOL content */}
+          <div id="billOfLadingContent" className="bol-container p-2 sm:p-4">
+            <div className="bol-header text-base sm:text-lg text-slate-800">НАКЛАДНА</div>
+            <div className="text-right mb-4 text-slate-700"><strong>Дата видачі:</strong> {new Date().toLocaleDateString()}</div>
 
-            <div className="bol-grid">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bol-grid-print"> {/* Responsive grid for screen, specific class for print */}
               <div className="bol-section">
-                <div className="bol-section-title">Відправник</div>
+                <div className="bol-section-title text-slate-800">Відправник</div>
                 <p><strong>{shipper.name}</strong></p>
                 <p>{shipper.address}</p>
                 <p>Контакт: {shipper.contact}</p>
               </div>
               <div className="bol-section">
-                <div className="bol-section-title">Одержувач</div>
+                <div className="bol-section-title text-slate-800">Одержувач</div>
                 {customer ? (
                   <>
                     <p><strong>{customer.name}</strong></p>
@@ -889,14 +913,14 @@ const BillOfLadingModal: React.FC<BillOfLadingModalProps> = ({ order, customer, 
               </div>
             </div>
 
-            <div className="bol-section">
-              <div className="bol-section-title">Перевізник</div>
+            <div className="bol-section mt-4">
+              <div className="bol-section-title text-slate-800">Перевізник</div>
               <p><strong>{carrier.name}</strong></p>
               <p>Контакт: {carrier.contact}</p>
             </div>
 
-            <div className="bol-section">
-              <div className="bol-section-title">Деталі відправлення</div>
+            <div className="bol-section mt-4">
+              <div className="bol-section-title text-slate-800">Деталі відправлення</div>
               <p><strong>ID Замовлення:</strong> {order.id}</p>
               <p><strong>Дата відправлення:</strong> {order.date}</p>
               <p><strong>Кількість місць:</strong> 1 (Партія)</p>
@@ -904,39 +928,41 @@ const BillOfLadingModal: React.FC<BillOfLadingModalProps> = ({ order, customer, 
               <p><strong>Загальна вартість замовлення:</strong> ${order.totalAmount.toFixed(2)}</p>
               <p><strong>Оголошена вартість для перевезення:</strong> ${order.totalAmount.toFixed(2)}</p>
               
-              <div className="bol-section-title mt-3">Опис товарів</div>
-              <table className="bol-table">
-                <thead>
-                  <tr>
-                    <th>Назва товару</th>
-                    <th>Кількість</th>
-                    <th>Ціна за од.</th>
-                    <th>Загальна ціна</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {order.items.map((item, index) => (
-                    <tr key={index}>
-                      <td>{item.productName}</td>
-                      <td>{item.quantity}</td>
-                      <td>${item.price.toFixed(2)}</td>
-                      <td>${(item.quantity * item.price).toFixed(2)}</td>
+              <div className="bol-section-title mt-3 text-slate-800">Опис товарів</div>
+              <div className="overflow-x-auto">
+                <table className="bol-table w-full text-slate-700"> {/* Ensure table text has good contrast */}
+                  <thead>
+                    <tr>
+                      <th className="text-slate-800">Назва товару</th>
+                      <th className="text-slate-800">К-сть</th>
+                      <th className="text-slate-800">Ціна</th>
+                      <th className="text-slate-800">Всього</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {order.items.map((item, index) => (
+                      <tr key={index}>
+                        <td>{item.productName}</td>
+                        <td className="text-center">{item.quantity}</td>
+                        <td className="text-right">${item.price.toFixed(2)}</td>
+                        <td className="text-right">${(item.quantity * item.price).toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
             
-            <div className="bol-section">
-              <div className="bol-section-title">Особливі вказівки</div>
+            <div className="bol-section mt-4">
+              <div className="bol-section-title text-slate-800">Особливі вказівки</div>
               <p>Обережно. Стандартна доставка.</p>
             </div>
 
-            <div className="text-xs mt-4">
+            <div className="text-xs mt-4 text-slate-600"> {/* Darkened legal text slightly */}
               <p>ОТРИМАНО, відповідно до класифікацій та тарифів, чинних на дату видачі цієї Накладної, майно, описане вище, у належному стані, за винятком зазначеного (вміст та стан вмісту упаковок невідомі), марковане, доручене та призначене, як зазначено вище, яке зазначений перевізник (слово "перевізник" в цьому договорі означає будь-яку особу або корпорацію, що володіє майном за цим договором) зобов'язується перевезти до звичайного місця доставки за вказаним призначенням, якщо воно знаходиться на його власному маршруті, в іншому випадку – доставити іншому перевізнику на маршруті до зазначеного пункту призначення.</p>
             </div>
 
-            <div className="signatures">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 signatures-print"> {/* Responsive grid for screen, specific class for print */}
               <div>
                 <p>Підпис відправника:</p>
                 <div className="h-8 border-b border-gray-400 mt-2"></div>
@@ -948,26 +974,26 @@ const BillOfLadingModal: React.FC<BillOfLadingModalProps> = ({ order, customer, 
                 <p>Дата: _______________</p>
               </div>
             </div>
-             <div className="mt-6 text-center text-xs">
+             <div className="mt-6 text-center text-xs text-slate-600"> {/* Darkened footer text */}
                 Це необоротна накладна.
              </div>
           </div>
         </div>
 
-        <div className="mt-6 flex justify-end space-x-3 pt-4 border-t">
+        <div className="mt-6 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 pt-4 border-t print-hidden">
           <button 
             type="button"
             onClick={onClose} 
-            className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2 px-4 rounded-md shadow-sm transition-colors"
+            className="w-full sm:w-auto bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2 px-4 rounded-md shadow-sm transition-colors"
           >
             Закрити
           </button>
           <button 
             type="button" 
             onClick={handlePrint}
-            className="flex items-center bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md shadow-sm transition-colors"
+            className="w-full sm:w-auto flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md shadow-sm transition-colors"
           >
-            <PrinterIcon className="w-5 h-5 mr-2"/> Роздрукувати накладну
+            <PrinterIcon className="w-5 h-5 mr-2"/> Роздрукувати
           </button>
         </div>
       </div>
