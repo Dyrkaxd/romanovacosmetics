@@ -1,13 +1,17 @@
 [build]
-  command = "npm run build"
-  publish = "dist"
-  functions = "netlify/functions"
+  command = "npm run build" # Или yarn build, если используете yarn
+  publish = "dist"          # Стандартная папка сборки для Vite
+  functions = "netlify/functions" # Папка с вашими функциями Netlify
 
+# Перенаправление для вызовов API к функциям Netlify
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"
-  status = 200
+  status = 200 # Обрабатывать как перезапись URL, а не как редирект 301/302
 
+# Перенаправление для SPA (Single Page Application) роутинга
+# Это гарантирует, что все маршруты будут обрабатываться вашим index.html,
+# позволяя React Router управлять навигацией на стороне клиента.
 [[redirects]]
   from = "/*"
   to = "/index.html"
