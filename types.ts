@@ -2,24 +2,26 @@
 import type { FC, SVGProps } from 'react';
 
 export interface Product {
-  id: string;
+  id: string; // Will be UUID from database
   name: string;
-  category: string;
   price: number;
-  // stock: number; // Removed stock
   description: string;
   imageUrl?: string;
+  created_at?: string; 
 }
 
 export interface OrderItem {
-  productId: string; // Can be a generic ID if product not in system
+  id?: string; // Will be UUID from database, optional for new items
+  order_id?: string; // Foreign key
+  productId: string; // Can be a generic ID or UUID if product is in DB
   productName: string;
   quantity: number;
   price: number; // Price per unit at the time of order
+  created_at?: string;
 }
 
 export interface Customer {
-  id: string;
+  id: string; // Will be UUID from database
   name: string;
   email: string;
   phone: string;
@@ -30,18 +32,20 @@ export interface Customer {
     zip: string;
     country: string;
   };
-  joinDate: string;
+  joinDate: string; // Consider making this a date type if DB supports it easily
+  created_at?: string;
   // future: avatarUrl?: string;
 }
 
 export interface Order {
-  id: string;
-  customerId: string; // Link to Customer
+  id: string; // Will be UUID from database
+  customerId: string; // Link to Customer (UUID)
   customerName: string; // Denormalized for display convenience
   date: string; // ISO string format for date
   status: 'Pending' | 'Shipped' | 'Delivered' | 'Cancelled';
   totalAmount: number;
   items: OrderItem[];
+  created_at?: string;
 }
 
 export interface NavItem {
@@ -57,6 +61,20 @@ export interface DashboardStat {
   color: string;
   percentageChange?: string;
   isPositive?: boolean;
+  isLoading?: boolean; // Added isLoading property
 }
 
-// AuthenticatedUser interface removed
+export interface AuthenticatedUser {
+  email: string;
+  name?: string;
+  picture?: string;
+  role?: 'admin' | 'manager'; // Added role
+}
+
+export interface ManagedUser {
+  id: string;
+  name: string;
+  email: string;
+  dateAdded: string; // This will be derived from created_at from the database
+  notes?: string;
+}
