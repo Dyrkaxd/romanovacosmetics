@@ -1,42 +1,57 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Customer } from '../types';
 import { PlusIcon, XMarkIcon, EyeIcon, PencilIcon, TrashIcon } from '../components/Icons';
 
-const initialCustomersData: Customer[] = [
-  { id: 'CUST001', name: 'Аліса Чудесенко', email: 'alice@example.com', phone: '555-0101', address: { street: '123 Fantasy Lane', city: 'Wonderland', state: 'CA', zip: '90210', country: 'USA' }, joinDate: '2023-01-15' },
-  { id: 'CUST002', name: 'Богдан Будівельник', email: 'bob@example.com', phone: '555-0102', address: { street: '456 Construction Rd', city: 'Builderville', state: 'NY', zip: '10001', country: 'USA' }, joinDate: '2023-02-20' },
-  { id: 'CUST003', name: 'Чарлі Браун', email: 'charlie@example.com', phone: '555-0103', address: { street: '789 Comic Strip', city: 'Toontown', state: 'IL', zip: '60606', country: 'USA' }, joinDate: '2023-03-10' },
-];
-
-const CUSTOMERS_STORAGE_KEY = 'ecomDashCustomers';
+// const CUSTOMERS_STORAGE_KEY = 'ecomDashCustomers'; // No longer used
 
 const CustomersPage: React.FC = () => {
-  const [customers, setCustomers] = useState<Customer[]>(() => {
-    const storedCustomers = localStorage.getItem(CUSTOMERS_STORAGE_KEY);
-    if (storedCustomers) {
-      try {
-        return JSON.parse(storedCustomers);
-      } catch (error) {
-        console.error("Помилка розбору клієнтів з localStorage:", error);
-        return initialCustomersData; // Fallback to initial if parsing fails
-      }
-    }
-    return initialCustomersData;
-  });
-
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
-  const [currentCustomer, setCurrentCustomer] = useState<Partial<Customer>>({});
+  
+  const defaultAddress = { street: '', city: '', state: '', zip: '', country: '' };
+  const [currentCustomer, setCurrentCustomer] = useState<Partial<Customer>>({ address: defaultAddress });
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  
+  const [pageError, setPageError] = useState<string | null>(null);
+  const [modalError, setModalError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
-  const defaultAddress = { street: '', city: '', state: '', zip: '', country: '' };
+  const API_BASE_URL = '/api';
+
+  const fetchCustomers = useCallback(async () => {
+    setIsLoading(true);
+    setPageError(null);
+    try {
+      const response = await fetch(`${API_BASE_URL}/customers`);
+      if (!response.ok) {
+        let errorMessage = `Failed to fetch customers. Status: ${response.status} ${response.statusText}`;
+        let responseBodyText = '';
+        try {
+            responseBodyText = await response.text();
+            const errData = JSON.parse(responseBodyText);
+            errorMessage = errData.message || `Server error: ${response.status} ${response.statusText}`;
+        } catch (jsonError) {
+            errorMessage = `Server responded with non-JSON (${response.status} ${response.statusText}): ${responseBodyText.substring(0, 200)}...`;
+            console.error("Full non-JSON error response from server (fetchCustomers):", responseBodyText);
+        }
+        throw new Error(errorMessage);
+      }
+      let data: Customer[] = await response.json();
+      setCustomers(data);
+    } catch (err: any) {
+      console.error("Failed to fetch customers:", err);
+      setPageError(err.message || 'Could not load customers. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    localStorage.setItem(CUSTOMERS_STORAGE_KEY, JSON.stringify(customers));
-  }, [customers]);
-
+    fetchCustomers();
+  }, [fetchCustomers]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -51,39 +66,74 @@ const CustomersPage: React.FC = () => {
     }
   };
 
-  const handleSubmitCustomer = (e: React.FormEvent) => {
+  const handleSubmitCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingCustomer) {
-      setCustomers(customers.map(c => c.id === editingCustomer.id ? { ...editingCustomer, ...currentCustomer, address: { ...(editingCustomer.address), ...(currentCustomer.address || defaultAddress) } } as Customer : c));
-    } else {
-      const newCustomer: Customer = {
-        id: `CUST${Date.now().toString().slice(-4)}`, 
-        name: currentCustomer.name || 'Безіменний клієнт',
-        email: currentCustomer.email || 'no-email@example.com',
-        phone: currentCustomer.phone || '',
-        address: { ...(defaultAddress), ...(currentCustomer.address || defaultAddress) },
-        joinDate: new Date().toISOString().split('T')[0],
-        ...currentCustomer, 
-      };
-      if (!newCustomer.name || !newCustomer.email) {
-        alert("Ім'я та email клієнта є обов'язковими.");
-        return;
-      }
-      setCustomers(prevCustomers => [newCustomer, ...prevCustomers]);
+    if (!currentCustomer.name || !currentCustomer.email) {
+      setModalError("Ім'я та email клієнта є обов'язковими.");
+      return;
     }
-    closeModal();
+    setModalError(null);
+    setIsLoading(true);
+
+    const customerDataToSubmit: Partial<Customer> = {
+      name: currentCustomer.name,
+      email: currentCustomer.email,
+      phone: currentCustomer.phone || '',
+      address: currentCustomer.address || defaultAddress,
+      joinDate: editingCustomer ? editingCustomer.joinDate : new Date().toISOString().split('T')[0],
+    };
+
+    try {
+      let response;
+      if (editingCustomer) {
+        response = await fetch(`${API_BASE_URL}/customers/${editingCustomer.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(customerDataToSubmit),
+        });
+      } else {
+        response = await fetch(`${API_BASE_URL}/customers`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(customerDataToSubmit),
+        });
+      }
+
+      if (!response.ok) {
+        let errorMessage = `Failed to ${editingCustomer ? 'update' : 'add'} customer. Status: ${response.status} ${response.statusText}`;
+        let responseBodyText = '';
+        try {
+            responseBodyText = await response.text();
+            const errData = JSON.parse(responseBodyText);
+            errorMessage = errData.message || `Server error: ${response.status} ${response.statusText}`;
+        } catch (jsonError) {
+            errorMessage = `Server responded with non-JSON (${response.status} ${response.statusText}): ${responseBodyText.substring(0, 200)}...`;
+            console.error("Full non-JSON error response from server (handleSubmitCustomer):", responseBodyText);
+        }
+        throw new Error(errorMessage);
+      }
+      fetchCustomers(); 
+      closeModal();
+    } catch (err: any) {
+      console.error("Failed to save customer:", err);
+      setModalError(err.message || `Could not ${editingCustomer ? 'update' : 'add'} customer. Please try again.`);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const openAddModal = () => {
     setEditingCustomer(null);
     setCurrentCustomer({ address: defaultAddress, name: '', email: '', phone: '' });
     setIsModalOpen(true);
+    setModalError(null);
   };
 
   const openEditModal = (customer: Customer) => {
     setEditingCustomer(customer);
     setCurrentCustomer({ ...customer, address: { ...(customer.address || defaultAddress) }});
     setIsModalOpen(true);
+    setModalError(null);
   };
 
   const openViewModal = (customer: Customer) => {
@@ -95,11 +145,35 @@ const CustomersPage: React.FC = () => {
     setIsModalOpen(false);
     setIsViewModalOpen(false);
     setCurrentCustomer({ address: defaultAddress });
+    setModalError(null);
   };
 
-  const handleDeleteCustomer = (customerId: string) => {
+  const handleDeleteCustomer = async (customerId: string) => {
     if (window.confirm('Ви впевнені, що хочете видалити цього клієнта? Цю дію неможливо скасувати.')) {
-      setCustomers(customers.filter(c => c.id !== customerId));
+      setIsLoading(true);
+      setPageError(null);
+      try {
+        const response = await fetch(`${API_BASE_URL}/customers/${customerId}`, { method: 'DELETE' });
+        if (!response.ok) {
+          let errorMessage = `Failed to delete customer. Status: ${response.status} ${response.statusText}`;
+          let responseBodyText = '';
+          try {
+              responseBodyText = await response.text();
+              const errData = JSON.parse(responseBodyText);
+              errorMessage = errData.message || `Server error: ${response.status} ${response.statusText}`;
+          } catch (jsonError) {
+              errorMessage = `Server responded with non-JSON (${response.status} ${response.statusText}): ${responseBodyText.substring(0, 200)}...`;
+              console.error("Full non-JSON error response from server (handleDeleteCustomer):", responseBodyText);
+          }
+          throw new Error(errorMessage);
+        }
+        fetchCustomers();
+      } catch (err: any) {
+        console.error("Failed to delete customer:", err);
+        setPageError(err.message || 'Could not delete customer. Please try again.');
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -111,72 +185,79 @@ const CustomersPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-3 sm:space-y-0">
         <h2 className="text-xl font-semibold text-slate-700">Список клієнтів</h2>
         <button
           onClick={openAddModal}
           aria-label="Додати нового клієнта"
-          className="flex items-center bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg shadow-md transition-colors"
+          className="flex items-center bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg shadow-md transition-colors w-full sm:w-auto justify-center"
         >
-          <PlusIcon className="w-5 h-5 mr-2" /> Додати нового клієнта
+          <PlusIcon className="w-5 h-5" />
+          <span className="hidden sm:inline ml-2">Додати нового клієнта</span>
+          <span className="sm:hidden ml-2">Додати</span>
         </button>
       </div>
 
       <input
         type="search"
         aria-label="Пошук клієнтів"
-        placeholder="Пошук клієнтів за ім'ям, email або телефоном..."
+        placeholder="Пошук клієнтів..."
         className="w-full p-2 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
       />
+      {pageError && <div role="alert" className="p-3 bg-red-100 text-red-700 border border-red-300 rounded-md">{pageError}</div>}
+      {isLoading && customers.length === 0 && <div className="text-center p-4">Завантаження клієнтів...</div>}
+
 
       <div className="bg-white shadow-lg rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-200">
             <thead className="bg-slate-50">
               <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Ім'я</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Email</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Телефон</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Дата реєстрації</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Дії</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">Ім'я</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider hidden sm:table-cell">Email</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider hidden md:table-cell">Телефон</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider hidden md:table-cell">Дата реєстрації</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">Дії</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-slate-200">
-              {filteredCustomers.map((customer) => (
+              {!isLoading && filteredCustomers.map((customer) => (
                 <tr key={customer.id} className="hover:bg-slate-50 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{customer.name}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{customer.email}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{customer.phone || 'Н/Д'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{customer.joinDate}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700 hidden sm:table-cell">{customer.email}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700 hidden md:table-cell">{customer.phone || 'Н/Д'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700 hidden md:table-cell">{new Date(customer.joinDate).toLocaleDateString()}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                    <button onClick={() => openViewModal(customer)} className="text-sky-600 hover:text-sky-800 transition-colors" title="Переглянути деталі клієнта" aria-label={`Переглянути деталі для ${customer.name}`}><EyeIcon className="w-5 h-5 inline"/></button>
-                    <button onClick={() => openEditModal(customer)} className="text-indigo-600 hover:text-indigo-800 transition-colors" title="Редагувати клієнта" aria-label={`Редагувати ${customer.name}`}><PencilIcon className="w-5 h-5 inline"/></button>
-                    <button onClick={() => handleDeleteCustomer(customer.id)} className="text-red-600 hover:text-red-800 transition-colors" title="Видалити клієнта" aria-label={`Видалити ${customer.name}`}><TrashIcon className="w-5 h-5 inline"/></button>
+                    <button onClick={() => openViewModal(customer)} className="text-sky-600 hover:text-sky-800 transition-colors p-1" title="Переглянути деталі клієнта" aria-label={`Переглянути деталі для ${customer.name}`}><EyeIcon className="w-5 h-5 inline"/></button>
+                    <button onClick={() => openEditModal(customer)} className="text-indigo-600 hover:text-indigo-800 transition-colors p-1" title="Редагувати клієнта" aria-label={`Редагувати ${customer.name}`}><PencilIcon className="w-5 h-5 inline"/></button>
+                    <button onClick={() => handleDeleteCustomer(customer.id)} className="text-red-600 hover:text-red-800 transition-colors p-1" title="Видалити клієнта" aria-label={`Видалити ${customer.name}`}><TrashIcon className="w-5 h-5 inline"/></button>
                   </td>
                 </tr>
               ))}
-              {filteredCustomers.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-6 py-10 text-center text-sm text-slate-500">
-                    {customers.length === 0 ? "Клієнтів ще немає. Натисніть 'Додати нового клієнта', щоб почати." : "Клієнтів, що відповідають вашому пошуку, не знайдено."}
-                  </td>
-                </tr>
+              {isLoading && (
+                 <tr><td colSpan={5} className="px-6 py-10 text-center text-sm text-slate-500">Завантаження...</td></tr>
+              )}
+              {!isLoading && customers.length === 0 && !pageError && (
+                <tr><td colSpan={5} className="px-6 py-10 text-center text-sm text-slate-500">Клієнтів ще немає. Натисніть 'Додати нового клієнта', щоб почати.</td></tr>
+              )}
+              {!isLoading && customers.length > 0 && filteredCustomers.length === 0 && (
+                 <tr><td colSpan={5} className="px-6 py-10 text-center text-sm text-slate-500">Клієнтів, що відповідають вашому пошуку, не знайдено.</td></tr>
               )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Add/Edit Customer Modal */}
       {isModalOpen && (
         <div role="dialog" aria-modal="true" aria-labelledby="customer-modal-title" className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+          <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md md:max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
-              <h3 id="customer-modal-title" className="text-lg font-semibold">{editingCustomer ? 'Редагувати клієнта' : 'Додати нового клієнта'}</h3>
-              <button onClick={closeModal} aria-label="Закрити модальне вікно"><XMarkIcon className="w-6 h-6 text-slate-500 hover:text-slate-700"/></button>
+              <h3 id="customer-modal-title" className="text-lg font-semibold text-slate-800">{editingCustomer ? 'Редагувати клієнта' : 'Додати нового клієнта'}</h3>
+              <button onClick={closeModal} aria-label="Закрити модальне вікно" disabled={isLoading}><XMarkIcon className="w-6 h-6 text-slate-500 hover:text-slate-700"/></button>
             </div>
+            {modalError && <div role="alert" className="mb-3 p-3 bg-red-100 text-red-700 border border-red-300 rounded-md">{modalError}</div>}
             <form onSubmit={handleSubmitCustomer} className="space-y-4">
               <div>
                 <label htmlFor="name" className="block text-sm font-medium text-slate-700">Повне ім'я <span aria-hidden="true" className="text-red-500">*</span></label>
@@ -220,10 +301,19 @@ const CustomersPage: React.FC = () => {
                 </div>
               </fieldset>
               
-              <div className="flex justify-end pt-2 space-x-3">
-                <button type="button" onClick={closeModal} className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2 px-4 rounded-md shadow-sm transition-colors">Скасувати</button>
-                <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-md shadow-sm transition-colors">
-                  {editingCustomer ? 'Зберегти зміни' : 'Додати клієнта'}
+              <div className="flex flex-col sm:flex-row justify-end pt-2 space-y-2 sm:space-y-0 sm:space-x-3">
+                <button 
+                    type="button" 
+                    onClick={closeModal} 
+                    className="w-full sm:w-auto bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2 px-4 rounded-md shadow-sm transition-colors"
+                    disabled={isLoading}
+                >Скасувати</button>
+                <button 
+                    type="submit" 
+                    className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-md shadow-sm transition-colors disabled:opacity-50"
+                    disabled={isLoading}
+                >
+                  {isLoading ? (editingCustomer ? 'Збереження...' : 'Додавання...') : (editingCustomer ? 'Зберегти зміни' : 'Додати клієнта')}
                 </button>
               </div>
             </form>
@@ -231,7 +321,6 @@ const CustomersPage: React.FC = () => {
         </div>
       )}
 
-      {/* View Customer Modal */}
       {isViewModalOpen && currentCustomer && currentCustomer.id && (
          <div role="dialog" aria-modal="true" aria-labelledby="view-customer-modal-title" className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
@@ -240,19 +329,19 @@ const CustomersPage: React.FC = () => {
               <button onClick={closeModal} aria-label="Закрити модальне вікно"><XMarkIcon className="w-6 h-6 text-slate-500 hover:text-slate-700"/></button>
             </div>
             <div className="space-y-3 text-sm">
-              <p><span className="font-semibold text-slate-600">ID Клієнта:</span> {currentCustomer.id}</p>
-              <p><span className="font-semibold text-slate-600">Email:</span> {currentCustomer.email}</p>
-              <p><span className="font-semibold text-slate-600">Телефон:</span> {currentCustomer.phone || 'Н/Д'}</p>
-              <p><span className="font-semibold text-slate-600">Дата реєстрації:</span> {currentCustomer.joinDate}</p>
+              <p><span className="font-semibold text-slate-700">ID Клієнта:</span> <span className="text-slate-800">{currentCustomer.id}</span></p>
+              <p><span className="font-semibold text-slate-700">Email:</span> <span className="text-slate-800">{currentCustomer.email}</span></p>
+              <p><span className="font-semibold text-slate-700">Телефон:</span> <span className="text-slate-800">{currentCustomer.phone || 'Н/Д'}</span></p>
+              <p><span className="font-semibold text-slate-700">Дата реєстрації:</span> <span className="text-slate-800">{currentCustomer.joinDate ? new Date(currentCustomer.joinDate).toLocaleDateString() : 'N/A'}</span></p>
               <div className="mt-2 pt-2 border-t">
-                <p className="font-semibold text-slate-600 mb-1">Адреса:</p>
+                <p className="font-semibold text-slate-700 mb-1">Адреса:</p>
                 {currentCustomer.address && (currentCustomer.address.street || currentCustomer.address.city) ? (
                   <>
-                    <p>{currentCustomer.address.street}</p>
-                    <p>{currentCustomer.address.city}{currentCustomer.address.state && `, ${currentCustomer.address.state}`} {currentCustomer.address.zip}</p>
-                    <p>{currentCustomer.address.country}</p>
+                    <p className="text-slate-800">{currentCustomer.address.street}</p>
+                    <p className="text-slate-800">{currentCustomer.address.city}{currentCustomer.address.state && `, ${currentCustomer.address.state}`} {currentCustomer.address.zip}</p>
+                    <p className="text-slate-800">{currentCustomer.address.country}</p>
                   </>
-                ) : <p>Інформація про адресу відсутня.</p>}
+                ) : <p className="text-slate-800">Інформація про адресу відсутня.</p>}
               </div>
             </div>
             <div className="mt-6 text-right">
