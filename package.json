@@ -12,8 +12,10 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.6.2",
-    "@google/genai": "^1.6.0",
-    "@netlify/functions": "^4.1.6"
+    "@react-oauth/google": "^0.12.1",
+    "jwt-decode": "^4.0.0",
+    "@supabase/supabase-js": "^2.42.7",
+    "@google/genai": "^0.16.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
