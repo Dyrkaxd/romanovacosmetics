@@ -105,6 +105,7 @@ export interface Database {
           date: string
           status: "Pending" | "Shipped" | "Delivered" | "Cancelled"
           total_amount: number
+          discount: number | null
           created_at: string | null
         }
         Insert: {
@@ -114,6 +115,7 @@ export interface Database {
           date: string
           status: "Pending" | "Shipped" | "Delivered" | "Cancelled"
           total_amount: number
+          discount?: number | null
           created_at?: string | null
         }
         Update: {
@@ -123,6 +125,7 @@ export interface Database {
           date?: string
           status?: "Pending" | "Shipped" | "Delivered" | "Cancelled"
           total_amount?: number
+          discount?: number | null
           created_at?: string | null
         }
         Relationships: [
