@@ -1,0 +1,28 @@
+# Netlify configuration file
+# This file tells Netlify how to build your site and where to find your serverless functions.
+
+[build]
+  # Command to build your Vite project
+  command = "npm run build"
+  
+  # Directory where your built site is located
+  publish = "dist"
+  
+  # Directory where your serverless functions are located
+  functions = "netlify/functions"
+
+# Redirects and Rewrites rules
+[[redirects]]
+  # This rule rewrites all requests from /api/* to your Netlify functions.
+  # This is crucial for your frontend to be able to call your backend functions.
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200 # Use 200 for a rewrite (like a proxy)
+
+[[redirects]]
+  # Fallback for Single Page Applications (SPA).
+  # This ensures that any direct navigation to a client-side route (e.g., /orders)
+  # that isn't a static file is handled by your index.html, allowing React Router to work.
+  from = "/*"
+  to = "/index.html"
+  status = 200
