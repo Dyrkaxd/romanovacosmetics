@@ -49,6 +49,7 @@ export interface Order {
   status: 'Pending' | 'Shipped' | 'Delivered' | 'Cancelled';
   totalAmount: number;
   items: OrderItem[];
+  discount?: number;
   created_at?: string;
 }
 
