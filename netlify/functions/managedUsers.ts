@@ -1,7 +1,8 @@
 
 
+
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
-import { supabase } from '../services/supabaseClient'; 
+import { supabase } from '../../services/supabaseClient'; 
 import type { ManagedUser } from '../../types';
 import type { Database } from '../../types/supabase';
 

@@ -1,6 +1,6 @@
 
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
-import { supabase } from '../services/supabaseClient'; // Adjusted path
+import { supabase } from '../../services/supabaseClient'; // Adjusted path
 import type { Product } from '../../types'; // Assuming types are correctly defined
 import type { Database } from '../../types/supabase';
 
