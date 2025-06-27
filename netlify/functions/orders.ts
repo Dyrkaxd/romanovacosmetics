@@ -15,23 +15,24 @@ const commonHeaders = {
 };
 
 // Helper to transform DB row to Client Order type
-const dbOrderToClientOrder = (dbOrder: OrderDbRow, items: OrderItemDbRow[] = []): Order => {
+const dbOrderToClientOrder = (dbOrder: OrderDbRow & { customers?: { name: string } | null, customer?: { name: string } | null }, items: OrderItemDbRow[] = []): Order => {
+  const customerName = dbOrder.customers?.name || dbOrder.customer?.name || 'Unknown Customer';
   return {
     id: dbOrder.id,
-    customerId: dbOrder.customer_id, // Map customer_id to customerId
-    customerName: dbOrder.customer_name,
+    customerId: dbOrder.customer_id,
+    customerName: customerName,
     date: dbOrder.date,
     status: dbOrder.status,
     totalAmount: dbOrder.total_amount,
     created_at: dbOrder.created_at || undefined,
-    items: items.map(item => ({ // Ensure items also match client OrderItem type if needed
+    items: items.map(item => ({
         id: item.id,
-        order_id: item.order_id, // keep order_id if OrderItem type uses it, or map
-        productId: item.product_id || '', // Map product_id
+        order_id: item.order_id,
+        productId: item.product_id || '',
         productName: item.product_name,
         quantity: item.quantity,
         price: item.price,
-        discount: item.discount || 0, // Add discount from order_items
+        discount: item.discount || 0,
         created_at: item.created_at || undefined,
     })),
   };
@@ -51,9 +52,9 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         if (resourceId) {
           const { data: orderDbData, error: orderError } = await supabase
             .from('orders')
-            .select('*')
+            .select('*, customers ( name )')
             .eq('id', resourceId)
-            .single<OrderDbRow>();
+            .single();
           if (orderError) throw orderError;
           if (!orderDbData) return { statusCode: 404, headers: commonHeaders, body: JSON.stringify({ message: 'Order not found' }) };
 
@@ -67,19 +68,18 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
           const clientOrder = dbOrderToClientOrder(orderDbData, itemsDbData || []);
           return { statusCode: 200, headers: commonHeaders, body: JSON.stringify(clientOrder) };
         } else {
-          // OPTIMIZED: Fetch all orders and their items in a single query
           const { data: ordersDbData, error: ordersError } = await supabase
             .from('orders')
-            .select('*, items:order_items(*)')
+            .select('*, items:order_items(*), customer:customers(name)')
             .order('date', { ascending: false });
 
           if (ordersError) throw ordersError;
 
-          // The data is now an array of orders, each with a nested 'items' array.
-          // The type from Supabase doesn't reflect this join, so we use a cast.
-          const ordersWithClientItems = (ordersDbData as any[] || []).map(orderWithItems => {
-            // The base order data is the order itself, and the joined items are in the 'items' property.
-            return dbOrderToClientOrder(orderWithItems, orderWithItems.items || []);
+          const ordersWithClientItems = (ordersDbData as any[] || []).map(orderWithJoinedData => {
+            return dbOrderToClientOrder(
+                orderWithJoinedData,
+                orderWithJoinedData.items || []
+            );
           });
 
           return { statusCode: 200, headers: commonHeaders, body: JSON.stringify(ordersWithClientItems) };
@@ -87,12 +87,11 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
 
       case 'POST':
         const clientNewOrderData = JSON.parse(event.body || '{}') as Partial<Order>;
-        const { items: clientItems, customerId, ...restOfClientOrderData } = clientNewOrderData;
+        const { items: clientItems, customerId, customerName, ...restOfClientOrderData } = clientNewOrderData;
         
         const orderPayloadForDb = {
             ...restOfClientOrderData,
-            customer_id: customerId, // Map customerId to customer_id
-            // totalAmount is calculated and passed from client
+            customer_id: customerId, 
         };
 
         const { data: createdOrderDbRow, error: createOrderError } = await supabase
@@ -103,6 +102,9 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         if (createOrderError) throw createOrderError;
         if (!createdOrderDbRow) throw new Error('Failed to create order, no data returned.');
 
+        // Fetch the customer's name for the response
+        const { data: customerData } = await supabase.from('customers').select('name').eq('id', createdOrderDbRow.customer_id).single();
+
         let createdItemsDb: OrderItemDbRow[] = [];
         if (clientItems && clientItems.length > 0) {
           const itemsToInsertForDb = clientItems.map(item => ({
@@ -110,9 +112,8 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
             product_name: item.productName,
             quantity: item.quantity,
             price: item.price,
-            discount: item.discount, // Include per-item discount
+            discount: item.discount,
             order_id: createdOrderDbRow.id,
-            // id is auto-generated by DB, created_at is auto-generated
           }));
           const { data: insertedItemsData, error: createItemsError } = await supabase
             .from('order_items')
@@ -121,38 +122,36 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
             .returns<OrderItemDbRow[]>();
           if (createItemsError) {
             console.error("Failed to insert order items, order created but items failed:", createItemsError);
-            // Optional: Rollback order creation or handle partial success
             throw new Error(`Order created, but failed to insert items: ${createItemsError.message}`);
           }
           createdItemsDb = insertedItemsData || [];
         }
         
-        const completeClientOrder = dbOrderToClientOrder(createdOrderDbRow, createdItemsDb);
+        const completeClientOrder = dbOrderToClientOrder({ ...createdOrderDbRow, customers: { name: customerData?.name || 'N/A' } }, createdItemsDb);
         return { statusCode: 201, headers: commonHeaders, body: JSON.stringify(completeClientOrder) };
 
       case 'PUT': 
         if (!resourceId) return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: 'Order ID required for update' }) };
         const clientUpdateOrderData = JSON.parse(event.body || '{}') as Partial<Order>;
-        const { items: clientUpdatedItems, customerId: clientCustomerIdToUpdate, ...restOfClientUpdateData } = clientUpdateOrderData;
+        const { items: clientUpdatedItems, customerId: clientCustomerIdToUpdate, customerName: customerNameToIgnore, ...restOfClientUpdateData } = clientUpdateOrderData;
         
         const orderUpdatePayloadForDb: Partial<OrderDbRow> = {
             ...restOfClientUpdateData,
         };
         if (clientCustomerIdToUpdate !== undefined) {
-            orderUpdatePayloadForDb.customer_id = clientCustomerIdToUpdate; // Map customerId
+            orderUpdatePayloadForDb.customer_id = clientCustomerIdToUpdate;
         }
-        delete (orderUpdatePayloadForDb as any).id; // id should not be in update payload for supabase
+        delete (orderUpdatePayloadForDb as any).id;
         delete (orderUpdatePayloadForDb as any).items; 
         delete (orderUpdatePayloadForDb as any).customerId;
         delete (orderUpdatePayloadForDb as any).created_at;
-
 
         const { data: updatedOrderDbBase, error: updateOrderError } = await supabase
           .from('orders')
           .update(orderUpdatePayloadForDb)
           .eq('id', resourceId)
-          .select()
-          .single<OrderDbRow>();
+          .select('*, customer:customers(name)')
+          .single();
         if (updateOrderError) throw updateOrderError;
         if (!updatedOrderDbBase) return { statusCode: 404, headers: commonHeaders, body: JSON.stringify({ message: 'Order not found or failed to update' })};
 
@@ -170,9 +169,8 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
                     product_name: item.productName,
                     quantity: item.quantity,
                     price: item.price,
-                    discount: item.discount, // Include per-item discount
+                    discount: item.discount,
                     order_id: resourceId,
-                    // id is auto-generated by DB
                 }));
                 const { data: newInsertedItemsDb, error: insertNewItemsError } = await supabase
                     .from('order_items')
@@ -197,7 +195,6 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
 
       case 'DELETE':
         if (!resourceId) return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: 'Order ID required for delete' }) };
-        // Delete associated order items first (cascade delete might not be set up or reliable via API like this)
         const { error: deleteItemsError } = await supabase
             .from('order_items')
             .delete()
