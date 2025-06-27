@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Order, OrderItem, Customer, Product } from '../types';
 import { EyeIcon, XMarkIcon, PlusIcon, TrashIcon, PencilIcon, DocumentTextIcon, PrinterIcon, FilterIcon, DownloadIcon, ChevronDownIcon } from '../components/Icons';
@@ -160,7 +161,7 @@ const OrdersPage: React.FC = () => {
     setSearchTerm('');
   };
 
-  const calculateTotalAmount = (items: OrderItem[] = []): number => {
+  const calculateSubtotal = (items: OrderItem[] = []): number => {
     return items.reduce((sum, item) => sum + (Number(item.quantity) * Number(item.price)), 0);
   };
 
@@ -189,7 +190,7 @@ const OrdersPage: React.FC = () => {
       }
       
       items[index] = currentItem;
-      return { ...prev, items, totalAmount: calculateTotalAmount(items) };
+      return { ...prev, items };
     });
   };
   
@@ -197,7 +198,7 @@ const OrdersPage: React.FC = () => {
     setActiveOrderData(prev => {
       if (!prev) return null;
       const newItems = [...(prev.items || []), { ...initialNewOrderItem }];
-      return { ...prev, items: newItems, totalAmount: calculateTotalAmount(newItems) }
+      return { ...prev, items: newItems }
     });
   };
 
@@ -205,7 +206,7 @@ const OrdersPage: React.FC = () => {
     setActiveOrderData(prev => {
       if (!prev) return null;
       const newItems = (prev.items || []).filter((_, i) => i !== index);
-      return { ...prev, items: newItems, totalAmount: calculateTotalAmount(newItems) }
+      return { ...prev, items: newItems }
     });
   };
 
@@ -231,6 +232,9 @@ const OrdersPage: React.FC = () => {
     }
 
     const isEditing = modalMode === 'edit';
+    const subtotal = calculateSubtotal(validItems);
+    const discount = activeOrderData.discount || 0;
+
     const orderPayload: Partial<Order> = {
       ...(isEditing && activeOrderData.id ? { id: activeOrderData.id } : {}),
       customerId: selectedCustomer.id,
@@ -238,7 +242,8 @@ const OrdersPage: React.FC = () => {
       date: isEditing && activeOrderData.date ? activeOrderData.date : new Date().toISOString(), // Use full ISO string
       status: activeOrderData.status || 'Pending',
       items: validItems.map(item => ({...item, id: isEditing ? item.id : undefined})),
-      totalAmount: calculateTotalAmount(validItems),
+      discount: discount,
+      totalAmount: subtotal - discount,
     };
 
     setIsLoading(true);
@@ -268,7 +273,7 @@ const OrdersPage: React.FC = () => {
     setModalError(null);
     setModalMode(mode);
     if (mode === 'add') {
-      setActiveOrderData({ customerId: '', status: 'Pending', items: [{ ...initialNewOrderItem }], totalAmount: 0 });
+      setActiveOrderData({ customerId: '', status: 'Pending', items: [{ ...initialNewOrderItem }], totalAmount: 0, discount: 0 });
     } else if (order) {
       // Deep copy items to avoid direct state mutation on edit
       setActiveOrderData({ ...order, items: order.items.map(item => ({ ...item })) });
@@ -554,14 +559,35 @@ const OrdersPage: React.FC = () => {
                 ))}
                 <button type="button" onClick={addItem} className="text-sm text-indigo-600 hover:text-indigo-800 font-medium flex items-center"><PlusIcon className="w-4 h-4 mr-1"/> Додати товар</button>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
-                <div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+                <div className="sm:col-span-1">
                   <label htmlFor="status" className="block text-sm font-medium text-slate-700">Статус</label>
                   <select id="status" name="status" value={activeOrderData.status} onChange={(e) => setActiveOrderData(prev => prev ? { ...prev, status: e.target.value as Order['status'] } : null)} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm p-2">
                     {orderStatusValues.map(statusValue => (<option key={statusValue} value={statusValue}>{orderStatusTranslations[statusValue]}</option>))}
                   </select>
                 </div>
-                <div><p className="text-sm font-medium text-slate-700">Загальна сума</p><p className="text-xl font-semibold text-slate-800 mt-1">${calculateTotalAmount(activeOrderData.items).toFixed(2)}</p></div>
+                <div className="sm:col-span-1">
+                    <label htmlFor="discount" className="block text-sm font-medium text-slate-700">Знижка ($)</label>
+                    <input
+                        id="discount"
+                        type="number"
+                        placeholder="0.00"
+                        min="0"
+                        step="0.01"
+                        value={activeOrderData.discount || ''}
+                        onChange={(e) => {
+                            const newDiscount = Number(e.target.value) >= 0 ? Number(e.target.value) : 0;
+                            setActiveOrderData(prev => prev ? { ...prev, discount: newDiscount } : null);
+                        }}
+                        className="mt-1 block w-full border-slate-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm p-2"
+                    />
+                </div>
+                <div className="sm:col-span-1 text-right">
+                  <p className="text-sm font-medium text-slate-700">Загальна сума</p>
+                  <p className="text-xl font-semibold text-slate-800 mt-1">
+                      ${(calculateSubtotal(activeOrderData.items) - (activeOrderData.discount || 0)).toFixed(2)}
+                  </p>
+                </div>
               </div>
               <div className="mt-8 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3">
                  <button type="button" onClick={closeOrderModal} className="w-full sm:w-auto bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2 px-4 rounded-md shadow-sm transition-colors" disabled={isLoading}>Скасувати</button>
@@ -593,10 +619,27 @@ const OrdersPage: React.FC = () => {
                         {orderStatusValues.map(statusValue => (<option key={statusValue} value={statusValue}>{orderStatusTranslations[statusValue]}</option>))}
                     </select>
                 </div>
-                <div className="sm:col-span-2"><p className="text-sm text-slate-600">Загальна сума замовлення</p><p className="font-medium text-slate-800 text-lg">${viewOrder.totalAmount.toFixed(2)}</p></div>
               </div>
+
+              <div className="mt-4 border-t pt-4">
+                  <div className="flex justify-between text-sm">
+                      <p className="text-slate-600">Проміжна сума:</p>
+                      <p className="font-medium text-slate-800">${(viewOrder.totalAmount + (viewOrder.discount || 0)).toFixed(2)}</p>
+                  </div>
+                  {viewOrder.discount && viewOrder.discount > 0 && (
+                      <div className="flex justify-between text-sm mt-1">
+                          <p className="text-slate-600">Знижка:</p>
+                          <p className="font-medium text-red-500">-${(viewOrder.discount).toFixed(2)}</p>
+                      </div>
+                  )}
+                  <div className="flex justify-between text-lg font-semibold mt-2 border-t pt-2">
+                      <p className="text-slate-800">Всього:</p>
+                      <p className="text-slate-900">${viewOrder.totalAmount.toFixed(2)}</p>
+                  </div>
+              </div>
+
               <div>
-                <p className="text-sm font-semibold text-slate-700 mb-2">Замовлені товари ({viewOrder.items.length}):</p>
+                <p className="text-sm font-semibold text-slate-700 mb-2 mt-4">Замовлені товари ({viewOrder.items.length}):</p>
                 <ul className="divide-y divide-slate-200 border border-slate-200 rounded-md max-h-60 overflow-y-auto">
                   {viewOrder.items.map((item, index) => (
                     <li key={item.id || index} className="p-3 flex justify-between items-center text-sm bg-slate-50 even:bg-white">
@@ -828,7 +871,13 @@ const InvoiceModal: React.FC<DocumentModalProps> = ({ order, customer, onClose }
             <div className="invoice-totals">
               <table>
                 <tbody>
-                  <tr><td>Проміжна сума:</td><td className="number">${order.totalAmount.toFixed(2)}</td></tr>
+                  <tr><td>Проміжна сума:</td><td className="number">${(order.totalAmount + (order.discount || 0)).toFixed(2)}</td></tr>
+                  {order.discount && order.discount > 0 && (
+                    <tr>
+                      <td>Знижка:</td>
+                      <td className="number text-red-500">-${order.discount.toFixed(2)}</td>
+                    </tr>
+                  )}
                   {/* Add Tax/VAT line if applicable */}
                   {/* <tr><td>ПДВ (20%):</td><td className="number">${(order.totalAmount * 0.2).toFixed(2)}</td></tr> */}
                   <tr className="grand-total"><td>До сплати:</td><td className="number">${order.totalAmount.toFixed(2)}</td></tr>
