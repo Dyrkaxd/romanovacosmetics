@@ -181,7 +181,7 @@ const OrdersPage: React.FC = () => {
         if (product) {
           currentItem.productId = product.id;
           currentItem.productName = product.name;
-          currentItem.price = product.retailPrice; // Use retailPrice as default
+          currentItem.price = product.retailPrice * product.exchangeRate; // Price is retail price * exchange rate
         } else { 
           currentItem.productId = ''; 
           currentItem.productName = 'Товар не знайдено'; 
