@@ -1,6 +1,6 @@
 
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
-import { supabase } from '../../services/supabaseClient';
+import { supabase } from '../services/supabaseClient';
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 import type { Order, OrderItem } from '../../types';
 
