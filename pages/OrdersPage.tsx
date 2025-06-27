@@ -669,7 +669,7 @@ const BillOfLadingModal: React.FC<DocumentModalProps> = ({ order, customer, onCl
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   if (!order) return null;
-  const shipper = { name: 'Romanova Cosmetics', address: 'вул. Торгова 1, м. Київ, 01001', contact: '+380 (44) 123-45-67' };
+  const shipper = { name: 'ROMANOVA Cosmetics', address: 'вул. Торгова 1, м. Київ, 01001', contact: '+380 (44) 123-45-67' };
   const carrier = { name: 'Global Logistics Inc.', contact: '(555) 987-6543' };
   const calculateApproxWeight = (items: OrderItem[]) => items.reduce((acc, item) => acc + 0.5 + (item.quantity * 0.1), 0).toFixed(1);
   
@@ -787,7 +787,7 @@ const BillOfLadingModal: React.FC<DocumentModalProps> = ({ order, customer, onCl
 
 const InvoiceModal: React.FC<DocumentModalProps> = ({ order, customer, onClose }) => {
   if (!order) return null;
-  const storeInfo = { name: 'Romanova Cosmetics', address: 'вул. Торгова 1, м. Київ, 01001', phone: '+380 (44) 123-45-67', email: 'sales@romanovacosmetics.com', taxId: 'ІПН 1234567890' };
+  const storeInfo = { name: 'ROMANOVA Cosmetics', address: 'вул. Торгова 1, м. Київ, 01001', phone: '+380 (44) 123-45-67', email: 'sales@romanovacosmetics.com', taxId: 'ІПН 1234567890' };
   
   const handlePrint = () => {
     const printableArea = document.getElementById('invoiceContent');
@@ -822,8 +822,7 @@ const InvoiceModal: React.FC<DocumentModalProps> = ({ order, customer, onClose }
             <header className="invoice-header">
               <div>
                 <div className="flex items-center space-x-3">
-                  <img src={logoBase64} alt="Romanova Cosmetics Logo" className="h-16 w-16" />
-                  <span className="text-2xl font-bold text-slate-800">{storeInfo.name}</span>
+                  <img src={logoBase64} alt="Romanova Cosmetics Logo" className="h-24 w-24" />
                 </div>
                 <p className="mt-2">{storeInfo.address}</p>
                 <p>Телефон: {storeInfo.phone} | Email: {storeInfo.email}</p>

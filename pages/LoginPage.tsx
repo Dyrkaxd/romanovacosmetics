@@ -43,8 +43,9 @@ const LoginPage: React.FC = () => {
       <div className="p-8 bg-white shadow-xl rounded-lg text-center max-w-md w-full">
         <div className="mb-8">
            <img src={logoBase64} alt="Romanova Cosmetics Logo" className="w-24 h-24 mx-auto" />
-           <h1 className="text-3xl font-bold text-slate-800 mt-4">Romanova Cosmetics</h1>
-           <p className="text-slate-600 mt-1">Увійдіть, щоб продовжити</p>
+           <h1 className="text-3xl font-light tracking-[0.2em] text-slate-800 mt-4">ROMANOVA</h1>
+           <p className="text-slate-500 tracking-widest text-sm uppercase">Cosmetics</p>
+           <p className="text-slate-600 mt-6">Увійдіть, щоб продовжити</p>
         </div>
         
         <GoogleLogin

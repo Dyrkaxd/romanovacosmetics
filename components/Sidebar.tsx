@@ -45,7 +45,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpenOnMobile, toggleMobileSidebar }
       <div className="p-6 border-b border-slate-700 flex justify-between items-center">
         <div className="flex items-center space-x-3">
           <img src={logoBase64} alt="Romanova Cosmetics Logo" className="h-12 w-12" />
-          <span className="text-lg font-bold text-white">Romanova Cosmetics</span>
+          <span className="text-lg font-bold tracking-wider text-white">ROMANOVA</span>
         </div>
         <button 
           onClick={toggleMobileSidebar} 
