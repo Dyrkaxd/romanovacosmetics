@@ -19,6 +19,7 @@ export interface OrderItem {
   productName: string;
   quantity: number;
   price: number; // Price per unit at the time of order
+  discount?: number; // Percentage discount for this item
   created_at?: string;
 }
 
@@ -49,7 +50,6 @@ export interface Order {
   status: 'Pending' | 'Shipped' | 'Delivered' | 'Cancelled';
   totalAmount: number;
   items: OrderItem[];
-  discount?: number;
   created_at?: string;
 }
 
