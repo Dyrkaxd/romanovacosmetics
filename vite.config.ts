@@ -1,4 +1,3 @@
-
 import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 import { fileURLToPath } from 'url';
@@ -16,10 +15,7 @@ export default defineConfig(({ mode }) => {
     // AND potentially could be imported by frontend. Vite's `process.env` replacement is usually for `import.meta.env`.
     // We will prefix with VITE_ for client-side exposure.
     // Netlify functions will use actual environment variables set in Netlify UI.
-
-    // Use the global 'process' object, assuming @types/node is configured.
-    // process.cwd() is standard in Node.js environments where Vite config runs.
-    const env = loadEnv(mode, process.cwd(), ''); 
+    const env = loadEnv(mode, __dirname, ''); 
 
     return {
       define: {
@@ -38,16 +34,15 @@ export default defineConfig(({ mode }) => {
           '@': path.resolve(__dirname, '.'),
         }
       },
-      // If using Netlify Dev, it often handles proxying to functions automatically.
-      // If not, or for other dev servers, you might configure a proxy:
-      // server: {
-      //   proxy: {
-      //     '/api': {
-      //       target: 'http://localhost:8888/.netlify/functions', // Default Netlify Dev port
-      //       changeOrigin: true,
-      //       rewrite: (path) => path.replace(/^\/api/, ''),
-      //     },
-      //   },
-      // },
+      // Proxy API requests to Netlify Functions during development
+      server: {
+        proxy: {
+          '/api': {
+            target: 'http://localhost:8888', // Default port for Netlify Dev
+            changeOrigin: true,
+            rewrite: (path) => path.replace(/^\/api/, '/.netlify/functions'),
+          },
+        },
+      },
     };
 });

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Order, OrderItem, Customer, Product } from '../types';
 import { EyeIcon, XMarkIcon, PlusIcon, TrashIcon, PencilIcon, DocumentTextIcon, PrinterIcon, FilterIcon, DownloadIcon, ChevronDownIcon } from '../components/Icons';
@@ -467,10 +466,16 @@ const OrdersPage: React.FC = () => {
               </div>
               <div>
                 <h4 className="text-md font-medium text-slate-700 mb-2">Товари в замовленні <span aria-hidden="true" className="text-red-500">*</span></h4>
+                {/* Desktop Headers */}
+                <div className="hidden sm:grid sm:grid-cols-12 gap-2 mb-1 px-2 text-xs font-medium text-slate-500 uppercase">
+                    <div className="col-span-5">Назва</div>
+                    <div className="col-span-2">Кількість</div>
+                    <div className="col-span-3">Ціна</div>
+                </div>
                 {(activeOrderData.items || []).map((item, index) => (
-                  <div key={item.id || `item-${index}`} className="grid grid-cols-1 sm:grid-cols-12 gap-2 mb-3 items-center p-3 border rounded-md bg-slate-50">
-                    <div className="col-span-1 sm:col-span-12 md:col-span-5">
-                      <label htmlFor={`product-dropdown-toggle-${index}`} className="sr-only">Товар</label>
+                  <div key={item.id || `item-${index}`} className="grid grid-cols-1 sm:grid-cols-12 gap-2 mb-3 items-center p-3 border rounded-md bg-slate-50 sm:border-0 sm:p-0 sm:bg-transparent">
+                    <div className="sm:col-span-5">
+                      <label htmlFor={`product-dropdown-toggle-${index}`} className="block text-xs font-medium text-slate-700 mb-1 sm:hidden">Назва</label>
                       <div className="relative" ref={(el) => { productDropdownRefs.current[index] = el; }}>
                           <button
                               type="button"
@@ -534,15 +539,15 @@ const OrdersPage: React.FC = () => {
                           )}
                       </div>
                     </div>
-                     <div className="col-span-1 sm:col-span-4 md:col-span-2">
-                       <label htmlFor={`quantity-${index}`} className="sr-only">Кількість</label>
+                     <div className="sm:col-span-2">
+                       <label htmlFor={`quantity-${index}`} className="block text-xs font-medium text-slate-700 mb-1 sm:hidden">Кількість</label>
                        <input id={`quantity-${index}`} type="number" placeholder="К-сть" min="1" value={item.quantity} onChange={(e) => handleItemChange(index, 'quantity', e.target.value)} required aria-required="true" disabled={!item.productId} className="block w-full border-slate-300 rounded-md shadow-sm sm:text-sm p-2 disabled:bg-slate-100"/>
                     </div>
-                    <div className="col-span-1 sm:col-span-5 md:col-span-3">
-                      <label htmlFor={`price-${index}`} className="sr-only">Ціна</label>
+                    <div className="sm:col-span-3">
+                      <label htmlFor={`price-${index}`} className="block text-xs font-medium text-slate-700 mb-1 sm:hidden">Ціна</label>
                       <input id={`price-${index}`} type="number" placeholder="Ціна" min="0" step="0.01" value={item.price} onChange={(e) => handleItemChange(index, 'price', e.target.value)} required aria-required="true" disabled={!item.productId} className="block w-full border-slate-300 rounded-md shadow-sm sm:text-sm p-2 disabled:bg-slate-100"/>
                     </div>
-                    <div className="col-span-1 sm:col-span-3 md:col-span-2 flex justify-end">
+                    <div className="sm:col-span-2 flex justify-end items-center">
                       { (activeOrderData.items || []).length > 1 && <button type="button" onClick={() => removeItem(index)} aria-label={`Видалити товар ${index + 1}`} className="text-red-500 hover:text-red-700 p-1"><TrashIcon className="w-5 h-5"/></button> }
                     </div>
                   </div>
