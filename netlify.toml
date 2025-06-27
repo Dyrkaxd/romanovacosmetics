@@ -1,30 +1,45 @@
-# Netlify configuration file
+# ==============================================================================
+# Netlify Configuration File
+#
+# Цей файл визначає, як Netlify буде збирати та розгортати ваш сайт.
+# Він також містить правила переадресації для роботи з API та односторінковими
+# додатками (SPA).
+# ==============================================================================
 
-# Build settings for your Vite project
+# Налаштування процесу збірки
 [build]
-  # This command is run to build your site
+  # Команда, яка запускається для збірки вашого проєкту.
+  # "npm run build" є стандартною для проєктів на Vite.
   command = "npm run build"
   
-  # The directory where the built site is located
+  # Директорія, де знаходяться зібрані файли вашого сайту.
+  # Vite за замовчуванням створює папку "dist".
   publish = "dist"
   
-  # The directory where your serverless functions are located
+  # Директорія, де знаходяться ваші безсерверні функції Netlify.
   functions = "netlify/functions"
 
-# Redirect and Rewrite rules
+# ==============================================================================
+# Правила переадресації та переписування шляхів (Redirects and Rewrites)
+#
+# Правила виконуються в тому порядку, в якому вони написані.
+# Більш конкретні правила мають йти перед більш загальними.
+# ==============================================================================
 
-# Rule 1: API Proxy for serverless functions
-# This rule rewrites all requests from /api/* to your Netlify functions.
-# This is crucial for your frontend to be able to call your backend functions.
+# Правило №1: Перенаправлення API-запитів до безсерверних функцій
+# Це найважливіше правило для виправлення помилок 404.
+# Воно перехоплює всі запити, що починаються з /api/, і направляє їх 
+# до відповідної функції в Netlify, не змінюючи URL в браузері.
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"
-  status = 200 # A 200 status makes this a rewrite (like a proxy)
+  status = 200 # Статус 200 означає "переписування" (rewrite), а не "переадресацію" (redirect).
 
-# Rule 2: Fallback for Single Page Applications (SPA)
-# This rule ensures that any direct navigation to a client-side route (e.g., /orders)
-# is handled by your index.html, allowing React Router to manage the URL.
-# This rule MUST come after any more specific rules like the API proxy.
+# Правило №2: Резервне правило для односторінкових додатків (SPA)
+# Це стандартне правило для додатків на React, Vue, Angular і т.д.
+# Якщо запит не відповідає жодному файлу або попередньому правилу,
+# він повертає index.html. Це дозволяє React Router обробляти маршрутизацію на стороні клієнта.
+# Це правило ПОВИННО йти останнім.
 [[redirects]]
   from = "/*"
   to = "/index.html"
