@@ -30,7 +30,7 @@ const OrdersPage: React.FC = () => {
   
   const [modalMode, setModalMode] = useState<'add' | 'edit' | null>(null);
   const [activeOrderData, setActiveOrderData] = useState<Partial<Order> | null>(null);
-  const initialNewOrderItem: OrderItem = { productId: '', productName: '', quantity: 1, price: 0 };
+  const initialNewOrderItem: OrderItem = { productId: '', productName: '', quantity: 1, price: 0, discount: 0 };
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [availableProducts, setAvailableProducts] = useState<Product[]>([]);
@@ -161,8 +161,12 @@ const OrdersPage: React.FC = () => {
     setSearchTerm('');
   };
 
-  const calculateSubtotal = (items: OrderItem[] = []): number => {
-    return items.reduce((sum, item) => sum + (Number(item.quantity) * Number(item.price)), 0);
+  const calculateTotalAmount = (items: OrderItem[] = []): number => {
+    return items.reduce((sum, item) => {
+        const itemTotal = (Number(item.quantity) * Number(item.price));
+        const discountAmount = itemTotal * (Number(item.discount || 0) / 100);
+        return sum + (itemTotal - discountAmount);
+    }, 0);
   };
 
   const handleItemChange = (index: number, field: keyof OrderItem | 'productIdSelect', value: string | number) => {
@@ -183,8 +187,8 @@ const OrdersPage: React.FC = () => {
           currentItem.productName = 'Товар не знайдено'; 
           currentItem.price = 0; 
         }
-      } else if (field === 'quantity' || field === 'price') {
-        currentItem[field as 'quantity' | 'price'] = Number(value) < 0 ? 0 : Number(value);
+      } else if (field === 'quantity' || field === 'price' || field === 'discount') {
+        currentItem[field as 'quantity' | 'price' | 'discount'] = Number(value) < 0 ? 0 : Number(value);
       } else if (field === 'productName'){ 
           currentItem[field] = value as string;
       }
@@ -232,8 +236,7 @@ const OrdersPage: React.FC = () => {
     }
 
     const isEditing = modalMode === 'edit';
-    const subtotal = calculateSubtotal(validItems);
-    const discount = activeOrderData.discount || 0;
+    const totalAmount = calculateTotalAmount(validItems);
 
     const orderPayload: Partial<Order> = {
       ...(isEditing && activeOrderData.id ? { id: activeOrderData.id } : {}),
@@ -242,8 +245,7 @@ const OrdersPage: React.FC = () => {
       date: isEditing && activeOrderData.date ? activeOrderData.date : new Date().toISOString(), // Use full ISO string
       status: activeOrderData.status || 'Pending',
       items: validItems.map(item => ({...item, id: isEditing ? item.id : undefined})),
-      discount: discount,
-      totalAmount: subtotal - discount,
+      totalAmount: totalAmount,
     };
 
     setIsLoading(true);
@@ -273,7 +275,7 @@ const OrdersPage: React.FC = () => {
     setModalError(null);
     setModalMode(mode);
     if (mode === 'add') {
-      setActiveOrderData({ customerId: '', status: 'Pending', items: [{ ...initialNewOrderItem }], totalAmount: 0, discount: 0 });
+      setActiveOrderData({ customerId: '', status: 'Pending', items: [{ ...initialNewOrderItem }], totalAmount: 0 });
     } else if (order) {
       // Deep copy items to avoid direct state mutation on edit
       setActiveOrderData({ ...order, items: order.items.map(item => ({ ...item })) });
@@ -449,14 +451,14 @@ const OrdersPage: React.FC = () => {
 
       {modalMode && activeOrderData && (
         <div role="dialog" aria-modal="true" aria-labelledby="order-modal-title" className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-lg md:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-lg md:max-w-3xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6 border-b pb-4">
               <h3 id="order-modal-title" className="text-xl font-semibold text-slate-800">
                 {modalMode === 'add' ? 'Додати нове замовлення' : `Редагувати замовлення: ${activeOrderData.id?.substring(0,8)}...`}
               </h3>
               <button onClick={closeOrderModal} aria-label="Закрити модальне вікно замовлення" className="text-slate-400 hover:text-slate-600" disabled={isLoading}><XMarkIcon className="w-6 h-6"/></button>
             </div>
-            {modalError && <div role="alert" className="mb-4 p-3 bg-red-100 text-red-700 border-red-300 rounded-md text-sm">{modalError}</div>}
+            {modalError && <div role="alert" className="mb-4 p-3 bg-red-100 text-red-700 border border-red-300 rounded-md text-sm">{modalError}</div>}
             <form onSubmit={handleSubmitOrder} className="space-y-4">
               <div>
                 <label htmlFor="customer" className="block text-sm font-medium text-slate-700">Клієнт <span aria-hidden="true" className="text-red-500">*</span></label>
@@ -473,13 +475,14 @@ const OrdersPage: React.FC = () => {
                 <h4 className="text-md font-medium text-slate-700 mb-2">Товари в замовленні <span aria-hidden="true" className="text-red-500">*</span></h4>
                 {/* Desktop Headers */}
                 <div className="hidden sm:grid sm:grid-cols-12 gap-2 mb-1 px-2 text-xs font-medium text-slate-500 uppercase">
-                    <div className="col-span-5">Назва</div>
+                    <div className="col-span-4">Назва</div>
                     <div className="col-span-2">Кількість</div>
-                    <div className="col-span-3">Ціна</div>
+                    <div className="col-span-2">Ціна</div>
+                    <div className="col-span-2">Знижка (%)</div>
                 </div>
                 {(activeOrderData.items || []).map((item, index) => (
                   <div key={item.id || `item-${index}`} className="grid grid-cols-1 sm:grid-cols-12 gap-2 mb-3 items-center p-3 border rounded-md bg-slate-50 sm:border-0 sm:p-0 sm:bg-transparent">
-                    <div className="sm:col-span-5">
+                    <div className="sm:col-span-4">
                       <label htmlFor={`product-dropdown-toggle-${index}`} className="block text-xs font-medium text-slate-700 mb-1 sm:hidden">Назва</label>
                       <div className="relative" ref={(el) => { productDropdownRefs.current[index] = el; }}>
                           <button
@@ -548,9 +551,13 @@ const OrdersPage: React.FC = () => {
                        <label htmlFor={`quantity-${index}`} className="block text-xs font-medium text-slate-700 mb-1 sm:hidden">Кількість</label>
                        <input id={`quantity-${index}`} type="number" placeholder="К-сть" min="1" value={item.quantity} onChange={(e) => handleItemChange(index, 'quantity', e.target.value)} required aria-required="true" disabled={!item.productId} className="block w-full border-slate-300 rounded-md shadow-sm sm:text-sm p-2 disabled:bg-slate-100"/>
                     </div>
-                    <div className="sm:col-span-3">
+                    <div className="sm:col-span-2">
                       <label htmlFor={`price-${index}`} className="block text-xs font-medium text-slate-700 mb-1 sm:hidden">Ціна</label>
                       <input id={`price-${index}`} type="number" placeholder="Ціна" min="0" step="0.01" value={item.price} onChange={(e) => handleItemChange(index, 'price', e.target.value)} required aria-required="true" disabled={!item.productId} className="block w-full border-slate-300 rounded-md shadow-sm sm:text-sm p-2 disabled:bg-slate-100"/>
+                    </div>
+                    <div className="sm:col-span-2">
+                       <label htmlFor={`discount-${index}`} className="block text-xs font-medium text-slate-700 mb-1 sm:hidden">Знижка (%)</label>
+                       <input id={`discount-${index}`} type="number" placeholder="%" min="0" max="100" step="1" value={item.discount || ''} onChange={(e) => handleItemChange(index, 'discount', e.target.value)} disabled={!item.productId} className="block w-full border-slate-300 rounded-md shadow-sm sm:text-sm p-2 disabled:bg-slate-100"/>
                     </div>
                     <div className="sm:col-span-2 flex justify-end items-center">
                       { (activeOrderData.items || []).length > 1 && <button type="button" onClick={() => removeItem(index)} aria-label={`Видалити товар ${index + 1}`} className="text-red-500 hover:text-red-700 p-1"><TrashIcon className="w-5 h-5"/></button> }
@@ -559,33 +566,17 @@ const OrdersPage: React.FC = () => {
                 ))}
                 <button type="button" onClick={addItem} className="text-sm text-indigo-600 hover:text-indigo-800 font-medium flex items-center"><PlusIcon className="w-4 h-4 mr-1"/> Додати товар</button>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end pt-4 border-t">
                 <div className="sm:col-span-1">
                   <label htmlFor="status" className="block text-sm font-medium text-slate-700">Статус</label>
                   <select id="status" name="status" value={activeOrderData.status} onChange={(e) => setActiveOrderData(prev => prev ? { ...prev, status: e.target.value as Order['status'] } : null)} className="mt-1 block w-full border-slate-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm p-2">
                     {orderStatusValues.map(statusValue => (<option key={statusValue} value={statusValue}>{orderStatusTranslations[statusValue]}</option>))}
                   </select>
                 </div>
-                <div className="sm:col-span-1">
-                    <label htmlFor="discount" className="block text-sm font-medium text-slate-700">Знижка ($)</label>
-                    <input
-                        id="discount"
-                        type="number"
-                        placeholder="0.00"
-                        min="0"
-                        step="0.01"
-                        value={activeOrderData.discount || ''}
-                        onChange={(e) => {
-                            const newDiscount = Number(e.target.value) >= 0 ? Number(e.target.value) : 0;
-                            setActiveOrderData(prev => prev ? { ...prev, discount: newDiscount } : null);
-                        }}
-                        className="mt-1 block w-full border-slate-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm p-2"
-                    />
-                </div>
                 <div className="sm:col-span-1 text-right">
                   <p className="text-sm font-medium text-slate-700">Загальна сума</p>
-                  <p className="text-xl font-semibold text-slate-800 mt-1">
-                      ${(calculateSubtotal(activeOrderData.items) - (activeOrderData.discount || 0)).toFixed(2)}
+                  <p className="text-2xl font-semibold text-slate-800 mt-1">
+                      ${calculateTotalAmount(activeOrderData.items).toFixed(2)}
                   </p>
                 </div>
               </div>
@@ -620,35 +611,40 @@ const OrdersPage: React.FC = () => {
                     </select>
                 </div>
               </div>
+              
+              <div>
+                <p className="text-sm font-semibold text-slate-700 mb-2 mt-4">Замовлені товари ({viewOrder.items.length}):</p>
+                <ul className="divide-y divide-slate-200 border border-slate-200 rounded-md max-h-60 overflow-y-auto">
+                  {viewOrder.items.map((item, index) => (
+                    <li key={item.id || index} className="p-3 flex justify-between items-center text-sm bg-slate-50 even:bg-white">
+                      <div>
+                        <p className="font-medium text-slate-800">{item.productName}</p>
+                        <p className="text-xs text-slate-600">
+                          К-сть: {item.quantity} @ ${item.price.toFixed(2)}
+                          {item.discount ? <span className="text-red-500 font-semibold"> (-{item.discount}%)</span> : ''}
+                        </p>
+                      </div>
+                      <p className="text-slate-700 font-medium">${(item.price * item.quantity * (1 - (item.discount || 0) / 100)).toFixed(2)}</p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
 
               <div className="mt-4 border-t pt-4">
                   <div className="flex justify-between text-sm">
                       <p className="text-slate-600">Проміжна сума:</p>
-                      <p className="font-medium text-slate-800">${(viewOrder.totalAmount + (viewOrder.discount || 0)).toFixed(2)}</p>
+                      <p className="font-medium text-slate-800">${(viewOrder.items.reduce((acc, item) => acc + item.price * item.quantity, 0)).toFixed(2)}</p>
                   </div>
-                  {viewOrder.discount && viewOrder.discount > 0 && (
-                      <div className="flex justify-between text-sm mt-1">
-                          <p className="text-slate-600">Знижка:</p>
-                          <p className="font-medium text-red-500">-${(viewOrder.discount).toFixed(2)}</p>
-                      </div>
-                  )}
+                  <div className="flex justify-between text-sm mt-1">
+                      <p className="text-slate-600">Загальна знижка:</p>
+                      <p className="font-medium text-red-500">-${(viewOrder.items.reduce((acc, item) => acc + (item.price * item.quantity * (item.discount || 0) / 100), 0)).toFixed(2)}</p>
+                  </div>
                   <div className="flex justify-between text-lg font-semibold mt-2 border-t pt-2">
                       <p className="text-slate-800">Всього:</p>
                       <p className="text-slate-900">${viewOrder.totalAmount.toFixed(2)}</p>
                   </div>
               </div>
 
-              <div>
-                <p className="text-sm font-semibold text-slate-700 mb-2 mt-4">Замовлені товари ({viewOrder.items.length}):</p>
-                <ul className="divide-y divide-slate-200 border border-slate-200 rounded-md max-h-60 overflow-y-auto">
-                  {viewOrder.items.map((item, index) => (
-                    <li key={item.id || index} className="p-3 flex justify-between items-center text-sm bg-slate-50 even:bg-white">
-                      <div><p className="font-medium text-slate-800">{item.productName}</p><p className="text-xs text-slate-600">ID: {(item.productId || 'N/A').substring(0,8)}... &bull; К-сть: {item.quantity} @ ${item.price.toFixed(2)} за од.</p></div>
-                      <p className="text-slate-700 font-medium">${(item.price * item.quantity).toFixed(2)}</p>
-                    </li>
-                  ))}
-                </ul>
-              </div>
             </div>
             <div className="mt-8 flex flex-col sm:flex-row justify-between items-center space-y-2 sm:space-y-0">
                <button onClick={closeModalView} className="w-full sm:w-auto bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2 px-4 rounded-md shadow-sm transition-colors" disabled={isLoading}>Закрити</button>
@@ -809,6 +805,9 @@ const InvoiceModal: React.FC<DocumentModalProps> = ({ order, customer, onClose }
       setTimeout(() => { printWindow?.print(); }, 500);
     }
   };
+  
+  const subtotal = order.items.reduce((acc, item) => acc + item.price * item.quantity, 0);
+  const totalDiscount = order.items.reduce((acc, item) => acc + (item.price * item.quantity * (item.discount || 0) / 100), 0);
 
   return (
     <div role="dialog" aria-modal="true" aria-labelledby="invoice-modal-title" className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[60] p-2 sm:p-4">
@@ -855,27 +854,32 @@ const InvoiceModal: React.FC<DocumentModalProps> = ({ order, customer, onClose }
             </div>
             <div className="invoice-section-title">Замовлені товари/послуги:</div>
             <table className="invoice-table w-full">
-              <thead><tr><th>#</th><th>Назва товару</th><th className="number">К-сть</th><th className="number">Ціна за од.</th><th className="number">Сума</th></tr></thead>
+              <thead><tr><th>#</th><th>Назва товару</th><th className="number">К-сть</th><th className="number">Ціна</th><th className="number">Знижка (%)</th><th className="number">Сума</th></tr></thead>
               <tbody>
-                {order.items.map((item, index) => (
-                  <tr key={item.id || index}>
-                    <td>{index + 1}</td>
-                    <td>{item.productName}</td>
-                    <td className="number">{item.quantity}</td>
-                    <td className="number">${item.price.toFixed(2)}</td>
-                    <td className="number">${(item.quantity * item.price).toFixed(2)}</td>
-                  </tr>
-                ))}
+                {order.items.map((item, index) => {
+                   const itemTotal = item.quantity * item.price;
+                   const finalItemTotal = itemTotal * (1 - (item.discount || 0) / 100);
+                   return (
+                      <tr key={item.id || index}>
+                        <td>{index + 1}</td>
+                        <td>{item.productName}</td>
+                        <td className="number">{item.quantity}</td>
+                        <td className="number">${item.price.toFixed(2)}</td>
+                        <td className="number">{item.discount || 0}%</td>
+                        <td className="number">${finalItemTotal.toFixed(2)}</td>
+                      </tr>
+                   );
+                })}
               </tbody>
             </table>
             <div className="invoice-totals">
               <table>
                 <tbody>
-                  <tr><td>Проміжна сума:</td><td className="number">${(order.totalAmount + (order.discount || 0)).toFixed(2)}</td></tr>
-                  {order.discount && order.discount > 0 && (
+                  <tr><td>Проміжна сума:</td><td className="number">${subtotal.toFixed(2)}</td></tr>
+                  {totalDiscount > 0 && (
                     <tr>
-                      <td>Знижка:</td>
-                      <td className="number text-red-500">-${order.discount.toFixed(2)}</td>
+                      <td>Загальна знижка:</td>
+                      <td className="number text-red-500">-${totalDiscount.toFixed(2)}</td>
                     </tr>
                   )}
                   {/* Add Tax/VAT line if applicable */}
