@@ -34,15 +34,5 @@ export default defineConfig(({ mode }) => {
           '@': path.resolve(__dirname, '.'),
         }
       },
-      // Proxy API requests to Netlify Functions during development
-      server: {
-        proxy: {
-          '/api': {
-            target: 'http://localhost:8888', // Default port for Netlify Dev
-            changeOrigin: true,
-            rewrite: (path) => path.replace(/^\/api/, '/.netlify/functions'),
-          },
-        },
-      },
     };
 });
