@@ -1,3 +1,4 @@
+
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import { supabase } from '../../services/supabaseClient';
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
@@ -40,12 +41,12 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       return { statusCode: 200, headers: commonHeaders, body: JSON.stringify({ summary: 'Недостатньо даних про замовлення для аналізу.' }) };
     }
     
-    const summarizedOrders = ordersData.map(order => ({
+    const summarizedOrders = ordersData.map((order: any) => ({
         id: order.id,
         total_amount: order.total_amount,
         date: order.date,
         status: order.status,
-        item_count: (order.items as OrderItem[])?.length || 0,
+        item_count: order.items?.length || 0,
     }));
 
     const ai = new GoogleGenAI({ apiKey });
