@@ -23,6 +23,7 @@ const dbOrderToClientOrder = (dbOrder: OrderDbRow, items: OrderItemDbRow[] = [])
     date: dbOrder.date,
     status: dbOrder.status,
     totalAmount: dbOrder.total_amount,
+    discount: dbOrder.discount || 0,
     created_at: dbOrder.created_at || undefined,
     items: items.map(item => ({ // Ensure items also match client OrderItem type if needed
         id: item.id,
@@ -91,7 +92,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         const orderPayloadForDb = {
             ...restOfClientOrderData,
             customer_id: customerId, // Map customerId to customer_id
-            // customerName, date, status, totalAmount are already in restOfClientOrderData
+            // customerName, date, status, totalAmount, discount are already in restOfClientOrderData
         };
 
         const { data: createdOrderDbRow, error: createOrderError } = await supabase
