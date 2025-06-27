@@ -1,3 +1,4 @@
+
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import { supabase } from '../../services/supabaseClient'; 
 import type { Order, OrderItem } from '../../types';
@@ -47,7 +48,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
 
   try {
     switch (event.httpMethod) {
-      case 'GET':
+      case 'GET': {
         if (resourceId) {
           const { data: orderDbData, error: orderError } = await supabase
             .from('orders')
@@ -83,14 +84,17 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
 
           return { statusCode: 200, headers: commonHeaders, body: JSON.stringify(ordersWithClientItems) };
         }
+      }
 
-      case 'POST':
+      case 'POST': {
         const clientNewOrderData = JSON.parse(event.body || '{}') as Partial<Order>;
-        const { items: clientItems, customerId, customerName, ...restOfClientOrderData } = clientNewOrderData;
+        const { items: clientItems, customerId, customerName, totalAmount, ...restOfClientOrderData } = clientNewOrderData;
         
         const orderPayloadForDb = {
             ...restOfClientOrderData,
-            customer_id: customerId, 
+            date: restOfClientOrderData.date || new Date().toISOString(),
+            customer_id: customerId,
+            total_amount: totalAmount,
         };
 
         const { data: createdOrderDbRow, error: createOrderError } = await supabase
@@ -128,18 +132,24 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         
         const completeClientOrder = dbOrderToClientOrder({ ...createdOrderDbRow, customers: { name: customerData?.name || 'N/A' } }, createdItemsDb);
         return { statusCode: 201, headers: commonHeaders, body: JSON.stringify(completeClientOrder) };
+      }
 
-      case 'PUT': 
+      case 'PUT': {
         if (!resourceId) return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: 'Order ID required for update' }) };
         const clientUpdateOrderData = JSON.parse(event.body || '{}') as Partial<Order>;
-        const { items: clientUpdatedItems, customerId: clientCustomerIdToUpdate, customerName: customerNameToIgnore, ...restOfClientUpdateData } = clientUpdateOrderData;
+        const { items: clientUpdatedItems, customerId: clientCustomerIdToUpdate, customerName: customerNameToIgnore, totalAmount, ...restOfClientUpdateData } = clientUpdateOrderData;
         
         const orderUpdatePayloadForDb: Partial<OrderDbRow> = {
             ...restOfClientUpdateData,
         };
+
+        if (totalAmount !== undefined) {
+            orderUpdatePayloadForDb.total_amount = totalAmount; // Correctly map camelCase to snake_case
+        }
         if (clientCustomerIdToUpdate !== undefined) {
             orderUpdatePayloadForDb.customer_id = clientCustomerIdToUpdate;
         }
+
         delete (orderUpdatePayloadForDb as any).id;
         delete (orderUpdatePayloadForDb as any).items; 
         delete (orderUpdatePayloadForDb as any).customerId;
@@ -191,8 +201,9 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
 
         const completeUpdatedClientOrder = dbOrderToClientOrder(updatedOrderDbBase, finalItemsDb);
         return { statusCode: 200, headers: commonHeaders, body: JSON.stringify(completeUpdatedClientOrder) };
+      }
 
-      case 'DELETE':
+      case 'DELETE': {
         if (!resourceId) return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: 'Order ID required for delete' }) };
         const { error: deleteItemsError } = await supabase
             .from('order_items')
@@ -207,6 +218,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
           .eq('id', resourceId);
         if (deleteOrderError) throw deleteOrderError;
         return { statusCode: 204, headers: commonHeaders, body: '' };
+      }
 
       default:
         return { statusCode: 405, headers: commonHeaders, body: JSON.stringify({ message: 'Method Not Allowed' }) };
