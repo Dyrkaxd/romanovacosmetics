@@ -1,6 +1,6 @@
 {
-  "name": "Панель керування менеджера ел. комерції",
-  "description": "Панель для менеджерів інтернет-магазинів для контролю товарів, замовлень та отримання аналітики за допомогою функцій ШІ.",
+  "name": "E-commerce Manager Dashboard",
+  "description": "An advanced e-commerce management dashboard with real-time data, AI-powered insights, order filtering, invoice generation, and Supabase-backed manager roles.",
   "requestFramePermissions": [],
   "prompt": ""
 }
