@@ -90,11 +90,20 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         const clientNewOrderData = JSON.parse(event.body || '{}') as Partial<Order>;
         const { items: clientItems, customerId, customerName, totalAmount, ...restOfClientOrderData } = clientNewOrderData;
         
+        if (!customerId || totalAmount === undefined || totalAmount === null) {
+          return {
+            statusCode: 400,
+            headers: commonHeaders,
+            body: JSON.stringify({ message: 'Customer ID and total amount are required.' }),
+          };
+        }
+
         const orderPayloadForDb = {
             ...restOfClientOrderData,
             date: restOfClientOrderData.date || new Date().toISOString(),
             customer_id: customerId,
             total_amount: totalAmount,
+            status: restOfClientOrderData.status || 'Pending',
         };
 
         const { data: createdOrderDbRow, error: createOrderError } = await supabase
