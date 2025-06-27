@@ -1,4 +1,3 @@
-
 import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 import { fileURLToPath } from 'url';
@@ -16,10 +15,7 @@ export default defineConfig(({ mode }) => {
     // AND potentially could be imported by frontend. Vite's `process.env` replacement is usually for `import.meta.env`.
     // We will prefix with VITE_ for client-side exposure.
     // Netlify functions will use actual environment variables set in Netlify UI.
-
-    // Use the global 'process' object, assuming @types/node is configured.
-    // process.cwd() is standard in Node.js environments where Vite config runs.
-    const env = loadEnv(mode, process.cwd(), ''); 
+    const env = loadEnv(mode, __dirname, ''); 
 
     return {
       define: {
