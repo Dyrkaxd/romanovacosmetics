@@ -2,6 +2,7 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { NavItem } from '../types';
 import { DashboardIcon, ProductsIcon, OrdersIcon, UsersIcon, SettingsIcon, XMarkIcon } from './Icons';
+import { logoBase64 } from '../assets/logo';
 
 interface SidebarProps {
   isOpenOnMobile: boolean;
@@ -42,10 +43,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpenOnMobile, toggleMobileSidebar }
                   transition-transform duration-300 ease-in-out shadow-lg md:relative`}
     >
       <div className="p-6 border-b border-slate-700 flex justify-between items-center">
-        <h1 className="text-xl font-semibold text-white flex items-center">
-          <span role="img" aria-label="Shop Icon" className="text-3xl">🛍️</span>
-          <span className="hidden sm:inline ml-2">Менеджер магазину</span>
-        </h1>
+        <div className="flex items-center space-x-3">
+          <img src={logoBase64} alt="Romanova Cosmetics Logo" className="h-12 w-12" />
+          <span className="text-lg font-bold text-white">Romanova Cosmetics</span>
+        </div>
         <button 
           onClick={toggleMobileSidebar} 
           className="md:hidden text-slate-200 hover:text-white"

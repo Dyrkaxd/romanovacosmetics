@@ -4,6 +4,7 @@ import { Order, OrderItem, Customer, Product } from '../types';
 import { EyeIcon, XMarkIcon, PlusIcon, TrashIcon, PencilIcon, DocumentTextIcon, PrinterIcon, FilterIcon, DownloadIcon, ChevronDownIcon } from '../components/Icons';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { logoBase64 } from '../assets/logo';
 
 
 const orderStatusValues: Order['status'][] = ['Pending', 'Shipped', 'Delivered', 'Cancelled'];
@@ -668,7 +669,7 @@ const BillOfLadingModal: React.FC<DocumentModalProps> = ({ order, customer, onCl
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   if (!order) return null;
-  const shipper = { name: 'E-Commerce Store Deluxe', address: 'вул. Веб-Магазинна 123, м. Технологічне, ТХ 75001, США', contact: '(555) 123-4567' };
+  const shipper = { name: 'Romanova Cosmetics', address: 'вул. Торгова 1, м. Київ, 01001', contact: '+380 (44) 123-45-67' };
   const carrier = { name: 'Global Logistics Inc.', contact: '(555) 987-6543' };
   const calculateApproxWeight = (items: OrderItem[]) => items.reduce((acc, item) => acc + 0.5 + (item.quantity * 0.1), 0).toFixed(1);
   
@@ -786,7 +787,7 @@ const BillOfLadingModal: React.FC<DocumentModalProps> = ({ order, customer, onCl
 
 const InvoiceModal: React.FC<DocumentModalProps> = ({ order, customer, onClose }) => {
   if (!order) return null;
-  const storeInfo = { name: 'Мій Магазин "Мрія"', address: 'вул. Торгова 1, м. Київ, 01001', phone: '+380 (44) 123-45-67', email: 'sales@mriia-shop.com.ua', taxId: 'ІПН 1234567890' };
+  const storeInfo = { name: 'Romanova Cosmetics', address: 'вул. Торгова 1, м. Київ, 01001', phone: '+380 (44) 123-45-67', email: 'sales@romanovacosmetics.com', taxId: 'ІПН 1234567890' };
   
   const handlePrint = () => {
     const printableArea = document.getElementById('invoiceContent');
@@ -820,8 +821,11 @@ const InvoiceModal: React.FC<DocumentModalProps> = ({ order, customer, onClose }
           <div id="invoiceContent" className="invoice-container p-4 sm:p-6 bg-white"> {/* Ensure bg-white for canvas capture */}
             <header className="invoice-header">
               <div>
-                <div className="store-logo">🛍️ {storeInfo.name}</div>
-                <p>{storeInfo.address}</p>
+                <div className="flex items-center space-x-3">
+                  <img src={logoBase64} alt="Romanova Cosmetics Logo" className="h-16 w-16" />
+                  <span className="text-2xl font-bold text-slate-800">{storeInfo.name}</span>
+                </div>
+                <p className="mt-2">{storeInfo.address}</p>
                 <p>Телефон: {storeInfo.phone} | Email: {storeInfo.email}</p>
                 <p>ІПН: {storeInfo.taxId}</p>
               </div>

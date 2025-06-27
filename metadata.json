@@ -1,6 +1,6 @@
 {
-  "name": "E-commerce Manager Dashboard",
-  "description": "An advanced e-commerce management dashboard with real-time data, AI-powered insights, order filtering, invoice generation, and Supabase-backed manager roles.",
+  "name": "Romanova Cosmetics",
+  "description": "Management dashboard for Romanova Cosmetics, featuring real-time data, AI-powered insights, order filtering, invoice generation, and Supabase-backed manager roles.",
   "requestFramePermissions": [],
   "prompt": ""
 }

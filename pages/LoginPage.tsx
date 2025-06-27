@@ -2,6 +2,7 @@ import React from 'react';
 import { GoogleLogin, CredentialResponse, googleLogout } from '@react-oauth/google';
 import { useAuth } from '../AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { logoBase64 } from '../assets/logo';
 
 const LoginPage: React.FC = () => {
   const { signIn, user } = useAuth(); // get user to potentially check after signIn
@@ -41,8 +42,8 @@ const LoginPage: React.FC = () => {
     <div className="flex items-center justify-center min-h-screen bg-slate-100">
       <div className="p-8 bg-white shadow-xl rounded-lg text-center max-w-md w-full">
         <div className="mb-8">
-           <span className="text-6xl" role="img" aria-label="Shop Icon">🛍️</span>
-           <h1 className="text-3xl font-bold text-slate-800 mt-2">Менеджер ел. комерції</h1>
+           <img src={logoBase64} alt="Romanova Cosmetics Logo" className="w-24 h-24 mx-auto" />
+           <h1 className="text-3xl font-bold text-slate-800 mt-4">Romanova Cosmetics</h1>
            <p className="text-slate-600 mt-1">Увійдіть, щоб продовжити</p>
         </div>
         
