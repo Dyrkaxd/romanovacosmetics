@@ -34,16 +34,15 @@ export default defineConfig(({ mode }) => {
           '@': path.resolve(__dirname, '.'),
         }
       },
-      // If using Netlify Dev, it often handles proxying to functions automatically.
-      // If not, or for other dev servers, you might configure a proxy:
-      // server: {
-      //   proxy: {
-      //     '/api': {
-      //       target: 'http://localhost:8888/.netlify/functions', // Default Netlify Dev port
-      //       changeOrigin: true,
-      //       rewrite: (path) => path.replace(/^\/api/, ''),
-      //     },
-      //   },
-      // },
+      // Proxy API requests to Netlify Functions during development
+      server: {
+        proxy: {
+          '/api': {
+            target: 'http://localhost:8888', // Default port for Netlify Dev
+            changeOrigin: true,
+            rewrite: (path) => path.replace(/^\/api/, '/.netlify/functions'),
+          },
+        },
+      },
     };
 });
