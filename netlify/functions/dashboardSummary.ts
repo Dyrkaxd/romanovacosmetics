@@ -29,7 +29,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
   try {
     const { data: ordersData, error: ordersError } = await supabase
       .from('orders')
-      .select('id, customer_name, date, status, total_amount, items:order_items(product_name, quantity, price)')
+      .select('id, date, status, total_amount, items:order_items(product_name, quantity, price)')
       .order('date', { ascending: false })
       .limit(20);
 
