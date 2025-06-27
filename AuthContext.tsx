@@ -64,7 +64,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         } else {
           // Check if the user is a managed user from Supabase
           try {
-            const response = await fetch(`${API_BASE_URL}/managed-users?email=${encodeURIComponent(userEmail)}`);
+            const response = await fetch(`${API_BASE_URL}/managedUsers?email=${encodeURIComponent(userEmail)}`);
             if (!response.ok) {
                 let errorMessage = `Failed to fetch managed user status. Status: ${response.status} ${response.statusText}`;
                 let responseBodyText = '';
