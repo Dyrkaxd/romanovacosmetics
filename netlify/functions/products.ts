@@ -1,11 +1,11 @@
-
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import { supabase } from '../../services/supabaseClient';
 import type { Product } from '../../types';
 import type { Database } from '../../types/supabase';
-import { requireAuth, AuthError } from '../utils/auth';
+import { requireAuth } from '../utils/auth';
 
-type ProductDbRow = Database['public']['Tables']['products']['Row'];
+// A generic type for any of the product table rows.
+type ProductDbRow = Database['public']['Tables']['products_bdr']['Row'];
 
 const commonHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,9 +14,35 @@ const commonHeaders = {
   'Content-Type': 'application/json',
 };
 
-const transformDbRowToProduct = (dbProduct: ProductDbRow): Product => {
+// Mapping from user-facing group names to database table names.
+const productGroups = {
+  'BDR': 'products_bdr',
+  'LA': 'products_la',
+  'АГ': 'products_ag',
+  'АБ': 'products_ab_cyr',
+  'АР': 'products_ar_cyr',
+  'без сокращений': 'products_bez_sokr',
+  'АФ': 'products_af',
+  'ДС': 'products_ds',
+  'м8': 'products_m8',
+  'JDA': 'products_jda',
+  'Faith': 'products_faith',
+  'AB': 'products_ab_lat',
+  'ГФ': 'products_gf',
+  'ЕС': 'products_es',
+  'ГП': 'products_gp',
+  'СД': 'products_sd',
+  'ATA': 'products_ata',
+  'W': 'products_w',
+};
+type ProductGroupName = keyof typeof productGroups;
+type ProductTableName = typeof productGroups[ProductGroupName];
+
+
+const transformDbRowToProduct = (dbProduct: ProductDbRow, group: ProductGroupName): Product => {
   return {
     id: dbProduct.id,
+    group,
     name: dbProduct.name,
     retailPrice: dbProduct.price,
     salonPrice: dbProduct.salon_price === null ? 0 : dbProduct.salon_price,
@@ -27,7 +53,25 @@ const transformDbRowToProduct = (dbProduct: ProductDbRow): Product => {
   };
 };
 
-const handler: Handler = async (event: HandlerEvent, context: HandlerContext) => {
+// Helper to find a product across all tables
+const findProductById = async (id: string): Promise<{ product: ProductDbRow, tableName: ProductTableName, group: ProductGroupName } | null> => {
+  for (const [group, tableName] of Object.entries(productGroups)) {
+    const { data, error } = await supabase
+      .from(tableName)
+      .select('*')
+      .eq('id', id)
+      .single();
+    if (error && error.code !== 'PGRST116') { // Ignore "no rows found"
+      throw error;
+    }
+    if (data) {
+      return { product: data as ProductDbRow, tableName: tableName as ProductTableName, group: group as ProductGroupName };
+    }
+  }
+  return null;
+};
+
+const handler: Handler = async (event: HandlerEvent) => {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, headers: commonHeaders, body: '' };
   }
@@ -41,75 +85,97 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     switch (event.httpMethod) {
       case 'GET':
         if (resourceId) {
-          const { data, error } = await supabase
-            .from('products')
-            .select('id, name, price, salon_price, exchange_rate, description, image_url, created_at')
-            .eq('id', resourceId)
-            .single();
-          if (error) throw error;
-          if (!data) return { statusCode: 404, headers: commonHeaders, body: JSON.stringify({ message: 'Product not found'}) };
-          return { statusCode: 200, headers: commonHeaders, body: JSON.stringify(transformDbRowToProduct(data as ProductDbRow)) };
+          const findResult = await findProductById(resourceId);
+          if (!findResult) {
+            return { statusCode: 404, headers: commonHeaders, body: JSON.stringify({ message: 'Product not found'}) };
+          }
+          const product = transformDbRowToProduct(findResult.product, findResult.group);
+          return { statusCode: 200, headers: commonHeaders, body: JSON.stringify(product) };
         } else {
-          const { data, error } = await supabase
-            .from('products')
-            .select('id, name, price, salon_price, exchange_rate, description, image_url, created_at')
-            .order('created_at', { ascending: false });
-          if (error) throw error;
-          const products = (data as ProductDbRow[] || []).map(transformDbRowToProduct);
-          return { statusCode: 200, headers: commonHeaders, body: JSON.stringify(products) };
+          const allProductsPromises = Object.entries(productGroups).map(async ([group, tableName]) => {
+            const { data, error } = await supabase
+              .from(tableName)
+              .select('id, name, price, salon_price, exchange_rate, description, image_url, created_at');
+            if (error) throw error;
+            return (data || []).map(p => transformDbRowToProduct(p as ProductDbRow, group as ProductGroupName));
+          });
+
+          const productsByGroup = await Promise.all(allProductsPromises);
+          const allProducts = productsByGroup.flat().sort((a,b) => (b.created_at || '').localeCompare(a.created_at || ''));
+          
+          return { statusCode: 200, headers: commonHeaders, body: JSON.stringify(allProducts) };
         }
 
       case 'POST':
       case 'PUT':
       case 'DELETE':
         if (user.role !== 'admin') {
-          return {
-            statusCode: 403,
-            headers: commonHeaders,
-            body: JSON.stringify({ message: 'Forbidden: Only administrators can modify products.' }),
-          };
+          return { statusCode: 403, headers: commonHeaders, body: JSON.stringify({ message: 'Forbidden: Only administrators can modify products.' }) };
         }
+        
         if (event.httpMethod === 'POST') {
           const clientData = JSON.parse(event.body || '{}') as Partial<Product>;
+          const group = clientData.group as ProductGroupName;
+          const tableName = productGroups[group];
+          if (!tableName) {
+            return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: `Invalid product group: ${group}` }) };
+          }
+          
           const newProductData = {
               name: clientData.name,
-              price: typeof clientData.retailPrice === 'string' ? parseFloat(clientData.retailPrice) : clientData.retailPrice,
-              salon_price: typeof clientData.salonPrice === 'string' ? parseFloat(clientData.salonPrice) : clientData.salonPrice,
-              exchange_rate: typeof clientData.exchangeRate === 'string' ? parseFloat(clientData.exchangeRate) : clientData.exchangeRate,
+              price: clientData.retailPrice,
+              salon_price: clientData.salonPrice,
+              exchange_rate: clientData.exchangeRate,
               description: clientData.description,
               image_url: clientData.imageUrl,
           };
           const { data: createdData, error: createError } = await supabase
-              .from('products')
+              .from(tableName)
               .insert(newProductData)
               .select()
               .single();
           if (createError) throw createError;
-          return { statusCode: 201, headers: commonHeaders, body: JSON.stringify(transformDbRowToProduct(createdData as ProductDbRow)) };
+          return { statusCode: 201, headers: commonHeaders, body: JSON.stringify(transformDbRowToProduct(createdData as ProductDbRow, group)) };
         }
+        
         if (event.httpMethod === 'PUT') {
           if (!resourceId) return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: 'Product ID required' }) };
+          
+          const findResult = await findProductById(resourceId);
+          if (!findResult) {
+            return { statusCode: 404, headers: commonHeaders, body: JSON.stringify({ message: 'Product to update not found.' }) };
+          }
+          
           const clientUpdateData = JSON.parse(event.body || '{}') as Partial<Product>;
           const productDataToUpdate: Partial<ProductDbRow> = {};
           if (clientUpdateData.name !== undefined) productDataToUpdate.name = clientUpdateData.name;
-          if (clientUpdateData.retailPrice !== undefined) productDataToUpdate.price = typeof clientUpdateData.retailPrice === 'string' ? parseFloat(clientUpdateData.retailPrice) : clientUpdateData.retailPrice;
-          if (clientUpdateData.salonPrice !== undefined) productDataToUpdate.salon_price = typeof clientUpdateData.salonPrice === 'string' ? parseFloat(clientUpdateData.salonPrice) : clientUpdateData.salonPrice;
-          if (clientUpdateData.exchangeRate !== undefined) productDataToUpdate.exchange_rate = typeof clientUpdateData.exchangeRate === 'string' ? parseFloat(clientUpdateData.exchangeRate) : clientUpdateData.exchangeRate;
+          if (clientUpdateData.retailPrice !== undefined) productDataToUpdate.price = clientUpdateData.retailPrice;
+          if (clientUpdateData.salonPrice !== undefined) productDataToUpdate.salon_price = clientUpdateData.salonPrice;
+          if (clientUpdateData.exchangeRate !== undefined) productDataToUpdate.exchange_rate = clientUpdateData.exchangeRate;
           if (clientUpdateData.description !== undefined) productDataToUpdate.description = clientUpdateData.description;
           if (clientUpdateData.imageUrl !== undefined) productDataToUpdate.image_url = clientUpdateData.imageUrl;
+
           const { data: updatedData, error: updateError } = await supabase
-              .from('products')
+              .from(findResult.tableName)
               .update(productDataToUpdate)
               .eq('id', resourceId)
               .select()
               .single();
           if (updateError) throw updateError;
           if (!updatedData) return { statusCode: 404, headers: commonHeaders, body: JSON.stringify({ message: 'Product not found or failed to update' })};
-          return { statusCode: 200, headers: commonHeaders, body: JSON.stringify(transformDbRowToProduct(updatedData as ProductDbRow)) };
+          return { statusCode: 200, headers: commonHeaders, body: JSON.stringify(transformDbRowToProduct(updatedData as ProductDbRow, findResult.group)) };
         }
+
         if (event.httpMethod === 'DELETE') {
           if (!resourceId) return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: 'Product ID required' }) };
-          const { error: deleteError } = await supabase.from('products').delete().eq('id', resourceId);
+          
+          const findResult = await findProductById(resourceId);
+          if (!findResult) {
+            // If it's not found, maybe it was already deleted. Return success.
+            return { statusCode: 204, headers: commonHeaders, body: '' };
+          }
+
+          const { error: deleteError } = await supabase.from(findResult.tableName).delete().eq('id', resourceId);
           if (deleteError) throw deleteError;
           return { statusCode: 204, headers: commonHeaders, body: '' };
         }

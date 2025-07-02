@@ -3,6 +3,7 @@ import type { FC, SVGProps } from 'react';
 
 export interface Product {
   id: string; // Will be UUID from database
+  group: string; // The table/group the product belongs to, e.g., 'BDR', 'LA'
   name: string;
   retailPrice: number; // Renamed from price
   salonPrice: number;
