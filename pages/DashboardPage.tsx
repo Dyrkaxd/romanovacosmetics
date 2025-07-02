@@ -6,28 +6,74 @@ import { authenticatedFetch } from '../utils/api';
 const API_BASE_URL = '/api';
 
 const DashboardCard: React.FC<DashboardStat & { isLoading?: boolean }> = ({ title, value, icon: Icon, color, percentageChange, isPositive, isLoading }) => {
-  const percentageColor = isPositive ? 'text-green-500' : 'text-red-500';
+  const percentageColor = isPositive ? 'text-green-600' : 'text-red-600';
+  
+  // Use a map to get text/bg colors from the border color string
+  const colorVariants: { [key: string]: { text: string; bg: string; } } = {
+    'rose': { text: 'text-rose-600', bg: 'bg-rose-50' },
+    'green': { text: 'text-green-600', bg: 'bg-green-50' },
+    'amber': { text: 'text-amber-600', bg: 'bg-amber-50' },
+    'sky': { text: 'text-sky-600', bg: 'bg-sky-50' },
+  };
+
+  const selectedColor = colorVariants[color] || { text: 'text-slate-600', bg: 'bg-slate-100' };
+
   return (
-    <div className={`bg-white p-6 rounded-xl shadow-lg flex items-center space-x-4 border-l-4 ${color}`}>
-      <div className={`p-3 rounded-full bg-opacity-20 ${color.replace('border', 'bg').replace('-500', '-100')}`}>
-        <Icon className={`w-8 h-8 ${color.replace('border', 'text')}`} />
+    <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex items-center space-x-4">
+      <div className={`p-3 rounded-full ${selectedColor.bg}`}>
+        <Icon className={`w-7 h-7 ${selectedColor.text}`} />
       </div>
       <div>
-        <p className="text-sm text-slate-600 font-medium">{title}</p>
+        <p className="text-sm text-slate-500 font-medium">{title}</p>
         {isLoading ? (
-            <p className="text-2xl font-semibold text-slate-800 animate-pulse">...</p>
+            <div className="h-8 w-24 bg-slate-200 rounded-md mt-1 animate-pulse"></div>
         ) : (
-            <p className="text-2xl font-semibold text-slate-800">{value}</p>
+            <p className="text-3xl font-bold text-slate-800">{value}</p>
         )}
         {percentageChange && !isLoading && (
-           <p className={`text-xs ${percentageColor}`}>
-            {isPositive ? '↑' : '↓'} {percentageChange} {/* проти минулого місяця - comparison not implemented yet */}
+           <p className={`text-xs font-semibold ${percentageColor}`}>
+            {isPositive ? '↑' : '↓'} {percentageChange}
            </p>
         )}
       </div>
     </div>
   );
 };
+
+const SalesChartPlaceholder = () => (
+  <div className="w-full h-full opacity-75">
+    <svg width="100%" height="100%" viewBox="0 0 800 400" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#f472b6" stopOpacity="0.2"/>
+          <stop offset="100%" stopColor="#f472b6" stopOpacity="0"/>
+        </linearGradient>
+      </defs>
+      {/* Grid lines */}
+      <g stroke="#e2e8f0" strokeWidth="1">
+        {[...Array(5)].map((_, i) => (
+          <line key={i} x1="0" y1={i * 100} x2="800" y2={i * 100} />
+        ))}
+        {[...Array(8)].map((_, i) => (
+          <line key={i} x1={i * 100} y1="0" x2={i * 100} y2="400" />
+        ))}
+      </g>
+      {/* Chart Path */}
+      <path d="M 0 300 L 100 250 L 200 280 L 300 220 L 400 240 L 500 180 L 600 200 L 700 150 L 800 170" fill="url(#chartGradient)" stroke="#f472b6" strokeWidth="3" />
+      {/* Chart Points */}
+      <g fill="#f472b6">
+        <circle cx="100" cy="250" r="5" />
+        <circle cx="200" cy="280" r="5" />
+        <circle cx="300" cy="220" r="5" />
+        <circle cx="400" cy="240" r="5" />
+        <circle cx="500" cy="180" r="5" />
+        <circle cx="600" cy="200" r="5" />
+        <circle cx="700" cy="150" r="5" />
+        <circle cx="800" cy="170" r="5" />
+      </g>
+    </svg>
+  </div>
+);
 
 
 const DashboardPage: React.FC = () => {
@@ -100,33 +146,33 @@ const DashboardPage: React.FC = () => {
   }, [fetchDashboardData, fetchAiSummary]);
 
   const stats: DashboardStat[] = [
-    { title: 'Загальні продажі', value: `₴${totalSales.toFixed(2)}`, icon: DashboardIcon, color: 'border-indigo-500', isLoading: isLoadingStats },
-    { title: 'Всього замовлень', value: orderCount.toString(), icon: OrdersIcon, color: 'border-green-500', isLoading: isLoadingStats },
-    { title: 'Всього товарів', value: productCount.toString(), icon: ProductsIcon, color: 'border-amber-500', isLoading: isLoadingStats },
-    { title: 'Активні клієнти', value: customerCount.toString(), icon: UsersIcon, color: 'border-sky-500', isLoading: isLoadingStats },
+    { title: 'Загальні продажі', value: `₴${totalSales.toFixed(2)}`, icon: DashboardIcon, color: 'rose', isLoading: isLoadingStats },
+    { title: 'Всього замовлень', value: orderCount.toString(), icon: OrdersIcon, color: 'green', isLoading: isLoadingStats },
+    { title: 'Всього товарів', value: productCount.toString(), icon: ProductsIcon, color: 'amber', isLoading: isLoadingStats },
+    { title: 'Активні клієнти', value: customerCount.toString(), icon: UsersIcon, color: 'sky', isLoading: isLoadingStats },
   ];
 
   return (
     <div className="space-y-6">
-      {statsError && <div role="alert" className="p-3 bg-red-100 text-red-700 border border-red-300 rounded-md">{statsError}</div>}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {statsError && <div role="alert" className="p-4 bg-red-50 text-red-700 border border-red-200 rounded-lg">{statsError}</div>}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat) => (
           <DashboardCard key={stat.title} {...stat} isLoading={stat.isLoading} />
         ))}
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-lg">
-          <h3 className="text-xl font-semibold text-slate-700 mb-4">Огляд продажів</h3>
-          {/* Placeholder for chart - data for chart could be derived from fetched orders */}
-          <img src="https://picsum.photos/seed/saleschart/800/400" alt="Заповнювач діаграми продажів" className="w-full h-auto rounded-md"/>
-          <p className="text-sm text-slate-600 mt-2">Заповнювач для діаграми продажів (напр., з Recharts).</p>
+        <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+          <h3 className="text-lg font-semibold text-slate-800 mb-4">Огляд продажів</h3>
+          <div className="h-80">
+            <SalesChartPlaceholder />
+          </div>
         </div>
 
         <div className="space-y-6">
-            <div className="bg-white p-6 rounded-xl shadow-lg">
-                <h3 className="text-xl font-semibold text-slate-700 mb-4 flex items-center">
-                    <LightBulbIcon className="w-6 h-6 mr-2 text-yellow-500" />
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <LightBulbIcon className="w-6 h-6 mr-2 text-amber-500" />
                     AI-Powered Insights
                 </h3>
                 {aiSummaryError && !isLoadingAiSummary && <p className="text-sm text-red-600">{aiSummaryError}</p>}
@@ -137,13 +183,14 @@ const DashboardPage: React.FC = () => {
                         <div className="h-4 bg-slate-200 rounded animate-pulse w-2/3"></div>
                     </div>
                 ) : (
-                    <p className="text-sm text-slate-600 whitespace-pre-line">{aiSummary}</p>
+                    <p className="text-sm text-slate-600 leading-relaxed">{aiSummary}</p>
+
                 )}
             </div>
 
-            <div className="bg-white p-6 rounded-xl shadow-lg">
-              <h3 className="text-xl font-semibold text-slate-700 mb-4">Останні дії</h3>
-              <ul className="space-y-3">
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+              <h3 className="text-lg font-semibold text-slate-800 mb-4">Останні дії</h3>
+              <ul className="space-y-4">
                 {[
                   {user: 'Аліса', action: 'розмістила нове замовлення #ORD001.'},
                   {user: 'Богдан', action: 'оновив товар "Бездротова миша".'},
@@ -152,11 +199,13 @@ const DashboardPage: React.FC = () => {
                   {user: 'Єва', action: 'зареєструвала новий обліковий запис.'},
                 ].map((activity, index) => (
                   <li key={index} className="flex items-start text-sm">
-                    <img src={`https://picsum.photos/seed/user${index}/32/32`} alt={activity.user} className="w-8 h-8 rounded-full mr-3"/>
+                    <img src={`https://i.pravatar.cc/40?u=user${index}`} alt={activity.user} className="w-9 h-9 rounded-full mr-3.5 mt-0.5"/>
                     <div>
-                      <span className="font-medium text-slate-700">{activity.user}</span>
-                      <span className="text-slate-600 ml-1">{activity.action}</span>
-                      <p className="text-xs text-slate-500">{(index + 1) * 5} хвилин тому</p>
+                      <p>
+                        <span className="font-semibold text-slate-800">{activity.user}</span>
+                        <span className="text-slate-500 ml-1">{activity.action}</span>
+                      </p>
+                      <p className="text-xs text-slate-400">{(index + 1) * 5} хвилин тому</p>
                     </div>
                   </li>
                 ))}

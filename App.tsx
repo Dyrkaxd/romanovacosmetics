@@ -39,24 +39,27 @@ const MainAppLayout: React.FC = () => {
   const location = useLocation();
   const pageTitle = getPageTitle(location.pathname);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const { user } = useAuth(); // Get user context for role-based routing
 
   const toggleMobileSidebar = () => {
     setIsMobileSidebarOpen(!isMobileSidebarOpen);
   };
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen bg-slate-50">
       <Sidebar isOpenOnMobile={isMobileSidebarOpen} toggleMobileSidebar={toggleMobileSidebar} />
-      <div className={`flex-1 flex flex-col md:ml-64 transition-all duration-300 ease-in-out`}> {/* Adjust ml for medium screens and up */}
+      <div className={`flex-1 flex flex-col md:ml-64 transition-all duration-300 ease-in-out`}>
         <Header title={pageTitle} onToggleMobileSidebar={toggleMobileSidebar} />
-        <main className="flex-1 p-4 md:px-0 md:py-4 overflow-y-auto bg-slate-100"> {/* Змінено md:px-2 на md:px-0 */}
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
           <Routes>
             <Route path="/" element={<DashboardPage />} />
-            <Route path="/products" element={<ProductsPage />} />
+            {/* Conditionally render the ProductsPage route only for admins */}
+            {user?.role === 'admin' && <Route path="/products" element={<ProductsPage />} />}
             <Route path="/orders" element={<OrdersPage />} />
             <Route path="/customers" element={<CustomersPage />} />
             <Route path="/settings" element={<SettingsPage />} />
-            <Route path="*" element={<Navigate to="/" replace />} /> {/* Redirect unknown paths within app to dashboard */}
+            {/* Redirect any unknown paths or unauthorized attempts to the dashboard */}
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
       </div>
@@ -76,9 +79,9 @@ const AppContent: React.FC = () => {
 
   if (isLoadingAuth) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-100">
-        <p className="text-slate-700 text-lg">Завантаження автентифікації...</p>
-        {/* You can replace this with a spinner component if you have one */}
+      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50">
+        <div className="w-12 h-12 border-4 border-rose-500 border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-slate-600 text-lg mt-4 font-medium">Завантаження автентифікації...</p>
       </div>
     );
   }
