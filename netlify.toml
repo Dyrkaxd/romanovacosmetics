@@ -1,16 +1,14 @@
-# Этот файл указывает Netlify, как собирать и развертывать ваш сайт.
 [build]
-  # Команда для сборки вашего проекта (из package.json).
   command = "npm run build"
+  publish = "dist"
+  functions = "netlify/functions"
 
-  # Папка, где находятся ваши серверные функции.
-  # Это самая важная настройка для исправления вашей ошибки.
-  functions = "netlify/functions/"
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
 
-  # Папка с готовым сайтом после сборки.
-  publish = "dist/"
-
-# Дополнительные настройки для функций.
-[functions]
-  # Использовать быстрый сборщик esbuild для функций.
-  node_bundler = "esbuild"
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
