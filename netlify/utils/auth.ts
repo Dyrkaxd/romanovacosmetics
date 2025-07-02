@@ -4,6 +4,7 @@ import { supabase } from '../../services/supabaseClient';
 
 // It's best practice to store these in Netlify environment variables
 const GOOGLE_CLIENT_ID = "207911989595-0d5jo71ibh1q3rr6qg9gdai9j8v8b75i.apps.googleusercontent.com";
+const SUPER_ADMIN_EMAIL = 'samsonenkoroma@gmail.com';
 
 const client = new OAuth2Client(GOOGLE_CLIENT_ID);
 
@@ -47,41 +48,44 @@ export const requireAuth = async (event: HandlerEvent): Promise<AuthenticatedUse
 
     const userEmail = payload.email.toLowerCase();
 
-    // 1. Check if the user is an administrator.
+    // Step 1: Check for the failsafe Super Admin first. This is the highest priority.
+    if (userEmail === SUPER_ADMIN_EMAIL) {
+      // We ensure the super admin's record exists in the DB to prevent lockout issues
+      // and for consistency in user lists, etc.
+      const { error: upsertError } = await supabase
+        .from('admins')
+        .upsert({ email: userEmail, added_by: 'system_bootstrap' }, { onConflict: 'email' });
+      if (upsertError) {
+        // Log the error but still grant access, this is the failsafe account.
+        console.error(`Could not upsert default admin '${userEmail}', but granting access anyway. Error:`, upsertError);
+      }
+      return { email: userEmail, role: 'admin', name: payload.name || 'Admin' };
+    }
+
+    // Step 2: If not the super admin, check if they are another admin in the database.
     const { data: adminRecord, error: adminCheckError } = await supabase
       .from('admins')
       .select('email')
       .eq('email', userEmail)
       .single();
 
-    if (adminCheckError && adminCheckError.code !== 'PGRST116') { // Ignore "no rows found"
+    if (adminCheckError && adminCheckError.code !== 'PGRST116') { // Ignore "no rows found" error
         console.error('Supabase error checking admins table:', adminCheckError);
         throw { statusCode: 500, message: 'Database error while verifying admin status' } as AuthError;
     }
-    
-    // A user is an admin if they are in the 'admins' table OR they are the hardcoded default admin.
-    if (adminRecord || userEmail === 'samsonenkoroma@gmail.com') {
-      // If it's the default admin, ensure their record exists to prevent lockout.
-      if (userEmail === 'samsonenkoroma@gmail.com') {
-        const { error: upsertError } = await supabase
-          .from('admins')
-          .upsert({ email: userEmail, added_by: 'system_bootstrap' }, { onConflict: 'email' });
-        if (upsertError) {
-          // Log the error but still grant access, as this is the failsafe account.
-          console.error(`Could not upsert default admin '${userEmail}', but granting access anyway. Error:`, upsertError);
-        }
-      }
-      return { email: userEmail, role: 'admin', name: payload.name || 'Admin' };
+
+    if (adminRecord) {
+        return { email: userEmail, role: 'admin', name: payload.name || 'Admin' };
     }
 
-    // 2. If not an admin, check if they are a managed user.
+    // Step 3: If not any kind of admin, check if they are a managed user.
     const { data: managedUser, error: managerCheckError } = await supabase
       .from('managed_users')
       .select('id, name')
       .eq('email', userEmail)
       .single();
 
-    if (managerCheckError && managerCheckError.code !== 'PGRST116') { // Ignore "no rows found"
+    if (managerCheckError && managerCheckError.code !== 'PGRST116') { // Ignore "no rows found" error
       console.error('Supabase error checking managed user:', managerCheckError);
       throw { statusCode: 500, message: 'Database error while verifying user permissions' } as AuthError;
     }
@@ -90,11 +94,11 @@ export const requireAuth = async (event: HandlerEvent): Promise<AuthenticatedUse
       return { email: userEmail, role: 'manager', name: payload.name || managedUser.name };
     }
 
-    // 3. If the user is neither, they are forbidden.
+    // Step 4: If the user is none of the above, they are not authorized.
     throw { statusCode: 403, message: 'User is not authorized to access this resource' } as AuthError;
 
   } catch (err: any) {
-    // Re-throw our custom AuthError if it's already one of ours
+    // Re-throw our custom AuthError if it's one we created
     if (err.statusCode) {
         throw err;
     }
