@@ -51,6 +51,7 @@ export interface Order {
   status: 'Ordered' | 'Shipped' | 'Received' | 'Calculation' | 'AwaitingApproval' | 'PaidByClient' | 'WrittenOff' | 'ReadyForPickup';
   totalAmount: number;
   items: OrderItem[];
+  notes?: string;
   created_at?: string;
 }
 
