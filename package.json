@@ -18,7 +18,8 @@
     "@supabase/supabase-js": "^2.50.1",
     "@google/genai": "^0.13.0",
     "jspdf": "^2.5.1",
-    "html2canvas": "^1.4.1"
+    "html2canvas": "^1.4.1",
+    "react-minimal-pie-chart": "^8.4.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
