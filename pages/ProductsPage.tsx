@@ -1,8 +1,11 @@
 
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Product } from '../types';
 import { PlusIcon, XMarkIcon, EyeIcon, PencilIcon, TrashIcon } from '../components/Icons';
 import { authenticatedFetch } from '../utils/api';
+
+const productGroups = ['BDR', 'LA', 'АГ', 'АБ', 'АР', 'без сокращений', 'АФ', 'ДС', 'м8', 'JDA', 'Faith', 'AB', 'ГФ', 'ЕС', 'ГП', 'СД', 'ATA', 'W'];
 
 const ProductsPage: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -15,7 +18,8 @@ const ProductsPage: React.FC = () => {
     salonPrice: 0, 
     exchangeRate: 0, 
     description: '', 
-    imageUrl: '' 
+    imageUrl: '',
+    group: 'BDR', // Default group
   };
   const [currentProduct, setCurrentProduct] = useState<Partial<Product>>(initialProductState);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -71,8 +75,8 @@ const ProductsPage: React.FC = () => {
     e.preventDefault();
     if (!currentProduct.name || currentProduct.retailPrice == null || currentProduct.retailPrice < 0 ||
         currentProduct.salonPrice == null || currentProduct.salonPrice < 0 ||
-        currentProduct.exchangeRate == null || currentProduct.exchangeRate <= 0) {
-        setModalError("Назва, роздрібна ціна (невід'ємна), ціна салону (невід'ємна) та курс (позитивний) є обов'язковими.");
+        currentProduct.exchangeRate == null || currentProduct.exchangeRate <= 0 || !currentProduct.group) {
+        setModalError("Назва, група, роздрібна ціна (невід'ємна), ціна салону (невід'ємна) та курс (позитивний) є обов'язковими.");
         return;
     }
     setModalError(null);
@@ -85,6 +89,7 @@ const ProductsPage: React.FC = () => {
         exchangeRate: currentProduct.exchangeRate,
         description: currentProduct.description || '',
         imageUrl: currentProduct.imageUrl || editingProduct?.imageUrl || `https://picsum.photos/seed/${currentProduct.name?.replace(/\s+/g, '_') || 'newproduct'}/400/400`,
+        group: currentProduct.group,
     };
 
     try {
@@ -218,6 +223,7 @@ const ProductsPage: React.FC = () => {
             <thead className="bg-slate-50">
               <tr>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Назва</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Група</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Ціна салону</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Ціна роздрібна</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Курс</th>
@@ -228,6 +234,7 @@ const ProductsPage: React.FC = () => {
               {!isLoading && filteredProducts.length > 0 ? filteredProducts.map((product) => (
                 <tr key={product.id} className="hover:bg-rose-50/50 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-800">{product.name}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{product.group}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">${product.salonPrice.toFixed(2)}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">${product.retailPrice.toFixed(2)}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{product.exchangeRate.toFixed(2)}</td>
@@ -243,7 +250,7 @@ const ProductsPage: React.FC = () => {
                 </tr>
               )) : (
                 <tr>
-                  <td colSpan={5} className="px-6 py-10 text-center text-sm text-slate-500">
+                  <td colSpan={6} className="px-6 py-10 text-center text-sm text-slate-500">
                     { !isLoading && products.length === 0 && !pageError && "Товарів ще немає. Натисніть 'Додати новий товар', щоб створити."}
                     { !isLoading && products.length > 0 && filteredProducts.length === 0 && "Товарів, що відповідають вашему пошуку, не знайдено."}
                     { isLoading && "Завантаження..."}
@@ -267,6 +274,21 @@ const ProductsPage: React.FC = () => {
               <div>
                 <label htmlFor="name" className="block text-sm font-medium text-slate-700 mb-1">Назва <span aria-hidden="true" className="text-red-500">*</span></label>
                 <input type="text" name="name" id="name" value={currentProduct.name || ''} onChange={handleInputChange} required aria-required="true" className="block w-full border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500 sm:text-sm p-2.5" />
+              </div>
+               <div>
+                  <label htmlFor="group" className="block text-sm font-medium text-slate-700 mb-1">Група <span className="text-red-500">*</span></label>
+                  <select
+                    id="group"
+                    name="group"
+                    value={currentProduct.group || ''}
+                    onChange={handleInputChange}
+                    required
+                    disabled={!!editingProduct}
+                    className="block w-full border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500 sm:text-sm p-2.5 disabled:bg-slate-100 disabled:cursor-not-allowed"
+                  >
+                    {productGroups.map(g => <option key={g} value={g}>{g}</option>)}
+                  </select>
+                  {!!editingProduct && <p className="text-xs text-slate-500 mt-1">Групу не можна змінити після створення товару.</p>}
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div> 
@@ -322,6 +344,7 @@ const ProductsPage: React.FC = () => {
               <img src={(currentProduct as Product).imageUrl || `https://picsum.photos/seed/${currentProduct.id}/400/400`} alt={currentProduct.name} className="w-full h-auto rounded-lg object-cover mb-3" />
               <div className='space-y-2'>
                 <p><span className="font-semibold text-slate-600">Назва:</span> <span className="text-slate-800">{currentProduct.name}</span></p>
+                <p><span className="font-semibold text-slate-600">Група:</span> <span className="font-medium text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full text-sm inline-block">{currentProduct.group}</span></p>
                 <p><span className="font-semibold text-slate-600">Ціна роздрібна:</span> <span className="text-slate-800">${currentProduct.retailPrice?.toFixed(2)}</span></p>
                 <p><span className="font-semibold text-slate-600">Ціна салону:</span> <span className="text-slate-800">${currentProduct.salonPrice?.toFixed(2)}</span></p>
                 <p><span className="font-semibold text-slate-600">Курс:</span> <span className="text-slate-800">{currentProduct.exchangeRate?.toFixed(2)}</span></p>
