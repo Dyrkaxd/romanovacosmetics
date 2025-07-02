@@ -107,7 +107,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
             date: restOfClientOrderData.date || new Date().toISOString(),
             customer_id: customerId,
             total_amount: totalAmount,
-            status: restOfClientOrderData.status || 'Pending',
+            status: restOfClientOrderData.status || 'Ordered',
         };
 
         const { data: createdOrderDbRow, error: createOrderError } = await supabase

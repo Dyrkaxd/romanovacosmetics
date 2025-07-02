@@ -177,7 +177,7 @@ export interface Database {
           id: string
           customer_id: string
           date: string
-          status: "Pending" | "Shipped" | "Delivered" | "Cancelled"
+          status: "Ordered" | "Shipped" | "Received" | "Calculation" | "AwaitingApproval" | "PaidByClient" | "WrittenOff" | "ReadyForPickup"
           total_amount: number
           created_at: string | null
         }
@@ -185,7 +185,7 @@ export interface Database {
           id?: string
           customer_id: string
           date: string
-          status: "Pending" | "Shipped" | "Delivered" | "Cancelled"
+          status: "Ordered" | "Shipped" | "Received" | "Calculation" | "AwaitingApproval" | "PaidByClient" | "WrittenOff" | "ReadyForPickup"
           total_amount: number
           created_at?: string | null
         }
@@ -193,7 +193,7 @@ export interface Database {
           id?: string
           customer_id?: string
           date?: string
-          status?: "Pending" | "Shipped" | "Delivered" | "Cancelled"
+          status?: "Ordered" | "Shipped" | "Received" | "Calculation" | "AwaitingApproval" | "PaidByClient" | "WrittenOff" | "ReadyForPickup"
           total_amount?: number
           created_at?: string | null
         }

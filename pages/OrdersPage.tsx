@@ -7,17 +7,28 @@ import { logoBase64 } from '../assets/logo';
 import { authenticatedFetch } from '../utils/api';
 
 
-const orderStatusValues: Order['status'][] = ['Pending', 'Shipped', 'Delivered', 'Cancelled'];
+const orderStatusValues: Order['status'][] = ['Ordered', 'Shipped', 'Received', 'Calculation', 'AwaitingApproval', 'PaidByClient', 'WrittenOff', 'ReadyForPickup'];
 const orderStatusTranslations: Record<Order['status'], string> = {
-  Pending: 'В очікуванні', Shipped: 'Відправлено', Delivered: 'Доставлено', Cancelled: 'Скасовано',
+  Ordered: 'Замовлено',
+  Shipped: 'Відправлено',
+  Received: 'Отримано',
+  Calculation: 'Прорахунок',
+  AwaitingApproval: 'На погодженні',
+  PaidByClient: 'Сплачено клієнтом',
+  WrittenOff: 'Списано',
+  ReadyForPickup: 'Готово для видачі',
 };
 
 const StatusPill: React.FC<{ status: Order['status'] }> = ({ status }) => {
   const styles: Record<Order['status'], string> = {
-    Pending: 'bg-amber-50 text-amber-600 ring-amber-600/20',
+    Ordered: 'bg-amber-50 text-amber-600 ring-amber-600/20',
     Shipped: 'bg-blue-50 text-blue-600 ring-blue-600/20',
-    Delivered: 'bg-green-50 text-green-600 ring-green-600/20',
-    Cancelled: 'bg-red-50 text-red-600 ring-red-600/20',
+    Received: 'bg-green-50 text-green-600 ring-green-600/20',
+    Calculation: 'bg-indigo-50 text-indigo-600 ring-indigo-600/20',
+    AwaitingApproval: 'bg-purple-50 text-purple-600 ring-purple-600/20',
+    PaidByClient: 'bg-teal-50 text-teal-600 ring-teal-600/20',
+    WrittenOff: 'bg-red-50 text-red-600 ring-red-600/20',
+    ReadyForPickup: 'bg-lime-50 text-lime-600 ring-lime-600/20',
   };
   return (
     <span className={`px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ring-1 ring-inset ${styles[status]}`}>
@@ -251,7 +262,7 @@ const OrdersPage: React.FC = () => {
       customerId: selectedCustomer.id,
       customerName: selectedCustomer.name,
       date: isEditing && activeOrderData.date ? activeOrderData.date : new Date().toISOString(), // Use full ISO string
-      status: activeOrderData.status || 'Pending',
+      status: activeOrderData.status || 'Ordered',
       items: validItems.map(item => ({...item, id: isEditing ? item.id : undefined})),
       totalAmount: totalAmount,
     };
@@ -282,7 +293,7 @@ const OrdersPage: React.FC = () => {
     setModalError(null);
     setModalMode(mode);
     if (mode === 'add') {
-      setActiveOrderData({ customerId: '', status: 'Pending', items: [{ ...initialNewOrderItem }], totalAmount: 0 });
+      setActiveOrderData({ customerId: '', status: 'Ordered', items: [{ ...initialNewOrderItem }], totalAmount: 0 });
     } else if (order) {
       setActiveOrderData({ ...order, items: order.items.map(item => ({ ...item })) });
     }
@@ -863,7 +874,7 @@ const InvoiceModal: React.FC<DocumentModalProps> = ({ order, customer, onClose }
               <section className="invoice-section text-right">
                  <h3 className="invoice-section-title border-b pb-1 mb-2 text-left">Реквізити</h3>
                  <p className="text-left">Будь ласка, вказуйте номер рахунку при оплаті.</p>
-                 <p className="text-left mt-2"><span className="font-bold">Термін оплати:</span> 15 днів</p>
+                 <p className="text-left mt-2"><span className="font-bold">Термін оплати:</span> 2 дні</p>
               </section>
             </div>
             

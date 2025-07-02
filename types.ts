@@ -48,7 +48,7 @@ export interface Order {
   customerId: string; // Link to Customer (UUID)
   customerName: string; // Denormalized for display convenience
   date: string; // ISO string format for date
-  status: 'Pending' | 'Shipped' | 'Delivered' | 'Cancelled';
+  status: 'Ordered' | 'Shipped' | 'Received' | 'Calculation' | 'AwaitingApproval' | 'PaidByClient' | 'WrittenOff' | 'ReadyForPickup';
   totalAmount: number;
   items: OrderItem[];
   created_at?: string;
