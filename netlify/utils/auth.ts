@@ -47,23 +47,7 @@ export const requireAuth = async (event: HandlerEvent): Promise<AuthenticatedUse
 
     const userEmail = payload.email.toLowerCase();
 
-    // Special case: Ensure the default admin user 'samsonenkoroma@gmail.com' always has admin access.
-    // This prevents accidental lockout and serves as a bootstrap mechanism.
-    if (userEmail === 'samsonenkoroma@gmail.com') {
-      // Use upsert to ensure the user exists in the admins table without causing errors if they already do.
-      const { error } = await supabase
-        .from('admins')
-        .upsert({ email: userEmail, added_by: 'system_bootstrap' }, { onConflict: 'email' });
-
-      if (error) {
-        console.error(`Could not upsert default admin '${userEmail}', but granting access anyway. Error:`, error);
-      }
-      return { email: userEmail, role: 'admin', name: payload.name || 'Default Admin' };
-    }
-
-
-    // For all other users, follow the standard authorization flow.
-    // 1. Check if they are an admin.
+    // 1. Check if the user is an administrator.
     const { data: adminRecord, error: adminCheckError } = await supabase
       .from('admins')
       .select('email')
@@ -75,7 +59,18 @@ export const requireAuth = async (event: HandlerEvent): Promise<AuthenticatedUse
         throw { statusCode: 500, message: 'Database error while verifying admin status' } as AuthError;
     }
     
-    if (adminRecord) {
+    // A user is an admin if they are in the 'admins' table OR they are the hardcoded default admin.
+    if (adminRecord || userEmail === 'samsonenkoroma@gmail.com') {
+      // If it's the default admin, ensure their record exists to prevent lockout.
+      if (userEmail === 'samsonenkoroma@gmail.com') {
+        const { error: upsertError } = await supabase
+          .from('admins')
+          .upsert({ email: userEmail, added_by: 'system_bootstrap' }, { onConflict: 'email' });
+        if (upsertError) {
+          // Log the error but still grant access, as this is the failsafe account.
+          console.error(`Could not upsert default admin '${userEmail}', but granting access anyway. Error:`, upsertError);
+        }
+      }
       return { email: userEmail, role: 'admin', name: payload.name || 'Admin' };
     }
 
