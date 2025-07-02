@@ -25,6 +25,7 @@ const dbOrderToClientOrder = (dbOrder: OrderDbRow & { customers?: { name: string
     date: dbOrder.date,
     status: dbOrder.status,
     totalAmount: dbOrder.total_amount,
+    notes: dbOrder.notes || undefined,
     created_at: dbOrder.created_at || undefined,
     items: items.map(item => ({
         id: item.id,
@@ -92,7 +93,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
 
       case 'POST': {
         const clientNewOrderData = JSON.parse(event.body || '{}') as Partial<Order>;
-        const { items: clientItems, customerId, customerName, totalAmount, ...restOfClientOrderData } = clientNewOrderData;
+        const { items: clientItems, customerId, customerName, totalAmount, notes, ...restOfClientOrderData } = clientNewOrderData;
         
         if (!customerId || totalAmount === undefined || totalAmount === null) {
           return {
@@ -108,6 +109,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
             customer_id: customerId,
             total_amount: totalAmount,
             status: restOfClientOrderData.status || 'Ordered',
+            notes: notes || null,
         };
 
         const { data: createdOrderDbRow, error: createOrderError } = await supabase
@@ -149,7 +151,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       case 'PUT': {
         if (!resourceId) return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: 'Order ID required for update' }) };
         const clientUpdateOrderData = JSON.parse(event.body || '{}') as Partial<Order>;
-        const { items: clientUpdatedItems, customerId: clientCustomerIdToUpdate, customerName: customerNameToIgnore, totalAmount, ...restOfClientUpdateData } = clientUpdateOrderData;
+        const { items: clientUpdatedItems, customerId: clientCustomerIdToUpdate, customerName: customerNameToIgnore, totalAmount, notes, ...restOfClientUpdateData } = clientUpdateOrderData;
         
         const orderUpdatePayloadForDb: Partial<OrderDbRow> = {
             ...restOfClientUpdateData,
@@ -160,6 +162,9 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         }
         if (clientCustomerIdToUpdate !== undefined) {
             orderUpdatePayloadForDb.customer_id = clientCustomerIdToUpdate;
+        }
+        if (notes !== undefined) {
+            orderUpdatePayloadForDb.notes = notes || null;
         }
 
         delete (orderUpdatePayloadForDb as any).id;

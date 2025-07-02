@@ -47,8 +47,6 @@ const transformDbRowToProduct = (dbProduct: ProductDbRow, group: ProductGroupNam
     retailPrice: dbProduct.price,
     salonPrice: dbProduct.salon_price === null ? 0 : dbProduct.salon_price,
     exchangeRate: dbProduct.exchange_rate === null ? 0 : dbProduct.exchange_rate,
-    description: dbProduct.description || '',
-    imageUrl: dbProduct.image_url || undefined,
     created_at: dbProduct.created_at || undefined,
   };
 };
@@ -95,7 +93,7 @@ const handler: Handler = async (event: HandlerEvent) => {
           const allProductsPromises = Object.entries(productGroups).map(async ([group, tableName]) => {
             const { data, error } = await supabase
               .from(tableName)
-              .select('id, name, price, salon_price, exchange_rate, description, image_url, created_at');
+              .select('id, name, price, salon_price, exchange_rate, created_at');
             if (error) throw error;
             return (data || []).map(p => transformDbRowToProduct(p as ProductDbRow, group as ProductGroupName));
           });
@@ -126,8 +124,6 @@ const handler: Handler = async (event: HandlerEvent) => {
               price: clientData.retailPrice,
               salon_price: clientData.salonPrice,
               exchange_rate: clientData.exchangeRate,
-              description: clientData.description,
-              image_url: clientData.imageUrl,
           };
           const { data: createdData, error: createError } = await supabase
               .from(tableName)
@@ -152,8 +148,6 @@ const handler: Handler = async (event: HandlerEvent) => {
           if (clientUpdateData.retailPrice !== undefined) productDataToUpdate.price = clientUpdateData.retailPrice;
           if (clientUpdateData.salonPrice !== undefined) productDataToUpdate.salon_price = clientUpdateData.salonPrice;
           if (clientUpdateData.exchangeRate !== undefined) productDataToUpdate.exchange_rate = clientUpdateData.exchangeRate;
-          if (clientUpdateData.description !== undefined) productDataToUpdate.description = clientUpdateData.description;
-          if (clientUpdateData.imageUrl !== undefined) productDataToUpdate.image_url = clientUpdateData.imageUrl;
 
           const { data: updatedData, error: updateError } = await supabase
               .from(findResult.tableName)

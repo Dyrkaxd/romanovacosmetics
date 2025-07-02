@@ -15,111 +15,111 @@ export interface Database {
     Tables: {
       // START: Product Group Tables (18 tables)
       products_bdr: {
-        Row: { id: string; name: string; price: number; salon_price: number | null; exchange_rate: number | null; description: string | null; image_url: string | null; created_at: string | null; };
-        Insert: { id?: string; name: string; price: number; salon_price?: number | null; exchange_rate?: number | null; description?: string | null; image_url?: string | null; created_at?: string | null; };
-        Update: { id?: string; name?: string; price?: number; salon_price?: number | null; exchange_rate?: number | null; description?: string | null; image_url?: string | null; created_at?: string | null; };
+        Row: { id: string; name: string; price: number; salon_price: number | null; exchange_rate: number | null; created_at: string | null; };
+        Insert: { id?: string; name: string; price: number; salon_price?: number | null; exchange_rate?: number | null; created_at?: string | null; };
+        Update: { id?: string; name?: string; price?: number; salon_price?: number | null; exchange_rate?: number | null; created_at?: string | null; };
         Relationships: [];
       };
       products_la: {
-        Row: { id: string; name: string; price: number; salon_price: number | null; exchange_rate: number | null; description: string | null; image_url: string | null; created_at: string | null; };
-        Insert: { id?: string; name: string; price: number; salon_price?: number | null; exchange_rate?: number | null; description?: string | null; image_url?: string | null; created_at?: string | null; };
-        Update: { id?: string; name?: string; price?: number; salon_price?: number | null; exchange_rate?: number | null; description?: string | null; image_url?: string | null; created_at?: string | null; };
+        Row: { id: string; name: string; price: number; salon_price: number | null; exchange_rate: number | null; created_at: string | null; };
+        Insert: { id?: string; name: string; price: number; salon_price?: number | null; exchange_rate?: number | null; created_at?: string | null; };
+        Update: { id?: string; name?: string; price?: number; salon_price?: number | null; exchange_rate?: number | null; created_at?: string | null; };
         Relationships: [];
       };
       products_ag: {
-        Row: { id: string; name: string; price: number; salon_price: number | null; exchange_rate: number | null; description: string | null; image_url: string | null; created_at: string | null; };
-        Insert: { id?: string; name: string; price: number; salon_price?: number | null; exchange_rate?: number | null; description?: string | null; image_url?: string | null; created_at?: string | null; };
-        Update: { id?: string; name?: string; price?: number; salon_price?: number | null; exchange_rate?: number | null; description?: string | null; image_url?: string | null; created_at?: string | null; };
+        Row: { id: string; name: string; price: number; salon_price: number | null; exchange_rate: number | null; created_at: string | null; };
+        Insert: { id?: string; name: string; price: number; salon_price?: number | null; exchange_rate?: number | null; created_at?: string | null; };
+        Update: { id?: string; name?: string; price?: number; salon_price?: number | null; exchange_rate?: number | null; created_at?: string | null; };
         Relationships: [];
       };
       products_ab_cyr: {
-        Row: { id: string; name: string; price: number; salon_price: number | null; exchange_rate: number | null; description: string | null; image_url: string | null; created_at: string | null; };
-        Insert: { id?: string; name: string; price: number; salon_price?: number | null; exchange_rate?: number | null; description?: string | null; image_url?: string | null; created_at?: string | null; };
-        Update: { id?: string; name?: string; price?: number; salon_price?: number | null; exchange_rate?: number | null; description?: string | null; image_url?: string | null; created_at?: string | null; };
+        Row: { id: string; name: string; price: number; salon_price: number | null; exchange_rate: number | null; created_at: string | null; };
+        Insert: { id?: string; name: string; price: number; salon_price?: number | null; exchange_rate?: number | null; created_at?: string | null; };
+        Update: { id?: string; name?: string; price?: number; salon_price?: number | null; exchange_rate?: number | null; created_at?: string | null; };
         Relationships: [];
       };
       products_ar_cyr: {
-        Row: { id: string; name: string; price: number; salon_price: number | null; exchange_rate: number | null; description: string | null; image_url: string | null; created_at: string | null; };
-        Insert: { id?: string; name: string; price: number; salon_price?: number | null; exchange_rate?: number | null; description?: string | null; image_url?: string | null; created_at?: string | null; };
-        Update: { id?: string; name?: string; price?: number; salon_price?: number | null; exchange_rate?: number | null; description?: string | null; image_url?: string | null; created_at?: string | null; };
+        Row: { id: string; name: string; price: number; salon_price: number | null; exchange_rate: number | null; created_at: string | null; };
+        Insert: { id?: string; name: string; price: number; salon_price?: number | null; exchange_rate?: number | null; created_at?: string | null; };
+        Update: { id?: string; name?: string; price?: number; salon_price?: number | null; exchange_rate?: number | null; created_at?: string | null; };
         Relationships: [];
       };
       products_bez_sokr: {
-        Row: { id: string; name: string; price: number; salon_price: number | null; exchange_rate: number | null; description: string | null; image_url: string | null; created_at: string | null; };
-        Insert: { id?: string; name: string; price: number; salon_price?: number | null; exchange_rate?: number | null; description?: string | null; image_url?: string | null; created_at?: string | null; };
-        Update: { id?: string; name?: string; price?: number; salon_price?: number | null; exchange_rate?: number | null; description?: string | null; image_url?: string | null; created_at?: string | null; };
+        Row: { id: string; name: string; price: number; salon_price: number | null; exchange_rate: number | null; created_at: string | null; };
+        Insert: { id?: string; name: string; price: number; salon_price?: number | null; exchange_rate?: number | null; created_at?: string | null; };
+        Update: { id?: string; name?: string; price?: number; salon_price?: number | null; exchange_rate?: number | null; created_at?: string | null; };
         Relationships: [];
       };
       products_af: {
-        Row: { id: string; name: string; price: number; salon_price: number | null; exchange_rate: number | null; description: string | null; image_url: string | null; created_at: string | null; };
-        Insert: { id?: string; name: string; price: number; salon_price?: number | null; exchange_rate?: number | null; description?: string | null; image_url?: string | null; created_at?: string | null; };
-        Update: { id?: string; name?: string; price?: number; salon_price?: number | null; exchange_rate?: number | null; description?: string | null; image_url?: string | null; created_at?: string | null; };
+        Row: { id: string; name: string; price: number; salon_price: number | null; exchange_rate: number | null; created_at: string | null; };
+        Insert: { id?: string; name: string; price: number; salon_price?: number | null; exchange_rate?: number | null; created_at?: string | null; };
+        Update: { id?: string; name?: string; price?: number; salon_price?: number | null; exchange_rate?: number | null; created_at?: string | null; };
         Relationships: [];
       };
       products_ds: {
-        Row: { id: string; name: string; price: number; salon_price: number | null; exchange_rate: number | null; description: string | null; image_url: string | null; created_at: string | null; };
-        Insert: { id?: string; name: string; price: number; salon_price?: number | null; exchange_rate?: number | null; description?: string | null; image_url?: string | null; created_at?: string | null; };
-        Update: { id?: string; name?: string; price?: number; salon_price?: number | null; exchange_rate?: number | null; description?: string | null; image_url?: string | null; created_at?: string | null; };
+        Row: { id: string; name: string; price: number; salon_price: number | null; exchange_rate: number | null; created_at: string | null; };
+        Insert: { id?: string; name: string; price: number; salon_price?: number | null; exchange_rate?: number | null; created_at?: string | null; };
+        Update: { id?: string; name?: string; price?: number; salon_price?: number | null; exchange_rate?: number | null; created_at?: string | null; };
         Relationships: [];
       };
       products_m8: {
-        Row: { id: string; name: string; price: number; salon_price: number | null; exchange_rate: number | null; description: string | null; image_url: string | null; created_at: string | null; };
-        Insert: { id?: string; name: string; price: number; salon_price?: number | null; exchange_rate?: number | null; description?: string | null; image_url?: string | null; created_at?: string | null; };
-        Update: { id?: string; name?: string; price?: number; salon_price?: number | null; exchange_rate?: number | null; description?: string | null; image_url?: string | null; created_at?: string | null; };
+        Row: { id: string; name: string; price: number; salon_price: number | null; exchange_rate: number | null; created_at: string | null; };
+        Insert: { id?: string; name: string; price: number; salon_price?: number | null; exchange_rate?: number | null; created_at?: string | null; };
+        Update: { id?: string; name?: string; price?: number; salon_price?: number | null; exchange_rate?: number | null; created_at?: string | null; };
         Relationships: [];
       };
       products_jda: {
-        Row: { id: string; name: string; price: number; salon_price: number | null; exchange_rate: number | null; description: string | null; image_url: string | null; created_at: string | null; };
-        Insert: { id?: string; name: string; price: number; salon_price?: number | null; exchange_rate?: number | null; description?: string | null; image_url?: string | null; created_at?: string | null; };
-        Update: { id?: string; name?: string; price?: number; salon_price?: number | null; exchange_rate?: number | null; description?: string | null; image_url?: string | null; created_at?: string | null; };
+        Row: { id: string; name: string; price: number; salon_price: number | null; exchange_rate: number | null; created_at: string | null; };
+        Insert: { id?: string; name: string; price: number; salon_price?: number | null; exchange_rate?: number | null; created_at?: string | null; };
+        Update: { id?: string; name?: string; price?: number; salon_price?: number | null; exchange_rate?: number | null; created_at?: string | null; };
         Relationships: [];
       };
       products_faith: {
-        Row: { id: string; name: string; price: number; salon_price: number | null; exchange_rate: number | null; description: string | null; image_url: string | null; created_at: string | null; };
-        Insert: { id?: string; name: string; price: number; salon_price?: number | null; exchange_rate?: number | null; description?: string | null; image_url?: string | null; created_at?: string | null; };
-        Update: { id?: string; name?: string; price?: number; salon_price?: number | null; exchange_rate?: number | null; description?: string | null; image_url?: string | null; created_at?: string | null; };
+        Row: { id: string; name: string; price: number; salon_price: number | null; exchange_rate: number | null; created_at: string | null; };
+        Insert: { id?: string; name: string; price: number; salon_price?: number | null; exchange_rate?: number | null; created_at?: string | null; };
+        Update: { id?: string; name?: string; price?: number; salon_price?: number | null; exchange_rate?: number | null; created_at?: string | null; };
         Relationships: [];
       };
       products_ab_lat: {
-        Row: { id: string; name: string; price: number; salon_price: number | null; exchange_rate: number | null; description: string | null; image_url: string | null; created_at: string | null; };
-        Insert: { id?: string; name: string; price: number; salon_price?: number | null; exchange_rate?: number | null; description?: string | null; image_url?: string | null; created_at?: string | null; };
-        Update: { id?: string; name?: string; price?: number; salon_price?: number | null; exchange_rate?: number | null; description?: string | null; image_url?: string | null; created_at?: string | null; };
+        Row: { id: string; name: string; price: number; salon_price: number | null; exchange_rate: number | null; created_at: string | null; };
+        Insert: { id?: string; name: string; price: number; salon_price?: number | null; exchange_rate?: number | null; created_at?: string | null; };
+        Update: { id?: string; name?: string; price?: number; salon_price?: number | null; exchange_rate?: number | null; created_at?: string | null; };
         Relationships: [];
       };
       products_gf: {
-        Row: { id: string; name: string; price: number; salon_price: number | null; exchange_rate: number | null; description: string | null; image_url: string | null; created_at: string | null; };
-        Insert: { id?: string; name: string; price: number; salon_price?: number | null; exchange_rate?: number | null; description?: string | null; image_url?: string | null; created_at?: string | null; };
-        Update: { id?: string; name?: string; price?: number; salon_price?: number | null; exchange_rate?: number | null; description?: string | null; image_url?: string | null; created_at?: string | null; };
+        Row: { id: string; name: string; price: number; salon_price: number | null; exchange_rate: number | null; created_at: string | null; };
+        Insert: { id?: string; name: string; price: number; salon_price?: number | null; exchange_rate?: number | null; created_at?: string | null; };
+        Update: { id?: string; name?: string; price?: number; salon_price?: number | null; exchange_rate?: number | null; created_at?: string | null; };
         Relationships: [];
       };
       products_es: {
-        Row: { id: string; name: string; price: number; salon_price: number | null; exchange_rate: number | null; description: string | null; image_url: string | null; created_at: string | null; };
-        Insert: { id?: string; name: string; price: number; salon_price?: number | null; exchange_rate?: number | null; description?: string | null; image_url?: string | null; created_at?: string | null; };
-        Update: { id?: string; name?: string; price?: number; salon_price?: number | null; exchange_rate?: number | null; description?: string | null; image_url?: string | null; created_at?: string | null; };
+        Row: { id: string; name: string; price: number; salon_price: number | null; exchange_rate: number | null; created_at: string | null; };
+        Insert: { id?: string; name: string; price: number; salon_price?: number | null; exchange_rate?: number | null; created_at?: string | null; };
+        Update: { id?: string; name?: string; price?: number; salon_price?: number | null; exchange_rate?: number | null; created_at?: string | null; };
         Relationships: [];
       };
       products_gp: {
-        Row: { id: string; name: string; price: number; salon_price: number | null; exchange_rate: number | null; description: string | null; image_url: string | null; created_at: string | null; };
-        Insert: { id?: string; name: string; price: number; salon_price?: number | null; exchange_rate?: number | null; description?: string | null; image_url?: string | null; created_at?: string | null; };
-        Update: { id?: string; name?: string; price?: number; salon_price?: number | null; exchange_rate?: number | null; description?: string | null; image_url?: string | null; created_at?: string | null; };
+        Row: { id: string; name: string; price: number; salon_price: number | null; exchange_rate: number | null; created_at: string | null; };
+        Insert: { id?: string; name: string; price: number; salon_price?: number | null; exchange_rate?: number | null; created_at?: string | null; };
+        Update: { id?: string; name?: string; price?: number; salon_price?: number | null; exchange_rate?: number | null; created_at?: string | null; };
         Relationships: [];
       };
       products_sd: {
-        Row: { id: string; name: string; price: number; salon_price: number | null; exchange_rate: number | null; description: string | null; image_url: string | null; created_at: string | null; };
-        Insert: { id?: string; name: string; price: number; salon_price?: number | null; exchange_rate?: number | null; description?: string | null; image_url?: string | null; created_at?: string | null; };
-        Update: { id?: string; name?: string; price?: number; salon_price?: number | null; exchange_rate?: number | null; description?: string | null; image_url?: string | null; created_at?: string | null; };
+        Row: { id: string; name: string; price: number; salon_price: number | null; exchange_rate: number | null; created_at: string | null; };
+        Insert: { id?: string; name: string; price: number; salon_price?: number | null; exchange_rate?: number | null; created_at?: string | null; };
+        Update: { id?: string; name?: string; price?: number; salon_price?: number | null; exchange_rate?: number | null; created_at?: string | null; };
         Relationships: [];
       };
       products_ata: {
-        Row: { id: string; name: string; price: number; salon_price: number | null; exchange_rate: number | null; description: string | null; image_url: string | null; created_at: string | null; };
-        Insert: { id?: string; name: string; price: number; salon_price?: number | null; exchange_rate?: number | null; description?: string | null; image_url?: string | null; created_at?: string | null; };
-        Update: { id?: string; name?: string; price?: number; salon_price?: number | null; exchange_rate?: number | null; description?: string | null; image_url?: string | null; created_at?: string | null; };
+        Row: { id: string; name: string; price: number; salon_price: number | null; exchange_rate: number | null; created_at: string | null; };
+        Insert: { id?: string; name: string; price: number; salon_price?: number | null; exchange_rate?: number | null; created_at?: string | null; };
+        Update: { id?: string; name?: string; price?: number; salon_price?: number | null; exchange_rate?: number | null; created_at?: string | null; };
         Relationships: [];
       };
       products_w: {
-        Row: { id: string; name: string; price: number; salon_price: number | null; exchange_rate: number | null; description: string | null; image_url: string | null; created_at: string | null; };
-        Insert: { id?: string; name: string; price: number; salon_price?: number | null; exchange_rate?: number | null; description?: string | null; image_url?: string | null; created_at?: string | null; };
-        Update: { id?: string; name?: string; price?: number; salon_price?: number | null; exchange_rate?: number | null; description?: string | null; image_url?: string | null; created_at?: string | null; };
+        Row: { id: string; name: string; price: number; salon_price: number | null; exchange_rate: number | null; created_at: string | null; };
+        Insert: { id?: string; name: string; price: number; salon_price?: number | null; exchange_rate?: number | null; created_at?: string | null; };
+        Update: { id?: string; name?: string; price?: number; salon_price?: number | null; exchange_rate?: number | null; created_at?: string | null; };
         Relationships: [];
       };
       // END: Product Group Tables
@@ -179,6 +179,7 @@ export interface Database {
           date: string
           status: "Ordered" | "Shipped" | "Received" | "Calculation" | "AwaitingApproval" | "PaidByClient" | "WrittenOff" | "ReadyForPickup"
           total_amount: number
+          notes: string | null
           created_at: string | null
         }
         Insert: {
@@ -187,6 +188,7 @@ export interface Database {
           date: string
           status: "Ordered" | "Shipped" | "Received" | "Calculation" | "AwaitingApproval" | "PaidByClient" | "WrittenOff" | "ReadyForPickup"
           total_amount: number
+          notes?: string | null
           created_at?: string | null
         }
         Update: {
@@ -195,6 +197,7 @@ export interface Database {
           date?: string
           status?: "Ordered" | "Shipped" | "Received" | "Calculation" | "AwaitingApproval" | "PaidByClient" | "WrittenOff" | "ReadyForPickup"
           total_amount?: number
+          notes?: string | null
           created_at?: string | null
         }
         Relationships: [

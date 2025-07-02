@@ -8,8 +8,6 @@ export interface Product {
   retailPrice: number; // Renamed from price
   salonPrice: number;
   exchangeRate: number;
-  description: string;
-  imageUrl?: string;
   created_at?: string; 
 }
 

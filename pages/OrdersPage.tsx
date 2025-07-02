@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Order, OrderItem, Customer, Product } from '../types';
 import { EyeIcon, XMarkIcon, PlusIcon, TrashIcon, PencilIcon, DocumentTextIcon, PrinterIcon, FilterIcon, DownloadIcon, ChevronDownIcon } from '../components/Icons';
@@ -45,6 +46,7 @@ const OrdersPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [viewOrder, setViewOrder] = useState<Order | null>(null);
   const [editableOrderStatus, setEditableOrderStatus] = useState<Order['status'] | undefined>(undefined);
+  const [editableOrderNotes, setEditableOrderNotes] = useState<string>('');
   
   const [modalMode, setModalMode] = useState<'add' | 'edit' | null>(null);
   const [activeOrderData, setActiveOrderData] = useState<Partial<Order> | null>(null);
@@ -265,6 +267,7 @@ const OrdersPage: React.FC = () => {
       status: activeOrderData.status || 'Ordered',
       items: validItems.map(item => ({...item, id: isEditing ? item.id : undefined})),
       totalAmount: totalAmount,
+      notes: activeOrderData.notes || '',
     };
 
     setIsLoading(true);
@@ -293,7 +296,7 @@ const OrdersPage: React.FC = () => {
     setModalError(null);
     setModalMode(mode);
     if (mode === 'add') {
-      setActiveOrderData({ customerId: '', status: 'Ordered', items: [{ ...initialNewOrderItem }], totalAmount: 0 });
+      setActiveOrderData({ customerId: '', status: 'Ordered', items: [{ ...initialNewOrderItem }], totalAmount: 0, notes: '' });
     } else if (order) {
       setActiveOrderData({ ...order, items: order.items.map(item => ({ ...item })) });
     }
@@ -304,33 +307,50 @@ const OrdersPage: React.FC = () => {
     setActiveOrderData(null);
   };
 
-  const handleViewOrder = (order: Order) => { setViewOrder(order); setEditableOrderStatus(order.status); };
+  const handleViewOrder = (order: Order) => {
+    setViewOrder(order);
+    setEditableOrderStatus(order.status);
+    setEditableOrderNotes(order.notes || '');
+  };
   
-  const handleUpdateOrderStatusInViewModal = async () => {
-    if (!viewOrder || !editableOrderStatus || editableOrderStatus === viewOrder.status) return;
-    setIsLoading(true); setModalError(null); 
+  const handleUpdateOrderInViewModal = async () => {
+    if (!viewOrder) return;
+    const statusChanged = editableOrderStatus !== viewOrder.status;
+    const notesChanged = editableOrderNotes !== (viewOrder.notes || '');
+    if (!statusChanged && !notesChanged) return;
+
+    setIsLoading(true);
+    setModalError(null);
     try {
-      const payload = { ...viewOrder, status: editableOrderStatus }; 
+      const payload: Partial<Order> = { ...viewOrder };
+      if (statusChanged) payload.status = editableOrderStatus;
+      if (notesChanged) payload.notes = editableOrderNotes;
+      
       const response = await authenticatedFetch(`${API_BASE_URL}/orders/${viewOrder.id}`, {
         method: 'PUT',
-        body: JSON.stringify(payload), 
+        body: JSON.stringify(payload),
       });
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Failed to update order status' }));
+        const errorData = await response.json().catch(() => ({ message: 'Failed to update order' }));
         throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
       const updatedOrderFromServer = await response.json();
       setOrders(prevOrders => prevOrders.map(o => o.id === viewOrder.id ? updatedOrderFromServer : o));
-      setViewOrder(updatedOrderFromServer); 
+      setViewOrder(updatedOrderFromServer);
     } catch (err: any) {
-      console.error("Failed to update order status:", err);
-      setModalError(err.message || "Could not update order status.");
+      console.error("Failed to update order:", err);
+      setModalError(err.message || "Could not update order.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const closeModalView = () => { setViewOrder(null); setEditableOrderStatus(undefined); setModalError(null);};
+  const closeModalView = () => {
+    setViewOrder(null);
+    setEditableOrderStatus(undefined);
+    setEditableOrderNotes('');
+    setModalError(null);
+  };
 
   const openBillOfLadingModal = (order: Order) => {
     const customerDetail = customers.find(c => c.id === order.customerId);
@@ -545,6 +565,20 @@ const OrdersPage: React.FC = () => {
                 ))}
                 <button type="button" onClick={addItem} className="text-sm text-rose-600 hover:text-rose-700 font-semibold flex items-center"><PlusIcon className="w-4 h-4 mr-1"/> Додати товар</button>
               </div>
+
+              <div>
+                <label htmlFor="notes" className="block text-sm font-medium text-slate-700 mb-1">Коментарі до замовлення</label>
+                <textarea
+                  id="notes"
+                  name="notes"
+                  rows={3}
+                  value={activeOrderData.notes || ''}
+                  onChange={(e) => setActiveOrderData(prev => prev ? { ...prev, notes: e.target.value } : null)}
+                  className="block w-full border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500 sm:text-sm p-2.5"
+                  placeholder="Внутрішні нотатки, особливі інструкції тощо."
+                ></textarea>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end pt-4">
                 <div className="sm:col-span-1">
                   <label htmlFor="status" className="block text-sm font-medium text-slate-700 mb-1">Статус</label>
@@ -582,12 +616,23 @@ const OrdersPage: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
                 <div><p className="text-sm text-slate-500">Ім'я клієнта</p><p className="font-semibold text-slate-800 text-base">{viewOrder.customerName}</p></div>
                 <div><p className="text-sm text-slate-500">Дата замовлення</p><p className="font-semibold text-slate-800 text-base">{new Date(viewOrder.date).toLocaleDateString()}</p></div>
-                <div>
+              </div>
+              <div>
                     <label htmlFor="view-order-status" className="block text-sm text-slate-500">Статус</label>
                     <select id="view-order-status" value={editableOrderStatus} onChange={(e) => setEditableOrderStatus(e.target.value as Order['status'])} className="mt-1 block w-full border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500 sm:text-sm p-2.5 font-semibold">
                         {orderStatusValues.map(statusValue => (<option key={statusValue} value={statusValue}>{orderStatusTranslations[statusValue]}</option>))}
                     </select>
-                </div>
+              </div>
+              <div>
+                <label htmlFor="view-order-notes" className="block text-sm text-slate-500">Коментарі</label>
+                <textarea
+                  id="view-order-notes"
+                  rows={3}
+                  value={editableOrderNotes}
+                  onChange={(e) => setEditableOrderNotes(e.target.value)}
+                  className="mt-1 block w-full border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500 sm:text-sm p-2.5"
+                  placeholder="Коментарі до замовлення відсутні"
+                ></textarea>
               </div>
               
               <div>
@@ -625,8 +670,12 @@ const OrdersPage: React.FC = () => {
             </div>
             <div className="mt-8 pt-6 border-t border-slate-200 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3">
               <button onClick={closeModalView} className="w-full sm:w-auto bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold py-2 px-4 rounded-lg shadow-sm transition-colors" disabled={isLoading}>Закрити</button>
-              <button onClick={handleUpdateOrderStatusInViewModal} disabled={isLoading || editableOrderStatus === viewOrder.status} className="w-full sm:w-auto bg-rose-500 hover:bg-rose-600 text-white font-semibold py-2 px-4 rounded-lg shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                {isLoading ? 'Оновлення...' : 'Оновити статус'}
+              <button
+                onClick={handleUpdateOrderInViewModal}
+                disabled={isLoading || (editableOrderStatus === viewOrder.status && editableOrderNotes === (viewOrder.notes || ''))}
+                className="w-full sm:w-auto bg-rose-500 hover:bg-rose-600 text-white font-semibold py-2 px-4 rounded-lg shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isLoading ? 'Збереження...' : 'Зберегти зміни'}
               </button>
             </div>
           </div>

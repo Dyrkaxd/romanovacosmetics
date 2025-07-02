@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Product } from '../types';
 import { PlusIcon, XMarkIcon, EyeIcon, PencilIcon, TrashIcon } from '../components/Icons';
@@ -17,8 +18,6 @@ const ProductsPage: React.FC = () => {
     retailPrice: 0, 
     salonPrice: 0, 
     exchangeRate: 0, 
-    description: '', 
-    imageUrl: '',
     group: 'BDR', // Default group
   };
   const [currentProduct, setCurrentProduct] = useState<Partial<Product>>(initialProductState);
@@ -87,8 +86,6 @@ const ProductsPage: React.FC = () => {
         retailPrice: currentProduct.retailPrice,
         salonPrice: currentProduct.salonPrice,
         exchangeRate: currentProduct.exchangeRate,
-        description: currentProduct.description || '',
-        imageUrl: currentProduct.imageUrl || editingProduct?.imageUrl || `https://picsum.photos/seed/${currentProduct.name?.replace(/\s+/g, '_') || 'newproduct'}/400/400`,
         group: currentProduct.group,
     };
 
@@ -304,14 +301,6 @@ const ProductsPage: React.FC = () => {
                   <label htmlFor="exchangeRate" className="block text-sm font-medium text-slate-700 mb-1">Курс (UAH/$) <span aria-hidden="true" className="text-red-500">*</span></label>
                   <input type="number" name="exchangeRate" id="exchangeRate" value={currentProduct.exchangeRate === undefined ? '' : currentProduct.exchangeRate} onChange={handleInputChange} step="0.01" min="0.01" required aria-required="true" className="block w-full border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500 sm:text-sm p-2.5" />
               </div>
-              <div>
-                <label htmlFor="description" className="block text-sm font-medium text-slate-700 mb-1">Опис</label>
-                <textarea name="description" id="description" value={currentProduct.description || ''} onChange={handleInputChange} rows={3} className="block w-full border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500 sm:text-sm p-2.5" />
-              </div>
-               <div>
-                <label htmlFor="imageUrl" className="block text-sm font-medium text-slate-700 mb-1">URL зображення</label>
-                <input type="url" name="imageUrl" id="imageUrl" value={currentProduct.imageUrl || ''} onChange={handleInputChange} className="block w-full border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500 sm:text-sm p-2.5" placeholder="https://example.com/image.jpg"/>
-              </div>
               
               <div className="flex flex-col sm:flex-row justify-end pt-6 space-y-2 sm:space-y-0 sm:space-x-3 border-t border-slate-200">
                 <button 
@@ -341,17 +330,12 @@ const ProductsPage: React.FC = () => {
               <button onClick={closeModal} aria-label="Закрити модальне вікно"><XMarkIcon className="w-6 h-6 text-slate-400 hover:text-slate-600"/></button>
             </div>
             <div className="space-y-4 overflow-y-auto pr-2">
-              <img src={(currentProduct as Product).imageUrl || `https://picsum.photos/seed/${currentProduct.id}/400/400`} alt={currentProduct.name} className="w-full h-auto rounded-lg object-cover mb-3" />
               <div className='space-y-2'>
                 <p><span className="font-semibold text-slate-600">Назва:</span> <span className="text-slate-800">{currentProduct.name}</span></p>
                 <p><span className="font-semibold text-slate-600">Група:</span> <span className="font-medium text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full text-sm inline-block">{currentProduct.group}</span></p>
                 <p><span className="font-semibold text-slate-600">Ціна роздрібна:</span> <span className="text-slate-800">${currentProduct.retailPrice?.toFixed(2)}</span></p>
                 <p><span className="font-semibold text-slate-600">Ціна салону:</span> <span className="text-slate-800">${currentProduct.salonPrice?.toFixed(2)}</span></p>
                 <p><span className="font-semibold text-slate-600">Курс:</span> <span className="text-slate-800">{currentProduct.exchangeRate?.toFixed(2)}</span></p>
-              </div>
-              <div>
-                <p className="font-semibold text-slate-600">Опис:</p>
-                <p className="text-sm text-slate-700 bg-slate-50 p-3 rounded-lg whitespace-pre-wrap break-words mt-1">{currentProduct.description || 'Опис відсутній.'}</p>
               </div>
             </div>
             <div className="mt-6 pt-6 text-right border-t border-slate-200">
