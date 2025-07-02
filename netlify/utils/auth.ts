@@ -45,57 +45,56 @@ export const requireAuth = async (event: HandlerEvent): Promise<AuthenticatedUse
     if (!payload || !payload.email) {
       throw { statusCode: 401, message: 'Invalid token payload' } as AuthError;
     }
-
+    
     const userEmail = payload.email.toLowerCase();
 
-    // Step 1: Check for the failsafe Super Admin first. This is the highest priority.
+    // Step 1: Check for SUPER_ADMIN_EMAIL first, as a failsafe.
     if (userEmail === SUPER_ADMIN_EMAIL) {
-      // We ensure the super admin's record exists in the DB to prevent lockout issues
-      // and for consistency in user lists, etc.
+      // Ensure the super admin's record exists in the DB for consistency in user lists etc.
       const { error: upsertError } = await supabase
         .from('admins')
         .upsert({ email: userEmail, added_by: 'system_bootstrap' }, { onConflict: 'email' });
       if (upsertError) {
-        // Log the error but still grant access, this is the failsafe account.
-        console.error(`Could not upsert default admin '${userEmail}', but granting access anyway. Error:`, upsertError);
+        // Log the error but still grant access, as this is the failsafe account.
+        console.error(`Could not upsert super admin '${userEmail}', but granting access. Error:`, upsertError);
       }
       return { email: userEmail, role: 'admin', name: payload.name || 'Admin' };
     }
 
-    // Step 2: If not the super admin, check if they are another admin in the database.
+    // Step 2: Check if the user is in the admins table.
     const { data: adminRecord, error: adminCheckError } = await supabase
       .from('admins')
       .select('email')
       .eq('email', userEmail)
-      .single();
+      .maybeSingle(); // Use maybeSingle to handle "not found" gracefully.
 
-    if (adminCheckError && adminCheckError.code !== 'PGRST116') { // Ignore "no rows found" error
-        console.error('Supabase error checking admins table:', adminCheckError);
-        throw { statusCode: 500, message: 'Database error while verifying admin status' } as AuthError;
+    if (adminCheckError) {
+      console.error('Supabase error checking admins table:', adminCheckError);
+      throw { statusCode: 500, message: 'Database error while verifying admin status.' } as AuthError;
     }
 
     if (adminRecord) {
-        return { email: userEmail, role: 'admin', name: payload.name || 'Admin' };
+      return { email: userEmail, role: 'admin', name: payload.name || 'Admin' };
     }
 
-    // Step 3: If not any kind of admin, check if they are a managed user.
+    // Step 3: If not an admin, check if they are a managed user.
     const { data: managedUser, error: managerCheckError } = await supabase
       .from('managed_users')
       .select('id, name')
       .eq('email', userEmail)
-      .single();
+      .maybeSingle(); // Use maybeSingle here too.
 
-    if (managerCheckError && managerCheckError.code !== 'PGRST116') { // Ignore "no rows found" error
-      console.error('Supabase error checking managed user:', managerCheckError);
-      throw { statusCode: 500, message: 'Database error while verifying user permissions' } as AuthError;
+    if (managerCheckError) {
+      console.error('Supabase error checking managed_users table:', managerCheckError);
+      throw { statusCode: 500, message: 'Database error while verifying user permissions.' } as AuthError;
     }
 
     if (managedUser) {
       return { email: userEmail, role: 'manager', name: payload.name || managedUser.name };
     }
 
-    // Step 4: If the user is none of the above, they are not authorized.
-    throw { statusCode: 403, message: 'User is not authorized to access this resource' } as AuthError;
+    // Step 4: If not found in any role, the user is not authorized.
+    throw { statusCode: 403, message: 'User is not authorized to access this resource.' } as AuthError;
 
   } catch (err: any) {
     // Re-throw our custom AuthError if it's one we created
