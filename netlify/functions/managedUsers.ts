@@ -1,8 +1,9 @@
+
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import { supabase } from '../../services/supabaseClient'; 
 import type { ManagedUser } from '../../types';
 import type { Database } from '../../types/supabase';
-import { requireAuth, AuthError, AuthenticatedUser } from '../utils/auth';
+import { requireAuth, AuthError, AuthenticatedUser, isMissingTableError } from '../utils/auth';
 
 type ManagedUserDbRow = Database['public']['Tables']['managed_users']['Row'];
 
@@ -48,15 +49,15 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       case 'GET': {
         const emailQuery = event.queryStringParameters?.email;
         if (emailQuery) {
-          // Used by AuthContext to check a user's role. requireAuth already did the work.
+          // This path is for checking a user's role on login, not admin-gated
           const { data, error } = await supabase.from('managed_users').select('*').eq('email', emailQuery.toLowerCase()).single();
-          if (error && error.code !== 'PGRST116') throw error; // Ignore "no rows found"
+          if (error && error.code !== 'PGRST116' && !isMissingTableError(error)) throw error; // Ignore "no rows found" and missing table
           return { statusCode: 200, headers: commonHeaders, body: JSON.stringify(data ? transformDbRowToManagedUser(data) : null) };
         } else {
           // List all users. Admin only.
           return handleAdminOnlyRequest(user, async () => {
             const { data, error } = await supabase.from('managed_users').select('*').order('created_at', { ascending: false });
-            if (error?.code === '42P01') { // undefined_table
+            if (error && isMissingTableError(error)) {
               console.warn('`managed_users` table not found. Returning empty list. This may indicate a database setup issue.');
               return { statusCode: 200, headers: commonHeaders, body: JSON.stringify([]) };
             }
@@ -113,8 +114,8 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       return { statusCode: error.statusCode, headers: commonHeaders, body: JSON.stringify({ message: error.message }) };
     }
     
-    if (error.code === '42P01') {
-      const message = `Database setup error: The 'managed_users' table appears to be missing. Please ensure the database schema is up to date.`;
+    if (isMissingTableError(error)) {
+      const message = `Database setup error: The 'managed_users' table appears to be missing. Please run the setup SQL script in your Supabase dashboard.`;
       console.error(message, error);
       return { statusCode: 500, headers: commonHeaders, body: JSON.stringify({ message }) };
     }

@@ -1,6 +1,7 @@
+
 import { Handler, HandlerEvent } from '@netlify/functions';
 import { supabase } from '../../services/supabaseClient'; 
-import { requireAuth, AuthenticatedUser } from '../utils/auth';
+import { requireAuth, AuthenticatedUser, isMissingTableError } from '../utils/auth';
 import type { Database } from '../../types/supabase';
 
 type AdminDbRow = Database['public']['Tables']['admins']['Row'];
@@ -35,7 +36,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       switch (event.httpMethod) {
         case 'GET': {
           const { data, error } = await supabase.from('admins').select('*').order('created_at', { ascending: false });
-          if (error?.code === '42P01') { // undefined_table
+          if (error && isMissingTableError(error)) {
              console.warn('`admins` table not found. Returning empty list. This may indicate a database setup issue.');
              return { statusCode: 200, headers: commonHeaders, body: JSON.stringify([]) };
           }
@@ -85,9 +86,8 @@ const handler: Handler = async (event: HandlerEvent) => {
       return { statusCode: error.statusCode, headers: commonHeaders, body: JSON.stringify({ message: error.message }) };
     }
     
-    // Check for missing table error
-    if (error.code === '42P01') {
-      const message = `Database setup error: The 'admins' table appears to be missing. Please ensure the database schema is up to date.`;
+    if (isMissingTableError(error)) {
+      const message = `Database setup error: The 'admins' table appears to be missing. Please run the setup SQL script in your Supabase dashboard.`;
       console.error(message, error);
       return { statusCode: 500, headers: commonHeaders, body: JSON.stringify({ message }) };
     }

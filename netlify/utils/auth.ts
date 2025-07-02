@@ -20,6 +20,18 @@ export interface AuthenticatedUser {
 }
 
 /**
+ * Checks if a Supabase error indicates a missing table.
+ * @param error The error object from a Supabase client call.
+ * @returns True if the error is a 'relation does not exist' error.
+ */
+export const isMissingTableError = (error: any): boolean => {
+  const msg = error?.message?.toLowerCase() || '';
+  // PGRST116 is 'relation does not exist' via PostgREST, 42P01 is via direct PG.
+  return error?.code === '42P01' || error?.code === 'PGRST116' || (msg.includes('relation') && msg.includes('does not exist'));
+};
+
+
+/**
  * Verifies the Google ID token and authorizes the user against the database.
  * Throws a structured AuthError on failure.
  * @param event The Netlify function handler event.
@@ -51,18 +63,18 @@ export const requireAuth = async (event: HandlerEvent): Promise<AuthenticatedUse
   
   const userEmail = payload.email.toLowerCase();
 
-  // 1. SUPER ADMIN Failsafe Check. This is the highest priority.
-  // It returns immediately to guarantee the super admin can always log in,
-  // regardless of database status.
+  // 1. SUPER ADMIN Failsafe Check.
   if (userEmail === SUPER_ADMIN_EMAIL) {
-    // The database upsert runs in the background (fire-and-forget)
-    // so it doesn't block the login process.
     supabase
       .from('admins')
       .upsert({ email: userEmail, added_by: 'system_bootstrap' }, { onConflict: 'email' })
       .then(({ error }) => {
         if (error) {
-          console.error(`Non-fatal DB error during background super admin upsert:`, error);
+          if (isMissingTableError(error)) {
+            console.warn(`Database setup warning: 'admins' table is missing. Could not bootstrap super admin. This is safe to ignore if the table will be created later.`);
+          } else {
+            console.error(`Non-fatal DB error during background super admin upsert:`, error);
+          }
         }
       });
     return { email: userEmail, role: 'admin', name: payload.name || 'Super Admin' };
@@ -71,23 +83,29 @@ export const requireAuth = async (event: HandlerEvent): Promise<AuthenticatedUse
   // For all other users, perform database checks.
   try {
     // 2. Regular Admin Check
-    const { data: adminRecord } = await supabase
+    const { data: adminRecord, error: adminError } = await supabase
       .from('admins')
       .select('email')
       .eq('email', userEmail)
       .maybeSingle();
 
+    if (adminError && !isMissingTableError(adminError)) {
+        throw adminError; // A real error occurred, throw it.
+    }
     if (adminRecord) {
       return { email: userEmail, role: 'admin', name: payload.name || 'Admin' };
     }
 
     // 3. Manager Check
-    const { data: managedUser } = await supabase
+    const { data: managedUser, error: managerError } = await supabase
       .from('managed_users')
       .select('id, name')
       .eq('email', userEmail)
       .maybeSingle();
 
+    if (managerError && !isMissingTableError(managerError)) {
+      throw managerError; // A real error occurred, throw it.
+    }
     if (managedUser) {
       return { email: userEmail, role: 'manager', name: payload.name || managedUser.name };
     }
@@ -96,12 +114,9 @@ export const requireAuth = async (event: HandlerEvent): Promise<AuthenticatedUse
     throw { statusCode: 403, message: 'User is not authorized to access this application.' };
 
   } catch (error: any) {
-    // If it's a structured error we threw intentionally (like 403), re-throw it.
     if (error.statusCode) {
       throw error;
     }
-
-    // Otherwise, it's an unexpected database or other server error.
     console.error('Unexpected error during authorization check:', error);
     throw { statusCode: 500, message: 'A server error occurred during user authorization.' };
   }
