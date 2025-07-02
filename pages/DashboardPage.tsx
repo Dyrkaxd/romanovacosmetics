@@ -4,6 +4,7 @@ import { OrdersIcon, UsersIcon, CurrencyDollarIcon } from '../components/Icons';
 import { authenticatedFetch } from '../utils/api';
 import { useAuth } from '../AuthContext';
 import { Database } from '../types/supabase';
+import { PieChart } from 'react-minimal-pie-chart';
 
 type AdminRow = Database['public']['Tables']['admins']['Row'];
 
@@ -45,6 +46,105 @@ interface ManagerStats {
   totalSales: number;
   totalProfit: number;
 }
+
+const ProfitReportChart: React.FC<{ report: ManagerStats[]; isLoading: boolean }> = ({ report, isLoading }) => {
+  const [hoveredIndex, setHoveredIndex] = useState<number | undefined>(undefined);
+
+  const COLORS = ['#e11d48', '#3b82f6', '#16a34a', '#f97316', '#8b5cf6', '#db2777', '#0891b2', '#ca8a04'];
+  
+  if (isLoading) {
+    return (
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+        <div className="h-8 w-1/2 bg-slate-200 rounded-md animate-pulse mb-6"></div>
+        <div className="flex items-center justify-center h-72">
+          <div className="w-48 h-48 border-8 border-slate-100 border-t-slate-300 rounded-full animate-spin"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (report.length === 0) {
+    return (
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+        <h3 className="text-lg font-semibold text-slate-800 mb-4">Розподіл прибутку по менеджерах</h3>
+        <div className="text-center py-16 text-slate-500 bg-slate-50 rounded-lg">
+          <p className="font-semibold">Дані для звіту відсутні</p>
+          <p className="text-sm mt-1">Створіть замовлення, щоб побачити статистику.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const totalProfitForChart = report.reduce((sum, manager) => sum + manager.totalProfit, 0);
+
+  const pieData = report.map((manager, index) => ({
+    title: manager.name,
+    value: manager.totalProfit > 0 ? manager.totalProfit : 0, // Ensure value is not negative for chart
+    color: COLORS[index % COLORS.length],
+  }));
+
+  return (
+    <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+      <h3 className="text-lg font-semibold text-slate-800 mb-4">Розподіл прибутку по менеджерах</h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+        <div className="relative h-64 md:h-72">
+          <PieChart
+            data={pieData}
+            lineWidth={35}
+            paddingAngle={2}
+            animate
+            animationDuration={800}
+            onMouseOver={(_, index) => setHoveredIndex(index)}
+            onMouseOut={() => setHoveredIndex(undefined)}
+            segmentsStyle={(index) => ({
+              transition: 'transform 0.2s ease-in-out, opacity 0.2s',
+              transform: hoveredIndex === index ? 'scale(1.05)' : 'scale(1)',
+              opacity: hoveredIndex !== undefined && hoveredIndex !== index ? 0.6 : 1,
+              cursor: 'pointer',
+            })}
+          />
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none flex-col">
+              <span className="text-3xl font-bold text-slate-800">
+                {hoveredIndex !== undefined 
+                  ? `${((pieData[hoveredIndex].value / totalProfitForChart) * 100).toFixed(1)}%`
+                  : 'Всього'
+                }
+              </span>
+              {hoveredIndex !== undefined && (
+                 <span className="text-sm font-medium text-slate-500">{pieData[hoveredIndex].title}</span>
+              )}
+          </div>
+        </div>
+        
+        <ul className="space-y-3">
+          {report.map((manager, index) => {
+            const percentage = totalProfitForChart > 0 ? (manager.totalProfit / totalProfitForChart) * 100 : 0;
+            return (
+              <li
+                key={manager.email}
+                className={`p-3 rounded-lg flex items-center justify-between transition-all duration-200 cursor-pointer ${hoveredIndex === index ? 'bg-slate-100 shadow-sm' : 'hover:bg-slate-50'}`}
+                onMouseOver={() => setHoveredIndex(index)}
+                onMouseOut={() => setHoveredIndex(undefined)}
+              >
+                <div className="flex items-center truncate">
+                  <span
+                    className="w-3.5 h-3.5 rounded-full mr-3 flex-shrink-0"
+                    style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                  />
+                  <span className="font-medium text-slate-700 truncate">{manager.name}</span>
+                </div>
+                <div className="text-right flex-shrink-0 ml-2">
+                  <p className="font-bold text-slate-800">₴{manager.totalProfit.toFixed(2)}</p>
+                  <p className="text-sm text-slate-500">{percentage.toFixed(1)}%</p>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </div>
+  );
+};
 
 
 const DashboardPage: React.FC = () => {
@@ -163,37 +263,7 @@ const DashboardPage: React.FC = () => {
       </div>
       
       {user?.role === 'admin' && (
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <h3 className="text-lg font-semibold text-slate-800 mb-4">Звіт по менеджерах</h3>
-            <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-slate-200">
-                    <thead className="bg-slate-50">
-                        <tr>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Ім'я менеджера</th>
-                            <th scope="col" className="px-6 py-3 text-right text-xs font-semibold text-slate-500 tracking-wider">К-сть замовлень</th>
-                            <th scope="col" className="px-6 py-3 text-right text-xs font-semibold text-slate-500 tracking-wider hidden md:table-cell">Сума продажів</th>
-                            <th scope="col" className="px-6 py-3 text-right text-xs font-semibold text-slate-500 tracking-wider">Прибуток</th>
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-slate-200">
-                        {isLoading ? (
-                            <tr><td colSpan={4} className="text-center py-10 text-slate-500">Завантаження звіту...</td></tr>
-                        ) : managerReport.length > 0 ? (
-                            managerReport.map(manager => (
-                                <tr key={manager.email}>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-800">{manager.name}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 text-right">{manager.totalOrders}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 hidden md:table-cell text-right">₴{manager.totalSales.toFixed(2)}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-bold text-right">₴{manager.totalProfit.toFixed(2)}</td>
-                                </tr>
-                            ))
-                        ) : (
-                            <tr><td colSpan={4} className="text-center py-10 text-slate-500">Дані для звіту відсутні.</td></tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
-        </div>
+        <ProfitReportChart report={managerReport} isLoading={isLoading} />
       )}
     </div>
   );
