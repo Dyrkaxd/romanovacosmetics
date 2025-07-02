@@ -1,4 +1,3 @@
-
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import { supabase } from '../../services/supabaseClient'; 
 import type { ManagedUser } from '../../types';
@@ -57,6 +56,10 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
           // List all users. Admin only.
           return handleAdminOnlyRequest(user, async () => {
             const { data, error } = await supabase.from('managed_users').select('*').order('created_at', { ascending: false });
+            if (error?.code === '42P01') { // undefined_table
+              console.warn('`managed_users` table not found. Returning empty list. This may indicate a database setup issue.');
+              return { statusCode: 200, headers: commonHeaders, body: JSON.stringify([]) };
+            }
             if (error) throw error;
             return { statusCode: 200, headers: commonHeaders, body: JSON.stringify((data || []).map(transformDbRowToManagedUser)) };
           });
@@ -109,6 +112,13 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     if (error.statusCode) { // AuthError
       return { statusCode: error.statusCode, headers: commonHeaders, body: JSON.stringify({ message: error.message }) };
     }
+    
+    if (error.code === '42P01') {
+      const message = `Database setup error: The 'managed_users' table appears to be missing. Please ensure the database schema is up to date.`;
+      console.error(message, error);
+      return { statusCode: 500, headers: commonHeaders, body: JSON.stringify({ message }) };
+    }
+
     console.error('Error in netlify/functions/managedUsers.ts:', error);
     let message = 'An unexpected error occurred.';
     if (error.code === '23505') message = 'A user with this email already exists.';

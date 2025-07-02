@@ -35,6 +35,10 @@ const handler: Handler = async (event: HandlerEvent) => {
       switch (event.httpMethod) {
         case 'GET': {
           const { data, error } = await supabase.from('admins').select('*').order('created_at', { ascending: false });
+          if (error?.code === '42P01') { // undefined_table
+             console.warn('`admins` table not found. Returning empty list. This may indicate a database setup issue.');
+             return { statusCode: 200, headers: commonHeaders, body: JSON.stringify([]) };
+          }
           if (error) throw error;
           return { statusCode: 200, headers: commonHeaders, body: JSON.stringify(data || []) };
         }
@@ -63,7 +67,6 @@ const handler: Handler = async (event: HandlerEvent) => {
           if (!email) {
             return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: 'Admin email is required for deletion.' }) };
           }
-          // Prevent admin from deleting themselves
           if (email.toLowerCase() === user.email.toLowerCase()) {
             return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: 'You cannot remove your own admin privileges.' }) };
           }
@@ -81,6 +84,14 @@ const handler: Handler = async (event: HandlerEvent) => {
     if (error.statusCode) { // AuthError
       return { statusCode: error.statusCode, headers: commonHeaders, body: JSON.stringify({ message: error.message }) };
     }
+    
+    // Check for missing table error
+    if (error.code === '42P01') {
+      const message = `Database setup error: The 'admins' table appears to be missing. Please ensure the database schema is up to date.`;
+      console.error(message, error);
+      return { statusCode: 500, headers: commonHeaders, body: JSON.stringify({ message }) };
+    }
+
     console.error('Error in netlify/functions/admins.ts:', error);
     return {
       statusCode: 500,
