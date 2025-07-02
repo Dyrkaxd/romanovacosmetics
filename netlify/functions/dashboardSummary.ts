@@ -2,7 +2,7 @@
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import { supabase } from '../../services/supabaseClient';
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
-import type { Order, OrderItem } from '../../types';
+import { requireAuth, AuthError } from '../utils/auth';
 
 const commonHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -16,17 +16,20 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     return { statusCode: 204, headers: commonHeaders, body: '' };
   }
 
-  if (event.httpMethod !== 'GET') {
-    return { statusCode: 405, headers: commonHeaders, body: JSON.stringify({ message: 'Method Not Allowed' }) };
-  }
-
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) {
-    console.error('API_KEY for Gemini is not set in environment variables for dashboardSummary function.');
-    return { statusCode: 500, headers: commonHeaders, body: JSON.stringify({ message: 'AI service configuration error. API_KEY missing.' })};
-  }
-
   try {
+    // Both admin and manager can view the dashboard summary.
+    await requireAuth(event);
+
+    if (event.httpMethod !== 'GET') {
+      return { statusCode: 405, headers: commonHeaders, body: JSON.stringify({ message: 'Method Not Allowed' }) };
+    }
+
+    const apiKey = process.env.API_KEY;
+    if (!apiKey) {
+      console.error('API_KEY for Gemini is not set in environment variables for dashboardSummary function.');
+      return { statusCode: 500, headers: commonHeaders, body: JSON.stringify({ message: 'AI service configuration error. API_KEY missing.' })};
+    }
+
     const { data: ordersData, error: ordersError } = await supabase
       .from('orders')
       .select('id, date, status, total_amount, items:order_items(product_name, quantity, price)')
@@ -35,7 +38,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
 
     if (ordersError) {
         console.error("Supabase error fetching orders for AI summary:", ordersError);
-        throw ordersError; // Let the main catch handle it
+        throw ordersError;
     }
     if (!ordersData || ordersData.length === 0) {
       return { statusCode: 200, headers: commonHeaders, body: JSON.stringify({ summary: 'Недостатньо даних про замовлення для аналізу.' }) };
@@ -67,25 +70,30 @@ ${JSON.stringify(summarizedOrders, null, 2)}
     
     if (!summaryText) {
         console.error('Gemini API returned no text for dashboard summary.');
-        // Consider this a specific type of error if needed for client handling
         return { statusCode: 500, headers: commonHeaders, body: JSON.stringify({ message: 'AI service failed to generate summary text.' })};
     }
 
     return { statusCode: 200, headers: commonHeaders, body: JSON.stringify({ summary: summaryText.trim() }) };
 
   } catch (error: any) {
+    if (error.statusCode) { // It's an AuthError from requireAuth
+      return {
+        statusCode: error.statusCode,
+        headers: commonHeaders,
+        body: JSON.stringify({ message: error.message }),
+      };
+    }
+
     console.error('Error in netlify/functions/dashboardSummary.ts:', error);
     let message = 'An unexpected error occurred while generating the AI summary.';
-    if (error && typeof error.message === 'string' && error.message) {
+    if (error?.message) {
         message = error.message;
     }
     
     let statusCode = 500;
-    // Check if it's a Supabase error
-    if (error && error.code && typeof error.code === 'string' && error.code.startsWith('PGRST')) {
+    if (error?.code?.startsWith('PGRST')) {
       statusCode = 400; // Bad request from Supabase
     }
-    // Add checks for Gemini API specific error codes/structures if available
 
     return {
       statusCode,

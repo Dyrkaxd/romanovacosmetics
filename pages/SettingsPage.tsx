@@ -4,6 +4,7 @@ import { useAuth } from '../AuthContext';
 import { ManagedUser } from '../types';
 import { Database } from '../types/supabase'; // Import Supabase DB types
 import { PlusIcon, TrashIcon, UsersIcon, PencilIcon, XMarkIcon } from '../components/Icons';
+import { authenticatedFetch } from '../utils/api';
 
 const API_BASE_URL = '/api'; // For Netlify functions
 type ManagedUserRow = Database['public']['Tables']['managed_users']['Row'];
@@ -32,7 +33,7 @@ const SettingsPage: React.FC = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${API_BASE_URL}/managedUsers`);
+      const response = await authenticatedFetch(`${API_BASE_URL}/managedUsers`);
       if (!response.ok) {
         let errorMessage = `Failed to fetch managed users. Status: ${response.status} ${response.statusText}`;
         let responseBodyText = '';
@@ -97,9 +98,8 @@ const SettingsPage: React.FC = () => {
         notes: newManagerNotes.trim() || undefined,
         added_by_admin_email: user?.email // Store admin email
       };
-      const response = await fetch(`${API_BASE_URL}/managedUsers`, {
+      const response = await authenticatedFetch(`${API_BASE_URL}/managedUsers`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
       if (!response.ok) {
@@ -125,7 +125,7 @@ const SettingsPage: React.FC = () => {
       resetMessages();
       setIsLoading(true);
       try {
-        const response = await fetch(`${API_BASE_URL}/managedUsers/${managerId}`, {
+        const response = await authenticatedFetch(`${API_BASE_URL}/managedUsers/${managerId}`, {
           method: 'DELETE',
         });
         if (!response.ok && response.status !== 204) { // 204 is success no content
@@ -175,9 +175,8 @@ const SettingsPage: React.FC = () => {
         notes: currentEditNotes.trim() || undefined,
         // email is not editable through this flow
       };
-      const response = await fetch(`${API_BASE_URL}/managedUsers/${editingManager.id}`, {
+      const response = await authenticatedFetch(`${API_BASE_URL}/managedUsers/${editingManager.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
       if (!response.ok) {

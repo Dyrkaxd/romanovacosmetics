@@ -1,10 +1,10 @@
-
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Order, OrderItem, Customer, Product } from '../types';
 import { EyeIcon, XMarkIcon, PlusIcon, TrashIcon, PencilIcon, DocumentTextIcon, PrinterIcon, FilterIcon, DownloadIcon, ChevronDownIcon } from '../components/Icons';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { logoBase64 } from '../assets/logo';
+import { authenticatedFetch } from '../utils/api';
 
 
 const orderStatusValues: Order['status'][] = ['Pending', 'Shipped', 'Delivered', 'Cancelled'];
@@ -74,11 +74,10 @@ const OrdersPage: React.FC = () => {
 
 
   const fetchAuxiliaryData = useCallback(async () => {
-    setIsLoading(true); 
     try {
       const [custRes, prodRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/customers`),
-        fetch(`${API_BASE_URL}/products`),
+        authenticatedFetch(`${API_BASE_URL}/customers`),
+        authenticatedFetch(`${API_BASE_URL}/products`),
       ]);
       if (!custRes.ok) throw new Error(`Failed to fetch customers: ${custRes.statusText}`);
       if (!prodRes.ok) throw new Error(`Failed to fetch products: ${prodRes.statusText}`);
@@ -91,8 +90,6 @@ const OrdersPage: React.FC = () => {
     } catch (err: any) {
       console.error("Failed to fetch auxiliary data:", err);
       setPageError(err.message || 'Could not load required data for orders.');
-    } finally {
-      // setIsLoading(false); // Let fetchOrders handle the final isLoading state
     }
   }, []);
   
@@ -100,7 +97,7 @@ const OrdersPage: React.FC = () => {
     setIsLoading(true);
     setPageError(null);
     try {
-      const response = await fetch(`${API_BASE_URL}/orders`);
+      const response = await authenticatedFetch(`${API_BASE_URL}/orders`);
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: 'Failed to fetch orders' }));
         throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
@@ -116,8 +113,13 @@ const OrdersPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    fetchAuxiliaryData();
-    fetchOrders();
+    const loadAllData = async () => {
+      setIsLoading(true);
+      await fetchAuxiliaryData();
+      await fetchOrders();
+      setIsLoading(false);
+    }
+    loadAllData();
   }, [fetchAuxiliaryData, fetchOrders]);
 
   const filteredOrders = useMemo(() => {
@@ -132,7 +134,6 @@ const OrdersPage: React.FC = () => {
         const orderDate = new Date(order.date);
         const startDate = new Date(filterStartDate);
         const endDate = new Date(filterEndDate);
-        // Normalize dates to avoid time comparison issues
         orderDate.setHours(0,0,0,0);
         startDate.setHours(0,0,0,0);
         endDate.setHours(0,0,0,0);
@@ -253,9 +254,8 @@ const OrdersPage: React.FC = () => {
     try {
       const url = isEditing && activeOrderData.id ? `${API_BASE_URL}/orders/${activeOrderData.id}` : `${API_BASE_URL}/orders`;
       const method = isEditing ? 'PUT' : 'POST';
-      const response = await fetch(url, {
+      const response = await authenticatedFetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(orderPayload),
       });
       if (!response.ok) {
@@ -278,7 +278,6 @@ const OrdersPage: React.FC = () => {
     if (mode === 'add') {
       setActiveOrderData({ customerId: '', status: 'Pending', items: [{ ...initialNewOrderItem }], totalAmount: 0 });
     } else if (order) {
-      // Deep copy items to avoid direct state mutation on edit
       setActiveOrderData({ ...order, items: order.items.map(item => ({ ...item })) });
     }
   };
@@ -295,9 +294,8 @@ const OrdersPage: React.FC = () => {
     setIsLoading(true); setModalError(null); 
     try {
       const payload = { ...viewOrder, status: editableOrderStatus }; 
-      const response = await fetch(`${API_BASE_URL}/orders/${viewOrder.id}`, {
+      const response = await authenticatedFetch(`${API_BASE_URL}/orders/${viewOrder.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload), 
       });
       if (!response.ok) {
@@ -334,8 +332,8 @@ const OrdersPage: React.FC = () => {
     if (window.confirm('Ви впевнені, що хочете видалити це замовлення? Цю дію неможливо скасувати.')) {
       setIsLoading(true); setPageError(null);
       try {
-        const response = await fetch(`${API_BASE_URL}/orders/${orderId}`, { method: 'DELETE' });
-        if (!response.ok) {
+        const response = await authenticatedFetch(`${API_BASE_URL}/orders/${orderId}`, { method: 'DELETE' });
+        if (!response.ok && response.status !== 204) {
           const errorData = await response.json().catch(() => ({ message: 'Failed to delete order' }));
           throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
         }
@@ -426,7 +424,7 @@ const OrdersPage: React.FC = () => {
                       {orderStatusTranslations[order.status] || order.status}
                     </span>
                   </td>
-                  <td className="px-3 py-4 md:px-6 md:py-4 whitespace-nowrap text-sm text-slate-700 hidden sm:table-cell">${order.totalAmount.toFixed(2)}</td>
+                  <td className="px-3 py-4 md:px-6 md:py-4 whitespace-nowrap text-sm text-slate-700 hidden sm:table-cell">₴{order.totalAmount.toFixed(2)}</td>
                   <td className="px-3 py-4 md:px-6 md:py-4 whitespace-nowrap text-sm font-medium space-x-1">
                     <button onClick={() => handleViewOrder(order)} className="text-sky-600 hover:text-sky-800 transition-colors p-1" aria-label={`Переглянути деталі замовлення ${order.id}`} title="Переглянути"><EyeIcon className="w-5 h-5 inline" /></button>
                     <button onClick={() => openOrderModal('edit', order)} className="text-indigo-600 hover:text-indigo-800 transition-colors p-1" aria-label={`Редагувати замовлення ${order.id}`} title="Редагувати"><PencilIcon className="w-5 h-5 inline" /></button>
@@ -464,7 +462,7 @@ const OrdersPage: React.FC = () => {
               <div>
                 <label htmlFor="customer" className="block text-sm font-medium text-slate-700">Клієнт <span aria-hidden="true" className="text-red-500">*</span></label>
                 {modalMode === 'add' ? (
-                  <select id="customer" name="customerId" value={activeOrderData.customerId} onChange={(e) => setActiveOrderData(prev => prev ? { ...prev, customerId: e.target.value } : null)} required aria-required="true" className="mt-1 block w-full border-slate-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm p-2">
+                  <select id="customer" name="customerId" value={activeOrderData.customerId || ''} onChange={(e) => setActiveOrderData(prev => prev ? { ...prev, customerId: e.target.value } : null)} required aria-required="true" className="mt-1 block w-full border-slate-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm p-2">
                     <option value="" disabled>Виберіть клієнта</option>
                     {customers.length > 0 ? customers.map(customer => (<option key={customer.id} value={customer.id}>{customer.name} ({customer.email})</option>)) : <option disabled>Клієнти відсутні</option>}
                   </select>
@@ -474,7 +472,6 @@ const OrdersPage: React.FC = () => {
               </div>
               <div>
                 <h4 className="text-md font-medium text-slate-700 mb-2">Товари в замовленні <span aria-hidden="true" className="text-red-500">*</span></h4>
-                {/* Desktop Headers */}
                 <div className="hidden sm:grid sm:grid-cols-12 gap-2 mb-1 px-2 text-xs font-medium text-slate-500 uppercase">
                     <div className="col-span-4">Назва</div>
                     <div className="col-span-2">Кількість</div>
@@ -577,7 +574,7 @@ const OrdersPage: React.FC = () => {
                 <div className="sm:col-span-1 text-right">
                   <p className="text-sm font-medium text-slate-700">Загальна сума</p>
                   <p className="text-2xl font-semibold text-slate-800 mt-1">
-                      ${calculateTotalAmount(activeOrderData.items).toFixed(2)}
+                      ₴{calculateTotalAmount(activeOrderData.items).toFixed(2)}
                   </p>
                 </div>
               </div>
@@ -621,11 +618,11 @@ const OrdersPage: React.FC = () => {
                       <div>
                         <p className="font-medium text-slate-800">{item.productName}</p>
                         <p className="text-xs text-slate-600">
-                          К-сть: {item.quantity} @ ${item.price.toFixed(2)}
+                          К-сть: {item.quantity} @ ₴{item.price.toFixed(2)}
                           {item.discount ? <span className="text-red-500 font-semibold"> (-{item.discount}%)</span> : ''}
                         </p>
                       </div>
-                      <p className="text-slate-700 font-medium">${(item.price * item.quantity * (1 - (item.discount || 0) / 100)).toFixed(2)}</p>
+                      <p className="text-slate-700 font-medium">₴{(item.price * item.quantity * (1 - (item.discount || 0) / 100)).toFixed(2)}</p>
                     </li>
                   ))}
                 </ul>
@@ -634,15 +631,15 @@ const OrdersPage: React.FC = () => {
               <div className="mt-4 border-t pt-4">
                   <div className="flex justify-between text-sm">
                       <p className="text-slate-600">Проміжна сума:</p>
-                      <p className="font-medium text-slate-800">${(viewOrder.items.reduce((acc, item) => acc + item.price * item.quantity, 0)).toFixed(2)}</p>
+                      <p className="font-medium text-slate-800">₴{(viewOrder.items.reduce((acc, item) => acc + item.price * item.quantity, 0)).toFixed(2)}</p>
                   </div>
                   <div className="flex justify-between text-sm mt-1">
                       <p className="text-slate-600">Загальна знижка:</p>
-                      <p className="font-medium text-red-500">-${(viewOrder.items.reduce((acc, item) => acc + (item.price * item.quantity * (item.discount || 0) / 100), 0)).toFixed(2)}</p>
+                      <p className="font-medium text-red-500">-₴{(viewOrder.items.reduce((acc, item) => acc + (item.price * item.quantity * (item.discount || 0) / 100), 0)).toFixed(2)}</p>
                   </div>
                   <div className="flex justify-between text-lg font-semibold mt-2 border-t pt-2">
                       <p className="text-slate-800">Всього:</p>
-                      <p className="text-slate-900">${viewOrder.totalAmount.toFixed(2)}</p>
+                      <p className="text-slate-900">₴{viewOrder.totalAmount.toFixed(2)}</p>
                   </div>
               </div>
 
@@ -681,8 +678,6 @@ const BillOfLadingModal: React.FC<DocumentModalProps> = ({ order, customer, onCl
       printWindow?.document.write(`<style> body { margin: 20px; font-family: Arial, sans-serif; font-size: 10pt; color: #333; } .bol-container { border: 1px solid #ccc; padding: 20px; } .bol-header { text-align: center; font-size: 1.5em; font-weight: bold; margin-bottom: 20px; } .bol-section { margin-bottom: 15px; padding: 10px; border: 1px solid #eee; } .bol-section-title { font-weight: bold; margin-bottom: 5px; font-size: 0.9em; text-transform: uppercase; color: #333; } .bol-grid-print { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; } .bol-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 9pt; } .bol-table th, .bol-table td { border: 1px solid #ddd; padding: 6px; text-align: left; } .bol-table th { background-color: #f8f8f8; } .signatures-print { margin-top: 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; font-size: 9pt;} .signatures-print div { margin-top: 20px; } .no-print { display: none !important; } p { margin: 2px 0; color: #333; } @media print { body { color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; } p { color: #000 !important; } .bol-grid-print { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 20px !important; } .signatures-print { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 20px !important; } .bol-section-title { color: #000 !important; } } </style>`);
       printWindow?.document.write('</head><body>');
       const contentToPrint = printableArea.cloneNode(true) as HTMLElement;
-      // Remove elements not meant for printing (already handled by .print-hidden used on buttons)
-      // contentToPrint.querySelectorAll('.print-hidden').forEach(el => el.remove()); 
       printWindow?.document.write(contentToPrint.innerHTML);
       printWindow?.document.write('</body></html>');
       printWindow?.document.close();
@@ -697,88 +692,121 @@ const BillOfLadingModal: React.FC<DocumentModalProps> = ({ order, customer, onCl
 
     setIsGeneratingPdf(true);
     try {
-      const canvas = await html2canvas(bolContent, {
-        scale: 2, // Increase scale for better resolution
-        useCORS: true, // If any images are from external domains
-        logging: false,
-      });
+      const canvas = await html2canvas(bolContent, { scale: 2, useCORS: true, logging: false });
       const imgData = canvas.toDataURL('image/png');
-      
-      // A4 dimensions in mm: 210 x 297
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      
       const imgProps = pdf.getImageProperties(imgData);
-      const imgWidth = pdfWidth - 20; // pdfWidth with some margin
-      const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
+      const imgHeight = (imgProps.height * (pdfWidth - 20)) / imgProps.width;
       
-      let currentPosition = 10; // Top margin
-      let remainingHeight = imgHeight;
-
-      pdf.addImage(imgData, 'PNG', 10, currentPosition, imgWidth, imgHeight);
-      remainingHeight -= (pdfHeight - 20); // Subtract available height on first page (with margins)
-
-      while (remainingHeight > 0) {
-        currentPosition = -(pdfHeight - 20 - (imgHeight - remainingHeight)) ; // Negative offset for next part of image
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 10, currentPosition, imgWidth, imgHeight);
-        remainingHeight -= (pdfHeight-20);
-      }
-      
+      pdf.addImage(imgData, 'PNG', 10, 10, pdfWidth - 20, imgHeight);
       pdf.save(`bill_of_lading_${order.id.substring(0,8)}.pdf`);
-
     } catch (error) {
-        console.error("Error generating PDF:", error);
-        alert("Не вдалося створити PDF. Будь ласка, спробуйте ще раз.");
+      console.error("Failed to generate PDF for Bill of Lading:", error);
+      alert('Не вдалося створити PDF. Будь ласка, спробуйте ще раз.');
     } finally {
-        setIsGeneratingPdf(false);
+      setIsGeneratingPdf(false);
     }
   };
 
-
   return (
-    <div role="dialog" aria-modal="true" aria-labelledby="bol-modal-title" className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[60] p-2 sm:p-4">
-      <div className="bg-white p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-sm sm:max-w-md md:max-w-xl lg:max-w-3xl max-h-[95vh] flex flex-col">
-        <div className="flex justify-between items-center mb-4 border-b pb-3 print-hidden">
-          <h3 id="bol-modal-title" className="text-lg sm:text-xl font-semibold text-slate-800">Накладна: {order.id.substring(0,8)}...</h3>
-          <button onClick={onClose} aria-label="Закрити модальне вікно накладної" className="text-slate-400 hover:text-slate-600" disabled={isGeneratingPdf}><XMarkIcon className="w-6 h-6"/></button>
-        </div>
-        <div className="overflow-y-auto flex-grow pr-0 sm:pr-2 text-xs sm:text-sm text-slate-700">
-          {/* Content to be printed or PDF'd */}
-          <div id="billOfLadingContent" className="bol-container p-2 sm:p-4 bg-white"> {/* Ensure bg-white for canvas capture */}
-            <div className="bol-header text-base sm:text-lg text-slate-800">ТОВАРНО-ТРАНСПОРТНА НАКЛАДНА</div>
-            <div className="text-right mb-4 text-slate-700"><strong>Дата видачі:</strong> {new Date().toLocaleDateString()}</div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bol-grid-print">
-              <div className="bol-section"><div className="bol-section-title text-slate-800">Відправник</div><p><strong>{shipper.name}</strong></p><p>{shipper.address}</p><p>Контакт: {shipper.contact}</p></div>
-              <div className="bol-section"><div className="bol-section-title text-slate-800">Одержувач</div>{customer ? (<><p><strong>{customer.name}</strong></p><p>{customer.address?.street}</p><p>{customer.address?.city}, {customer.address?.state} {customer.address?.zip}</p><p>{customer.address?.country}</p><p>Контакт: {customer.phone || customer.email}</p></>) : <p>Дані клієнта недоступні.</p>}</div>
+    <div role="dialog" aria-modal="true" aria-labelledby="bol-modal-title" className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white p-2 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+        <div id="billOfLadingContent" className="p-6 overflow-y-auto text-sm text-slate-800">
+          <div className="bol-container">
+            <header className="flex justify-between items-start mb-6">
+                <div>
+                    <img src={logoBase64} alt="Romanova Cosmetics Logo" className="h-16 w-auto" />
+                    <p className="font-bold text-lg mt-2">ROMANOVA Cosmetics</p>
+                </div>
+                <div className="text-right">
+                    <h2 id="bol-modal-title" className="text-2xl font-bold">ТОВАРНО-ТРАНСПОРТНА НАКЛАДНА</h2>
+                    <p>Номер замовлення: <span className="font-semibold">{order.id.substring(0,8).toUpperCase()}</span></p>
+                    <p>Дата: <span className="font-semibold">{new Date(order.date).toLocaleDateString()}</span></p>
+                </div>
+            </header>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bol-grid-print">
+              <section className="bol-section">
+                <h3 className="bol-section-title">Відправник</h3>
+                <p className="font-bold">{shipper.name}</p>
+                <p>{shipper.address}</p>
+                <p>Контакт: {shipper.contact}</p>
+              </section>
+              <section className="bol-section">
+                <h3 className="bol-section-title">Одержувач</h3>
+                {customer ? <>
+                  <p className="font-bold">{customer.name}</p>
+                  <p>{customer.address?.street || ''}</p>
+                  <p>{customer.address?.city}, {customer.address?.state} {customer.address?.zip}</p>
+                  <p>{customer.address?.country}</p>
+                  <p>Контакт: {customer.phone || customer.email}</p>
+                </> : <p>Інформація про клієнта недоступна.</p>}
+              </section>
             </div>
-            <div className="bol-section mt-4"><div className="bol-section-title text-slate-800">Перевізник</div><p><strong>{carrier.name}</strong></p><p>Контакт: {carrier.contact}</p></div>
-            <div className="bol-section mt-4">
-              <div className="bol-section-title text-slate-800">Деталі відправлення</div>
-              <p><strong>ID Замовлення:</strong> {order.id.substring(0,12)}...</p><p><strong>Дата відправлення:</strong> {new Date(order.date).toLocaleDateString()}</p><p><strong>Кількість місць:</strong> 1 (Партія)</p><p><strong>Загальна вага брутто (прибл.):</strong> {calculateApproxWeight(order.items)} кг</p><p><strong>Загальна вартість замовлення:</strong> ${order.totalAmount.toFixed(2)}</p><p><strong>Оголошена вартість для перевезення:</strong> ${order.totalAmount.toFixed(2)}</p>
-              <div className="bol-section-title mt-3 text-slate-800">Опис товарів</div>
-              <div className="overflow-x-auto"><table className="bol-table w-full text-slate-700"><thead><tr><th className="text-slate-800">Назва товару</th><th className="text-slate-800">К-сть</th><th className="text-slate-800">Ціна</th><th className="text-slate-800">Всього</th></tr></thead><tbody>
-                {order.items.map((item, index) => (<tr key={item.id || index}><td>{item.productName}</td><td className="text-center">{item.quantity}</td><td className="text-right">${item.price.toFixed(2)}</td><td className="text-right">${(item.quantity * item.price).toFixed(2)}</td></tr>))}
-              </tbody></table></div>
-            </div>
-            <div className="bol-section mt-4"><div className="bol-section-title text-slate-800">Особливі вказівки</div><p>Обережно. Стандартна доставка.</p></div>
-            <div className="text-xs mt-4 text-slate-600"><p>ОТРИМАНО, відповідно до класифікацій та тарифів...</p></div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 signatures-print"><div><p>Підпис відправника:</p><div className="h-8 border-b border-gray-400 mt-2"></div><p>Дата: _______________</p></div><div><p>Підпис перевізника:</p><div className="h-8 border-b border-gray-400 mt-2"></div><p>Дата: _______________</p></div></div>
-            <div className="mt-6 text-center text-xs text-slate-600">Це необоротна накладна.</div>
+
+            <section className="bol-section mt-6">
+                <h3 className="bol-section-title">Інформація про перевізника</h3>
+                <p><span className="font-semibold">Компанія:</span> {carrier.name}</p>
+                <p><span className="font-semibold">Контакт:</span> {carrier.contact}</p>
+            </section>
+            
+            <section className="mt-6">
+              <h3 className="bol-section-title">Опис вантажу</h3>
+              <table className="w-full border-collapse text-left bol-table">
+                <thead>
+                  <tr>
+                    <th className="p-2 border-b-2">Кількість</th>
+                    <th className="p-2 border-b-2">Опис</th>
+                    <th className="p-2 border-b-2">Приблизна вага (кг)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {order.items.map((item, index) => (
+                    <tr key={index} className="border-t">
+                      <td className="p-2">{item.quantity}</td>
+                      <td className="p-2">{item.productName}</td>
+                      <td className="p-2">{(item.quantity * 0.1).toFixed(2)}</td>
+                    </tr>
+                  ))}
+                  <tr className="font-bold bg-slate-50 border-t-2">
+                     <td className="p-2">{order.items.reduce((sum, item) => sum + item.quantity, 0)} (всього)</td>
+                     <td className="p-2">Загальний вантаж</td>
+                     <td className="p-2">{calculateApproxWeight(order.items)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </section>
+            
+            <footer className="mt-12 text-xs text-slate-500">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 signatures-print">
+                    <div>
+                        <p className="mb-2">Підпис відправника:</p>
+                        <div className="border-t border-slate-400 pt-1">
+                            <p>Це електронний документ. Підпис не потрібен, якщо інше не обумовлено.</p>
+                            <p>Дата: {new Date().toLocaleDateString()}</p>
+                        </div>
+                    </div>
+                    <div>
+                        <p className="mb-2">Підпис перевізника/водія:</p>
+                         <div className="border-t border-slate-400 pt-1">
+                            <p>Я підтверджую отримання вищезазначеного вантажу в хорошому стані.</p>
+                        </div>
+                    </div>
+                </div>
+                 <p className="mt-8 text-center">Дякуємо за співпрацю з ROMANOVA Cosmetics!</p>
+            </footer>
           </div>
         </div>
-        <div className="mt-6 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 pt-4 border-t print-hidden">
-          <button type="button" onClick={onClose} className="w-full sm:w-auto bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2 px-4 rounded-md shadow-sm transition-colors" disabled={isGeneratingPdf}>Закрити</button>
-          <button 
-            type="button" 
-            onClick={handleDownloadPdf} 
-            className="w-full sm:w-auto flex items-center justify-center bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md shadow-sm transition-colors disabled:opacity-50"
-            disabled={isGeneratingPdf}
-          >
-            <DownloadIcon className="w-5 h-5 mr-2"/> {isGeneratingPdf ? 'Генерація PDF...' : 'Завантажити PDF'}
-          </button>
-          <button type="button" onClick={handlePrint} className="w-full sm:w-auto flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md shadow-sm transition-colors" disabled={isGeneratingPdf}><PrinterIcon className="w-5 h-5 mr-2"/> Роздрукувати</button>
+        <div className="flex-shrink-0 flex justify-end items-center p-4 bg-slate-50 border-t border-slate-200 space-x-3 no-print">
+            <button onClick={onClose} className="bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium py-2 px-4 rounded-md shadow-sm transition-colors">Закрити</button>
+            <button onClick={handlePrint} className="flex items-center bg-sky-600 hover:bg-sky-700 text-white font-medium py-2 px-4 rounded-md shadow-sm transition-colors">
+                <PrinterIcon className="w-5 h-5 mr-2"/>Друк
+            </button>
+            <button onClick={handleDownloadPdf} className="flex items-center bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md shadow-sm transition-colors" disabled={isGeneratingPdf}>
+                <DownloadIcon className="w-5 h-5 mr-2"/>
+                {isGeneratingPdf ? 'Створення PDF...' : 'Завантажити PDF'}
+            </button>
         </div>
       </div>
     </div>
@@ -786,121 +814,153 @@ const BillOfLadingModal: React.FC<DocumentModalProps> = ({ order, customer, onCl
 };
 
 const InvoiceModal: React.FC<DocumentModalProps> = ({ order, customer, onClose }) => {
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+
   if (!order) return null;
-  const storeInfo = { name: 'ROMANOVA Cosmetics', address: 'вул. Торгова 1, м. Київ, 01001', phone: '+380 (44) 123-45-67', email: 'sales@romanovacosmetics.com', taxId: 'ІПН 1234567890' };
-  
+
   const handlePrint = () => {
     const printableArea = document.getElementById('invoiceContent');
     if (printableArea) {
       const printWindow = window.open('', '_blank');
       printWindow?.document.write('<html><head><title>Рахунок-фактура</title>');
-      // Re-use similar print styles, adjust as needed for invoice specifics
-      printWindow?.document.write(`<style> body { margin: 20px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 11pt; color: #333; } .invoice-container { border: 1px solid #ddd; padding: 25px; max-width: 800px; margin: auto; background-color: #fff; } .invoice-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; } .invoice-header .store-logo { font-size: 2em; font-weight: bold; color: #4A5568; } .invoice-header .invoice-title { text-align: right; } .invoice-title h1 { font-size: 1.8em; color: #2D3748; margin: 0 0 5px 0; } .invoice-title p { margin: 0; font-size: 0.9em; } .invoice-details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px; font-size: 0.95em; } .invoice-section-title { font-weight: bold; margin-bottom: 8px; font-size: 1em; color: #4A5568; border-bottom: 1px solid #eee; padding-bottom: 4px; } .invoice-table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.9em; } .invoice-table th, .invoice-table td { border: 1px solid #e2e8f0; padding: 10px; text-align: left; } .invoice-table th { background-color: #f7fafc; font-weight: 600; } .invoice-table td.number, .invoice-table th.number { text-align: right; } .invoice-totals { margin-top: 30px; text-align: right; } .invoice-totals table { width: auto; margin-left: auto; font-size: 1em; } .invoice-totals td { padding: 8px 10px; } .invoice-totals .grand-total { font-weight: bold; font-size: 1.2em; color: #2D3748; } .invoice-footer { margin-top: 40px; text-align: center; font-size: 0.8em; color: #718096; border-top: 1px solid #eee; padding-top: 15px; } .print-hidden { display: none !important; } @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; color: #000 !important; } .invoice-container { border: none; box-shadow: none; } .invoice-header .store-logo, .invoice-title h1, .invoice-section-title, .invoice-totals .grand-total {color: #000 !important;} .invoice-table th {background-color: #f0f0f0 !important;} } </style>`);
+      // Adding styles for printing
+      printWindow?.document.write(`<style> body { margin: 20px; font-family: Arial, sans-serif; font-size: 10pt; color: #333; } .invoice-container { border: 1px solid #ccc; padding: 20px; } .invoice-header { text-align: center; font-size: 1.5em; font-weight: bold; margin-bottom: 20px; } .invoice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; } .invoice-section { margin-bottom: 15px; } .invoice-section-title { font-weight: bold; margin-bottom: 5px; font-size: 0.9em; text-transform: uppercase; color: #555; } .invoice-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 9pt; } .invoice-table th, .invoice-table td { border: 1px solid #ddd; padding: 8px; text-align: left; } .invoice-table .text-right { text-align: right; } .totals-section { margin-top: 20px; float: right; width: 40%; } .totals-table { width: 100%; } .totals-table td { padding: 4px 8px; } .no-print { display: none !important; } p { margin: 2px 0; } @media print { body { color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; } .invoice-grid { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 20px !important; } } </style>`);
       printWindow?.document.write('</head><body>');
       const contentToPrint = printableArea.cloneNode(true) as HTMLElement;
-      // contentToPrint.querySelectorAll('.print-hidden').forEach(el => el.remove());
       printWindow?.document.write(contentToPrint.innerHTML);
       printWindow?.document.write('</body></html>');
       printWindow?.document.close();
       printWindow?.focus();
-      setTimeout(() => { printWindow?.print(); }, 500);
+      setTimeout(() => { printWindow?.print(); }, 500); 
     }
   };
   
-  const subtotal = order.items.reduce((acc, item) => acc + item.price * item.quantity, 0);
-  const totalDiscount = order.items.reduce((acc, item) => acc + (item.price * item.quantity * (item.discount || 0) / 100), 0);
+  const handleDownloadPdf = async () => {
+    const invoiceContent = document.getElementById('invoiceContent');
+    if (!invoiceContent || !order) return;
+
+    setIsGeneratingPdf(true);
+    try {
+      const canvas = await html2canvas(invoiceContent, { scale: 2, useCORS: true, logging: false });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const imgProps = pdf.getImageProperties(imgData);
+      const imgHeight = (imgProps.height * (pdfWidth - 20)) / imgProps.width;
+      
+      pdf.addImage(imgData, 'PNG', 10, 10, pdfWidth - 20, imgHeight);
+      pdf.save(`invoice_${order.id.substring(0,8)}.pdf`);
+    } catch (error) {
+      console.error("Failed to generate PDF for Invoice:", error);
+      alert('Не вдалося створити PDF. Будь ласка, спробуйте ще раз.');
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
+  const subtotal = order.items.reduce((acc, item) => acc + item.quantity * item.price, 0);
+  const totalDiscount = order.items.reduce((acc, item) => acc + (item.quantity * item.price * (item.discount || 0) / 100), 0);
 
   return (
-    <div role="dialog" aria-modal="true" aria-labelledby="invoice-modal-title" className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[60] p-2 sm:p-4">
-      <div className="bg-white p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-sm sm:max-w-md md:max-w-xl lg:max-w-3xl max-h-[95vh] flex flex-col">
-        <div className="flex justify-between items-center mb-4 border-b pb-3 print-hidden">
-          <h3 id="invoice-modal-title" className="text-lg sm:text-xl font-semibold text-slate-800">Рахунок-фактура: {order.id.substring(0,8)}...</h3>
-          <button onClick={onClose} aria-label="Закрити модальне вікно рахунку" className="text-slate-400 hover:text-slate-600"><XMarkIcon className="w-6 h-6"/></button>
-        </div>
-        <div className="overflow-y-auto flex-grow pr-0 sm:pr-2 text-xs sm:text-sm text-slate-700">
-          <div id="invoiceContent" className="invoice-container p-4 sm:p-6 bg-white"> {/* Ensure bg-white for canvas capture */}
-            <header className="invoice-header">
-              <div>
-                <div className="flex items-center space-x-3">
-                  <img src={logoBase64} alt="Romanova Cosmetics Logo" className="h-24 w-24" />
+    <div role="dialog" aria-modal="true" aria-labelledby="invoice-modal-title" className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white p-2 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+        <div id="invoiceContent" className="p-6 overflow-y-auto text-sm text-slate-800">
+          <div className="invoice-container">
+            <header className="flex justify-between items-start mb-8">
+                <div>
+                    <img src={logoBase64} alt="Romanova Cosmetics Logo" className="h-16 w-auto" />
+                    <p className="font-bold text-lg mt-2">ROMANOVA Cosmetics</p>
+                    <p>вул. Торгова 1</p>
+                    <p>Київ, 01001</p>
+                    <p>Україна</p>
                 </div>
-                <p className="mt-2">{storeInfo.address}</p>
-                <p>Телефон: {storeInfo.phone} | Email: {storeInfo.email}</p>
-                <p>ІПН: {storeInfo.taxId}</p>
-              </div>
-              <div className="invoice-title">
-                <h1>РАХУНОК-ФАКТУРА</h1>
-                <p><strong>Номер:</strong> {order.id.substring(0,12)}...</p>
-                <p><strong>Дата:</strong> {new Date(order.date).toLocaleDateString()}</p>
-              </div>
+                <div className="text-right">
+                    <h2 id="invoice-modal-title" className="text-3xl font-bold text-slate-700">РАХУНОК-ФАКТУРА</h2>
+                    <p className="mt-2">Номер рахунку: <span className="font-semibold">INV-{order.id.substring(0,8).toUpperCase()}</span></p>
+                    <p>Дата: <span className="font-semibold">{new Date(order.date).toLocaleDateString()}</span></p>
+                </div>
             </header>
-            <div className="invoice-details-grid">
-              <div>
-                <div className="invoice-section-title">Платник:</div>
-                {customer ? (
-                  <>
-                    <p><strong>{customer.name}</strong></p>
-                    <p>{customer.address?.street}</p>
-                    <p>{customer.address?.city}{customer.address?.state && `, ${customer.address.state}`} {customer.address?.zip}</p>
-                    <p>{customer.address?.country}</p>
-                    <p>Email: {customer.email}</p>
-                    {customer.phone && <p>Телефон: {customer.phone}</p>}
-                  </>
-                ) : <p>Інформація про клієнта відсутня.</p>}
-              </div>
-              <div>
-                <div className="invoice-section-title">Отримувач (Постачальник):</div>
-                <p><strong>{storeInfo.name}</strong></p>
-                <p>{storeInfo.address}</p>
-                <p>ІПН: {storeInfo.taxId}</p>
-              </div>
+
+            <div className="invoice-grid grid grid-cols-2 gap-8">
+              <section className="invoice-section">
+                <h3 className="invoice-section-title border-b pb-1 mb-2">Платник</h3>
+                {customer ? <>
+                  <p className="font-bold">{customer.name}</p>
+                  {customer.address?.street && <p>{customer.address.street}</p>}
+                  <p>{customer.address?.city}, {customer.address?.state} {customer.address?.zip}</p>
+                  <p>{customer.address?.country}</p>
+                  <p>{customer.email}</p>
+                </> : <p>Інформація про клієнта недоступна.</p>}
+              </section>
+              <section className="invoice-section text-right">
+                 <h3 className="invoice-section-title border-b pb-1 mb-2 text-left">Реквізити</h3>
+                 <p className="text-left">Будь ласка, вказуйте номер рахунку при оплаті.</p>
+                 <p className="text-left mt-2"><span className="font-bold">Термін оплати:</span> 15 днів</p>
+              </section>
             </div>
-            <div className="invoice-section-title">Замовлені товари/послуги:</div>
-            <table className="invoice-table w-full">
-              <thead><tr><th>#</th><th>Назва товару</th><th className="number">К-сть</th><th className="number">Ціна</th><th className="number">Знижка (%)</th><th className="number">Сума</th></tr></thead>
-              <tbody>
-                {order.items.map((item, index) => {
-                   const itemTotal = item.quantity * item.price;
-                   const finalItemTotal = itemTotal * (1 - (item.discount || 0) / 100);
-                   return (
-                      <tr key={item.id || index}>
-                        <td>{index + 1}</td>
-                        <td>{item.productName}</td>
-                        <td className="number">{item.quantity}</td>
-                        <td className="number">${item.price.toFixed(2)}</td>
-                        <td className="number">{item.discount || 0}%</td>
-                        <td className="number">${finalItemTotal.toFixed(2)}</td>
-                      </tr>
-                   );
-                })}
-              </tbody>
-            </table>
-            <div className="invoice-totals">
-              <table>
+            
+            <section className="mt-8">
+              <table className="w-full border-collapse text-left invoice-table">
+                <thead className="bg-slate-50">
+                  <tr>
+                    <th className="p-3">Товар / Послуга</th>
+                    <th className="p-3 text-right">Кількість</th>
+                    <th className="p-3 text-right">Ціна за одиницю</th>
+                    <th className="p-3 text-right">Знижка</th>
+                    <th className="p-3 text-right">Сума</th>
+                  </tr>
+                </thead>
                 <tbody>
-                  <tr><td>Проміжна сума:</td><td className="number">${subtotal.toFixed(2)}</td></tr>
-                  {totalDiscount > 0 && (
-                    <tr>
-                      <td>Загальна знижка:</td>
-                      <td className="number text-red-500">-${totalDiscount.toFixed(2)}</td>
+                  {order.items.map((item, index) => (
+                    <tr key={index} className="border-t">
+                      <td className="p-3 font-medium">{item.productName}</td>
+                      <td className="p-3 text-right">{item.quantity}</td>
+                      <td className="p-3 text-right">₴{item.price.toFixed(2)}</td>
+                      <td className="p-3 text-right">{item.discount ? `${item.discount}%` : '-'}</td>
+                      <td className="p-3 text-right font-medium">₴{(item.quantity * item.price * (1 - (item.discount || 0)/100)).toFixed(2)}</td>
                     </tr>
-                  )}
-                  {/* Add Tax/VAT line if applicable */}
-                  {/* <tr><td>ПДВ (20%):</td><td className="number">${(order.totalAmount * 0.2).toFixed(2)}</td></tr> */}
-                  <tr className="grand-total"><td>До сплати:</td><td className="number">${order.totalAmount.toFixed(2)}</td></tr>
+                  ))}
                 </tbody>
               </table>
-            </div>
-            <footer className="invoice-footer">
-                <p>Дякуємо за ваше замовлення!</p>
-                <p>Будь ласка, здійсніть оплату протягом 5 робочих днів.</p>
+            </section>
+            
+            <section className="mt-6">
+              <div className="totals-section">
+                <table className="w-full totals-table">
+                    <tbody>
+                        <tr>
+                            <td className="text-slate-600">Проміжна сума:</td>
+                            <td className="text-right">₴{subtotal.toFixed(2)}</td>
+                        </tr>
+                        <tr>
+                            <td className="text-slate-600">Загальна знижка:</td>
+                            <td className="text-right text-red-500">-₴{totalDiscount.toFixed(2)}</td>
+                        </tr>
+                        <tr className="font-bold text-lg border-t-2 border-slate-700">
+                            <td className="pt-2">Всього до сплати:</td>
+                            <td className="text-right pt-2">₴{order.totalAmount.toFixed(2)}</td>
+                        </tr>
+                    </tbody>
+                </table>
+              </div>
+              <div style={{clear: "both"}}></div>
+            </section>
+            
+            <footer className="mt-12 pt-6 border-t text-xs text-slate-500 text-center">
+                <p>Якщо у вас є питання щодо цього рахунку, будь ласка, зв'яжіться з нами.</p>
+                <p className="font-semibold mt-1">Дякуємо за ваш бізнес!</p>
             </footer>
           </div>
         </div>
-        <div className="mt-6 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 pt-4 border-t print-hidden">
-          <button type="button" onClick={onClose} className="w-full sm:w-auto bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2 px-4 rounded-md shadow-sm transition-colors">Закрити</button>
-          {/* Add PDF download for Invoice too if needed, similar to BoL */}
-          <button type="button" onClick={handlePrint} className="w-full sm:w-auto flex items-center justify-center bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md shadow-sm transition-colors"><PrinterIcon className="w-5 h-5 mr-2"/> Роздрукувати</button>
+        <div className="flex-shrink-0 flex justify-end items-center p-4 bg-slate-50 border-t border-slate-200 space-x-3 no-print">
+            <button onClick={onClose} className="bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium py-2 px-4 rounded-md shadow-sm transition-colors">Закрити</button>
+            <button onClick={handlePrint} className="flex items-center bg-sky-600 hover:bg-sky-700 text-white font-medium py-2 px-4 rounded-md shadow-sm transition-colors">
+                <PrinterIcon className="w-5 h-5 mr-2"/>Друк
+            </button>
+            <button onClick={handleDownloadPdf} className="flex items-center bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md shadow-sm transition-colors" disabled={isGeneratingPdf}>
+                <DownloadIcon className="w-5 h-5 mr-2"/>
+                {isGeneratingPdf ? 'Створення PDF...' : 'Завантажити PDF'}
+            </button>
         </div>
       </div>
     </div>

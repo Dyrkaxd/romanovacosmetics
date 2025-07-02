@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Product } from '../types';
 import { PlusIcon, XMarkIcon, EyeIcon, PencilIcon, TrashIcon } from '../components/Icons';
+import { authenticatedFetch } from '../utils/api';
 
 const ProductsPage: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -30,7 +31,7 @@ const ProductsPage: React.FC = () => {
     setIsLoading(true);
     setPageError(null);
     try {
-      const response = await fetch(`${API_BASE_URL}/products`);
+      const response = await authenticatedFetch(`${API_BASE_URL}/products`);
       if (!response.ok) {
         let errorMessage = `Failed to fetch products. Status: ${response.status} ${response.statusText}`;
         let responseBodyText = '';
@@ -89,15 +90,13 @@ const ProductsPage: React.FC = () => {
     try {
       let response;
       if (editingProduct) {
-        response = await fetch(`${API_BASE_URL}/products/${editingProduct.id}`, {
+        response = await authenticatedFetch(`${API_BASE_URL}/products/${editingProduct.id}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(productDataToSubmit),
         });
       } else {
-        response = await fetch(`${API_BASE_URL}/products`, {
+        response = await authenticatedFetch(`${API_BASE_URL}/products`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(productDataToSubmit),
         });
       }
@@ -156,10 +155,10 @@ const ProductsPage: React.FC = () => {
         setIsLoading(true);
         setPageError(null);
         try {
-            const response = await fetch(`${API_BASE_URL}/products/${productId}`, {
+            const response = await authenticatedFetch(`${API_BASE_URL}/products/${productId}`, {
                 method: 'DELETE',
             });
-            if (!response.ok) {
+            if (!response.ok && response.status !== 204) {
                  let errorMessage = `Failed to delete product. Status: ${response.status} ${response.statusText}`;
                  let responseBodyText = '';
                  try {

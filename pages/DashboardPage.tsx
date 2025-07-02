@@ -1,7 +1,7 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { DashboardStat, Order as AppOrder, Product as AppProduct, Customer as AppCustomer } from '../types';
 import { OrdersIcon, ProductsIcon, UsersIcon, DashboardIcon, LightBulbIcon } from '../components/Icons'; 
+import { authenticatedFetch } from '../utils/api';
 
 const API_BASE_URL = '/api';
 
@@ -47,9 +47,9 @@ const DashboardPage: React.FC = () => {
     setStatsError(null);
     try {
       const [ordersRes, productsRes, customersRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/orders`),
-        fetch(`${API_BASE_URL}/products`),
-        fetch(`${API_BASE_URL}/customers`),
+        authenticatedFetch(`${API_BASE_URL}/orders`),
+        authenticatedFetch(`${API_BASE_URL}/products`),
+        authenticatedFetch(`${API_BASE_URL}/customers`),
       ]);
 
       if (!ordersRes.ok) throw new Error(`Failed to fetch orders: ${ordersRes.statusText}`);
@@ -78,7 +78,7 @@ const DashboardPage: React.FC = () => {
     setIsLoadingAiSummary(true);
     setAiSummaryError(null);
     try {
-      const response = await fetch(`${API_BASE_URL}/dashboardSummary`);
+      const response = await authenticatedFetch(`${API_BASE_URL}/dashboardSummary`);
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: 'Failed to fetch AI summary.' }));
         throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
@@ -100,7 +100,7 @@ const DashboardPage: React.FC = () => {
   }, [fetchDashboardData, fetchAiSummary]);
 
   const stats: DashboardStat[] = [
-    { title: 'Загальні продажі', value: `$${totalSales.toFixed(2)}`, icon: DashboardIcon, color: 'border-indigo-500', isLoading: isLoadingStats },
+    { title: 'Загальні продажі', value: `₴${totalSales.toFixed(2)}`, icon: DashboardIcon, color: 'border-indigo-500', isLoading: isLoadingStats },
     { title: 'Всього замовлень', value: orderCount.toString(), icon: OrdersIcon, color: 'border-green-500', isLoading: isLoadingStats },
     { title: 'Всього товарів', value: productCount.toString(), icon: ProductsIcon, color: 'border-amber-500', isLoading: isLoadingStats },
     { title: 'Активні клієнти', value: customerCount.toString(), icon: UsersIcon, color: 'border-sky-500', isLoading: isLoadingStats },

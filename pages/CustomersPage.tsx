@@ -1,9 +1,7 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Customer } from '../types';
 import { PlusIcon, XMarkIcon, EyeIcon, PencilIcon, TrashIcon } from '../components/Icons';
-
-// const CUSTOMERS_STORAGE_KEY = 'ecomDashCustomers'; // No longer used
+import { authenticatedFetch } from '../utils/api';
 
 const CustomersPage: React.FC = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -33,18 +31,13 @@ const CustomersPage: React.FC = () => {
     setIsLoading(true);
     setPageError(null);
     try {
-      const response = await fetch(`${API_BASE_URL}/customers`);
+      const response = await authenticatedFetch(`${API_BASE_URL}/customers`);
       if (!response.ok) {
         let errorMessage = `Failed to fetch customers. Status: ${response.status} ${response.statusText}`;
-        let responseBodyText = '';
         try {
-            responseBodyText = await response.text();
-            const errData = JSON.parse(responseBodyText);
-            errorMessage = errData.message || `Server error: ${response.status} ${response.statusText}`;
-        } catch (jsonError) {
-            errorMessage = `Server responded with non-JSON (${response.status} ${response.statusText}): ${responseBodyText.substring(0, 200)}...`;
-            console.error("Full non-JSON error response from server (fetchCustomers):", responseBodyText);
-        }
+            const errData = await response.json();
+            errorMessage = errData.message || errorMessage;
+        } catch (e) { /* ignore json parse error */ }
         throw new Error(errorMessage);
       }
       let data: Customer[] = await response.json();
@@ -96,30 +89,23 @@ const CustomersPage: React.FC = () => {
     try {
       let response;
       if (editingCustomer) {
-        response = await fetch(`${API_BASE_URL}/customers/${editingCustomer.id}`, {
+        response = await authenticatedFetch(`${API_BASE_URL}/customers/${editingCustomer.id}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(customerDataToSubmit),
         });
       } else {
-        response = await fetch(`${API_BASE_URL}/customers`, {
+        response = await authenticatedFetch(`${API_BASE_URL}/customers`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(customerDataToSubmit),
         });
       }
 
       if (!response.ok) {
         let errorMessage = `Failed to ${editingCustomer ? 'update' : 'add'} customer. Status: ${response.status} ${response.statusText}`;
-        let responseBodyText = '';
         try {
-            responseBodyText = await response.text();
-            const errData = JSON.parse(responseBodyText);
-            errorMessage = errData.message || `Server error: ${response.status} ${response.statusText}`;
-        } catch (jsonError) {
-            errorMessage = `Server responded with non-JSON (${response.status} ${response.statusText}): ${responseBodyText.substring(0, 200)}...`;
-            console.error("Full non-JSON error response from server (handleSubmitCustomer):", responseBodyText);
-        }
+            const errData = await response.json();
+            errorMessage = errData.message || errorMessage;
+        } catch (e) { /* ignore json parse error */ }
         throw new Error(errorMessage);
       }
       fetchCustomers(); 
@@ -163,18 +149,13 @@ const CustomersPage: React.FC = () => {
       setIsLoading(true);
       setPageError(null);
       try {
-        const response = await fetch(`${API_BASE_URL}/customers/${customerId}`, { method: 'DELETE' });
-        if (!response.ok) {
+        const response = await authenticatedFetch(`${API_BASE_URL}/customers/${customerId}`, { method: 'DELETE' });
+        if (!response.ok && response.status !== 204) {
           let errorMessage = `Failed to delete customer. Status: ${response.status} ${response.statusText}`;
-          let responseBodyText = '';
           try {
-              responseBodyText = await response.text();
-              const errData = JSON.parse(responseBodyText);
-              errorMessage = errData.message || `Server error: ${response.status} ${response.statusText}`;
-          } catch (jsonError) {
-              errorMessage = `Server responded with non-JSON (${response.status} ${response.statusText}): ${responseBodyText.substring(0, 200)}...`;
-              console.error("Full non-JSON error response from server (handleDeleteCustomer):", responseBodyText);
-          }
+              const errData = await response.json();
+              errorMessage = errData.message || errorMessage;
+          } catch (e) { /* ignore json parse error */ }
           throw new Error(errorMessage);
         }
         fetchCustomers();

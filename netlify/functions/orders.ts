@@ -3,6 +3,7 @@ import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import { supabase } from '../../services/supabaseClient'; 
 import type { Order, OrderItem } from '../../types';
 import type { Database } from '../../types/supabase';
+import { requireAuth, AuthError } from '../utils/auth';
 
 type OrderDbRow = Database['public']['Tables']['orders']['Row'];
 type OrderItemDbRow = Database['public']['Tables']['order_items']['Row'];
@@ -43,10 +44,13 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     return { statusCode: 204, headers: commonHeaders, body: '' };
   }
 
-  const pathParts = event.path.split('/').filter(Boolean);
-  const resourceId = pathParts.length > 2 ? pathParts[2] : null;
-
   try {
+    // All authorized users (admin & manager) can manage orders.
+    await requireAuth(event);
+
+    const pathParts = event.path.split('/').filter(Boolean);
+    const resourceId = pathParts.length > 2 ? pathParts[2] : null;
+
     switch (event.httpMethod) {
       case 'GET': {
         if (resourceId) {
@@ -114,7 +118,6 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         if (createOrderError) throw createOrderError;
         if (!createdOrderDbRow) throw new Error('Failed to create order, no data returned.');
 
-        // Fetch the customer's name for the response
         const { data: customerData } = await supabase.from('customers').select('name').eq('id', createdOrderDbRow.customer_id).single();
 
         let createdItemsDb: OrderItemDbRow[] = [];
@@ -153,7 +156,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         };
 
         if (totalAmount !== undefined) {
-            orderUpdatePayloadForDb.total_amount = totalAmount; // Correctly map camelCase to snake_case
+            orderUpdatePayloadForDb.total_amount = totalAmount;
         }
         if (clientCustomerIdToUpdate !== undefined) {
             orderUpdatePayloadForDb.customer_id = clientCustomerIdToUpdate;
@@ -233,25 +236,29 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         return { statusCode: 405, headers: commonHeaders, body: JSON.stringify({ message: 'Method Not Allowed' }) };
     }
   } catch (error: any) {
-    console.error('Error in netlify/functions/orders.ts:', error);
-    let message = typeof error.message === 'string' ? error.message : 'An unexpected error occurred processing the order.';
-    const details = typeof error.details === 'string' ? error.details : undefined;
-    const hint = typeof error.hint === 'string' ? error.hint : undefined;
-    
-    let statusCode = 500;
-    if (error && error.code && typeof error.code === 'string' && error.code.startsWith('PGRST')) {
-      statusCode = 400; // Bad request from Supabase
-      if (error.code === '23503' && error.details?.includes('orders_customer_id_fkey')) {
-         message = "Invalid customer ID. The specified customer does not exist.";
-      }
-    } else if (error && typeof error.status === 'number') {
-      statusCode = error.status;
+    if (error.statusCode) { // AuthError
+      return {
+        statusCode: error.statusCode,
+        headers: commonHeaders,
+        body: JSON.stringify({ message: error.message }),
+      };
     }
+    console.error('Error in netlify/functions/orders.ts:', error);
+    let message = 'An unexpected error occurred processing the order.';
+    if(error.message) message = error.message;
 
+    let statusCode = 500;
+    if (error?.code?.startsWith('PGRST')) {
+      statusCode = 400;
+      if (error.code === '23503') {
+         message = "Invalid reference. The specified customer or product may not exist.";
+      }
+    }
+    
     return {
       statusCode,
       headers: commonHeaders,
-      body: JSON.stringify({ message, ...(details && { details }), ...(hint && { hint }) }),
+      body: JSON.stringify({ message, details: error.details, hint: error.hint }),
     };
   }
 };
