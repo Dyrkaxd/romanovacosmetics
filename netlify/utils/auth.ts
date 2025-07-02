@@ -1,5 +1,6 @@
+
 import type { HandlerEvent } from '@netlify/functions';
-import { OAuth2Client } from 'google-auth-library';
+import { OAuth2Client, LoginTicket } from 'google-auth-library';
 import { supabase } from '../../services/supabaseClient';
 
 // It's best practice to store these in Netlify environment variables
@@ -30,79 +31,72 @@ export const requireAuth = async (event: HandlerEvent): Promise<AuthenticatedUse
   const { authorization } = event.headers;
 
   if (!authorization || !authorization.startsWith('Bearer ')) {
-    throw { statusCode: 401, message: 'Missing or invalid authorization token' } as AuthError;
+    throw { statusCode: 401, message: 'Missing or invalid authorization token' };
   }
 
   const token = authorization.substring(7);
+  let payload: any;
 
   try {
-    const ticket = await client.verifyIdToken({
+    const ticket: LoginTicket = await client.verifyIdToken({
       idToken: token,
       audience: GOOGLE_CLIENT_ID,
     });
-    
-    const payload = ticket.getPayload();
+    payload = ticket.getPayload();
     if (!payload || !payload.email) {
-      throw { statusCode: 401, message: 'Invalid token payload' } as AuthError;
+      throw new Error('Invalid token payload');
     }
-    
-    const userEmail = payload.email.toLowerCase();
-
-    // Step 1: Check for SUPER_ADMIN_EMAIL first, as a failsafe.
-    if (userEmail === SUPER_ADMIN_EMAIL) {
-      // Ensure the super admin's record exists in the DB for consistency in user lists etc.
-      const { error: upsertError } = await supabase
+  } catch (err: any) {
+    console.error('Token verification failed:', err.message);
+    throw { statusCode: 401, message: 'Token is invalid or has expired' };
+  }
+  
+  const userEmail = payload.email.toLowerCase();
+  
+  // SUPER ADMIN Check (Failsafe)
+  if (userEmail === SUPER_ADMIN_EMAIL) {
+    try {
+      await supabase
         .from('admins')
         .upsert({ email: userEmail, added_by: 'system_bootstrap' }, { onConflict: 'email' });
-      if (upsertError) {
-        // Log the error but still grant access, as this is the failsafe account.
-        console.error(`Could not upsert super admin '${userEmail}', but granting access. Error:`, upsertError);
-      }
-      return { email: userEmail, role: 'admin', name: payload.name || 'Admin' };
+    } catch (dbError: any) {
+      console.error(`Database error during super admin upsert (access will be granted anyway):`, dbError);
     }
+    return { email: userEmail, role: 'admin', name: payload.name || 'Super Admin' };
+  }
 
-    // Step 2: Check if the user is in the admins table.
-    const { data: adminRecord, error: adminCheckError } = await supabase
+  // REGULAR ADMIN Check
+  try {
+    const { data: adminRecord } = await supabase
       .from('admins')
       .select('email')
       .eq('email', userEmail)
-      .maybeSingle(); // Use maybeSingle to handle "not found" gracefully.
-
-    if (adminCheckError) {
-      console.error('Supabase error checking admins table:', adminCheckError);
-      throw { statusCode: 500, message: 'Database error while verifying admin status.' } as AuthError;
-    }
+      .maybeSingle();
 
     if (adminRecord) {
       return { email: userEmail, role: 'admin', name: payload.name || 'Admin' };
     }
+  } catch (dbError: any) {
+    console.error('Database error while checking admins table:', dbError);
+    throw { statusCode: 500, message: 'Server error during admin verification.' };
+  }
 
-    // Step 3: If not an admin, check if they are a managed user.
-    const { data: managedUser, error: managerCheckError } = await supabase
+  // MANAGER Check
+  try {
+    const { data: managedUser } = await supabase
       .from('managed_users')
       .select('id, name')
       .eq('email', userEmail)
-      .maybeSingle(); // Use maybeSingle here too.
-
-    if (managerCheckError) {
-      console.error('Supabase error checking managed_users table:', managerCheckError);
-      throw { statusCode: 500, message: 'Database error while verifying user permissions.' } as AuthError;
-    }
+      .maybeSingle();
 
     if (managedUser) {
       return { email: userEmail, role: 'manager', name: payload.name || managedUser.name };
     }
-
-    // Step 4: If not found in any role, the user is not authorized.
-    throw { statusCode: 403, message: 'User is not authorized to access this resource.' } as AuthError;
-
-  } catch (err: any) {
-    // Re-throw our custom AuthError if it's one we created
-    if (err.statusCode) {
-        throw err;
-    }
-    // Otherwise, it's likely a token verification error from google-auth-library
-    console.error('Token verification failed:', err.message);
-    throw { statusCode: 401, message: 'Token is invalid or has expired' } as AuthError;
+  } catch (dbError: any) {
+    console.error('Database error while checking managed_users table:', dbError);
+    throw { statusCode: 500, message: 'Server error during user verification.' };
   }
+  
+  // If no role was found, deny access.
+  throw { statusCode: 403, message: 'User is not authorized to access this application.' };
 };
