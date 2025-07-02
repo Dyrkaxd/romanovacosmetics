@@ -198,6 +198,7 @@ export interface Database {
           total_amount: number
           notes: string | null
           created_at: string | null
+          managed_by_user_email: string | null
         }
         Insert: {
           id?: string
@@ -207,6 +208,7 @@ export interface Database {
           total_amount: number
           notes?: string | null
           created_at?: string | null
+          managed_by_user_email?: string | null
         }
         Update: {
           id?: string
@@ -216,6 +218,7 @@ export interface Database {
           total_amount?: number
           notes?: string | null
           created_at?: string | null
+          managed_by_user_email?: string | null
         }
         Relationships: [
           {
@@ -236,6 +239,8 @@ export interface Database {
           price: number
           discount: number | null
           created_at: string | null
+          salon_price_usd: number | null
+          exchange_rate: number | null
         }
         Insert: {
           id?: string
@@ -246,6 +251,8 @@ export interface Database {
           price: number
           discount?: number | null
           created_at?: string | null
+          salon_price_usd?: number | null
+          exchange_rate?: number | null
         }
         Update: {
           id?: string
@@ -256,6 +263,8 @@ export interface Database {
           price?: number
           discount?: number | null
           created_at?: string | null
+          salon_price_usd?: number | null
+          exchange_rate?: number | null
         }
         Relationships: [
           {

@@ -1,14 +1,16 @@
 
 
 
+
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import { supabase } from '../../services/supabaseClient'; 
-import type { Order, OrderItem } from '../../types';
+import type { Order, OrderItem, Product } from '../../types';
 import type { Database } from '../../types/supabase';
-import { requireAuth, AuthError } from '../utils/auth';
+import { requireAuth, AuthError, AuthenticatedUser } from '../utils/auth';
 
 type OrderDbRow = Database['public']['Tables']['orders']['Row'];
 type OrderItemDbRow = Database['public']['Tables']['order_items']['Row'];
+type ProductDbRow = Database['public']['Tables']['products_bdr']['Row'];
 
 const commonHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -16,6 +18,36 @@ const commonHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Content-Type': 'application/json',
 };
+
+const productGroupsMap: Record<string, string> = {
+  'BDR': 'products_bdr', 'LA': 'products_la', 'АГ': 'products_ag', 'АБ': 'products_ab_cyr',
+  'АР': 'products_ar_cyr', 'без сокращений': 'products_bez_sokr', 'АФ': 'products_af',
+  'ДС': 'products_ds', 'м8': 'products_m8', 'JDA': 'products_jda', 'Faith': 'products_faith',
+  'AB': 'products_ab_lat', 'ГФ': 'products_gf', 'ЕС': 'products_es', 'ГП': 'products_gp',
+  'СД': 'products_sd', 'ATA': 'products_ata', 'W': 'products_w',
+};
+
+
+// Helper to find a product across all tables
+const findProductById = async (id: string): Promise<Product | null> => {
+  for (const [group, tableName] of Object.entries(productGroupsMap)) {
+    const { data, error } = await supabase.from(tableName).select('*').eq('id', id).single();
+    if (data) {
+      const dbProduct = data as ProductDbRow;
+      return {
+          id: dbProduct.id,
+          group,
+          name: dbProduct.name,
+          retailPrice: dbProduct.price,
+          salonPrice: dbProduct.salon_price ?? 0,
+          exchangeRate: dbProduct.exchange_rate ?? 0,
+          created_at: dbProduct.created_at || undefined,
+      };
+    }
+  }
+  return null;
+};
+
 
 // Helper to transform DB row to Client Order type
 const dbOrderToClientOrder = (dbOrder: OrderDbRow & { customers?: { name: string } | null, customer?: { name: string } | null }, items: OrderItemDbRow[] = []): Order => {
@@ -29,6 +61,7 @@ const dbOrderToClientOrder = (dbOrder: OrderDbRow & { customers?: { name: string
     totalAmount: dbOrder.total_amount,
     notes: dbOrder.notes || undefined,
     created_at: dbOrder.created_at || undefined,
+    managedByUserEmail: dbOrder.managed_by_user_email || undefined,
     items: items.map(item => ({
         id: item.id,
         order_id: item.order_id,
@@ -37,6 +70,8 @@ const dbOrderToClientOrder = (dbOrder: OrderDbRow & { customers?: { name: string
         quantity: item.quantity,
         price: item.price,
         discount: item.discount || 0,
+        salonPriceUsd: item.salon_price_usd || 0,
+        exchangeRate: item.exchange_rate || 0,
         created_at: item.created_at || undefined,
     })),
   };
@@ -48,8 +83,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
   }
 
   try {
-    // All authorized users (admin & manager) can manage orders.
-    await requireAuth(event);
+    const user = await requireAuth(event);
 
     const pathParts = event.path.split('/').filter(Boolean);
     const resourceId = pathParts.length > 2 ? pathParts[2] : null;
@@ -105,11 +139,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         const { items: clientItems, customerId, customerName, totalAmount, notes, ...restOfClientOrderData } = clientNewOrderData;
         
         if (!customerId || totalAmount === undefined || totalAmount === null) {
-          return {
-            statusCode: 400,
-            headers: commonHeaders,
-            body: JSON.stringify({ message: 'Customer ID and total amount are required.' }),
-          };
+          return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: 'Customer ID and total amount are required.' }) };
         }
 
         const orderPayloadForDb = {
@@ -119,6 +149,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
             total_amount: totalAmount,
             status: restOfClientOrderData.status || 'Ordered',
             notes: notes || null,
+            managed_by_user_email: user.email, // Track who created the order
         };
 
         const { data: createdOrderDbRow, error: createOrderError } = await supabase
@@ -133,14 +164,20 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
 
         let createdItemsDb: OrderItemDbRow[] = [];
         if (clientItems && clientItems.length > 0) {
-          const itemsToInsertForDb = clientItems.map(item => ({
-            product_id: item.productId,
-            product_name: item.productName,
-            quantity: item.quantity,
-            price: item.price,
-            discount: item.discount,
-            order_id: createdOrderDbRow.id,
+            const itemsToInsertForDb = await Promise.all(clientItems.map(async (item) => {
+              const productDetails = await findProductById(item.productId);
+              return {
+                  product_id: item.productId,
+                  product_name: item.productName,
+                  quantity: item.quantity,
+                  price: item.price,
+                  discount: item.discount,
+                  order_id: createdOrderDbRow.id,
+                  salon_price_usd: productDetails?.salonPrice,
+                  exchange_rate: productDetails?.exchangeRate,
+              };
           }));
+
           const { data: insertedItemsData, error: createItemsError } = await supabase
             .from('order_items')
             .insert(itemsToInsertForDb)
@@ -164,17 +201,12 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         
         const orderUpdatePayloadForDb: Partial<OrderDbRow> = {
             ...restOfClientUpdateData,
+            managed_by_user_email: user.email, // Track who updated the order
         };
 
-        if (totalAmount !== undefined) {
-            orderUpdatePayloadForDb.total_amount = totalAmount;
-        }
-        if (clientCustomerIdToUpdate !== undefined) {
-            orderUpdatePayloadForDb.customer_id = clientCustomerIdToUpdate;
-        }
-        if (notes !== undefined) {
-            orderUpdatePayloadForDb.notes = notes || null;
-        }
+        if (totalAmount !== undefined) orderUpdatePayloadForDb.total_amount = totalAmount;
+        if (clientCustomerIdToUpdate !== undefined) orderUpdatePayloadForDb.customer_id = clientCustomerIdToUpdate;
+        if (notes !== undefined) orderUpdatePayloadForDb.notes = notes || null;
 
         delete (orderUpdatePayloadForDb as any).id;
         delete (orderUpdatePayloadForDb as any).items; 
@@ -199,13 +231,18 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
             if (deleteOldItemsError) throw new Error(`Failed to delete old items for update: ${deleteOldItemsError.message}`);
 
             if (clientUpdatedItems.length > 0) {
-                const newItemsToInsertForDb = clientUpdatedItems.map(item => ({
-                    product_id: item.productId,
-                    product_name: item.productName,
-                    quantity: item.quantity,
-                    price: item.price,
-                    discount: item.discount,
-                    order_id: resourceId,
+                 const newItemsToInsertForDb = await Promise.all(clientUpdatedItems.map(async (item) => {
+                    const productDetails = await findProductById(item.productId);
+                    return {
+                        product_id: item.productId,
+                        product_name: item.productName,
+                        quantity: item.quantity,
+                        price: item.price,
+                        discount: item.discount,
+                        order_id: resourceId,
+                        salon_price_usd: item.salonPriceUsd ?? productDetails?.salonPrice,
+                        exchange_rate: item.exchangeRate ?? productDetails?.exchangeRate,
+                    };
                 }));
                 const { data: newInsertedItemsDb, error: insertNewItemsError } = await supabase
                     .from('order_items')

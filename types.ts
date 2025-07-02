@@ -19,6 +19,8 @@ export interface OrderItem {
   quantity: number;
   price: number; // Price per unit at the time of order
   discount?: number; // Percentage discount for this item
+  salonPriceUsd?: number; // Salon price in USD at time of order for profit calc
+  exchangeRate?: number; // Exchange rate at time of order for profit calc
   created_at?: string;
 }
 
@@ -50,6 +52,7 @@ export interface Order {
   totalAmount: number;
   items: OrderItem[];
   notes?: string;
+  managedByUserEmail?: string;
   created_at?: string;
 }
 
