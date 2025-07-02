@@ -1,7 +1,38 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Customer } from '../types';
+import { Customer, Order } from '../types';
 import { PlusIcon, XMarkIcon, EyeIcon, PencilIcon, TrashIcon } from '../components/Icons';
 import { authenticatedFetch } from '../utils/api';
+
+const orderStatusValues: Order['status'][] = ['Ordered', 'Shipped', 'Received', 'Calculation', 'AwaitingApproval', 'PaidByClient', 'WrittenOff', 'ReadyForPickup'];
+const orderStatusTranslations: Record<Order['status'], string> = {
+  Ordered: 'Замовлено',
+  Shipped: 'Відправлено',
+  Received: 'Отримано',
+  Calculation: 'Прорахунок',
+  AwaitingApproval: 'На погодженні',
+  PaidByClient: 'Сплачено клієнтом',
+  WrittenOff: 'Списано',
+  ReadyForPickup: 'Готово для видачі',
+};
+
+const StatusPill: React.FC<{ status: Order['status'] }> = ({ status }) => {
+  const styles: Record<Order['status'], string> = {
+    Ordered: 'bg-amber-50 text-amber-600 ring-amber-600/20',
+    Shipped: 'bg-blue-50 text-blue-600 ring-blue-600/20',
+    Received: 'bg-green-50 text-green-600 ring-green-600/20',
+    Calculation: 'bg-indigo-50 text-indigo-600 ring-indigo-600/20',
+    AwaitingApproval: 'bg-purple-50 text-purple-600 ring-purple-600/20',
+    PaidByClient: 'bg-teal-50 text-teal-600 ring-teal-600/20',
+    WrittenOff: 'bg-red-50 text-red-600 ring-red-600/20',
+    ReadyForPickup: 'bg-lime-50 text-lime-600 ring-lime-600/20',
+  };
+  return (
+    <span className={`px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ring-1 ring-inset ${styles[status]}`}>
+      {orderStatusTranslations[status] || status}
+    </span>
+  );
+};
+
 
 const CustomersPage: React.FC = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -24,6 +55,11 @@ const CustomersPage: React.FC = () => {
   const [modalError, setModalError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+
+  const [customerOrders, setCustomerOrders] = useState<Order[]>([]);
+  const [isCustomerOrdersLoading, setIsCustomerOrdersLoading] = useState(false);
+  const [customerOrdersError, setCustomerOrdersError] = useState<string | null>(null);
+
 
   const API_BASE_URL = '/api';
 
@@ -50,9 +86,37 @@ const CustomersPage: React.FC = () => {
     }
   }, []);
 
+  const fetchOrdersForCustomer = useCallback(async (customerId: string) => {
+    if (!customerId) return;
+    setIsCustomerOrdersLoading(true);
+    setCustomerOrdersError(null);
+    try {
+      const response = await authenticatedFetch(`${API_BASE_URL}/orders?customerId=${customerId}`);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Failed to fetch customer orders' }));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+      const data: Order[] = await response.json();
+      setCustomerOrders(data);
+    } catch (err: any) {
+      console.error("Failed to fetch customer orders:", err);
+      setCustomerOrdersError(err.message || 'Could not load customer orders.');
+      setCustomerOrders([]);
+    } finally {
+      setIsCustomerOrdersLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchCustomers();
   }, [fetchCustomers]);
+
+  useEffect(() => {
+    if (isViewModalOpen && currentCustomer?.id) {
+      fetchOrdersForCustomer(currentCustomer.id);
+    }
+  }, [isViewModalOpen, currentCustomer, fetchOrdersForCustomer]);
+
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -142,6 +206,8 @@ const CustomersPage: React.FC = () => {
     setIsViewModalOpen(false);
     setCurrentCustomer(initialCustomerState);
     setModalError(null);
+    setCustomerOrders([]);
+    setCustomerOrdersError(null);
   };
 
   const handleDeleteCustomer = async (customerId: string) => {
@@ -323,27 +389,65 @@ const CustomersPage: React.FC = () => {
 
       {isViewModalOpen && currentCustomer && currentCustomer.id && (
          <div role="dialog" aria-modal="true" aria-labelledby="view-customer-modal-title" className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-6 rounded-xl shadow-xl w-full max-w-md max-h-[90vh] flex flex-col">
+          <div className="bg-white p-6 rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
             <div className="flex justify-between items-center pb-4 mb-4 border-b border-slate-200">
               <h3 id="view-customer-modal-title" className="text-xl font-semibold text-slate-800">{currentCustomer.name}</h3>
               <button onClick={closeModal} aria-label="Закрити модальне вікно"><XMarkIcon className="w-6 h-6 text-slate-400 hover:text-slate-600"/></button>
             </div>
-            <div className="space-y-3 text-sm overflow-y-auto pr-2 flex-grow">
-              <p><span className="font-semibold text-slate-500 w-28 inline-block">ID Клієнта:</span> <span className="font-medium text-slate-800">{currentCustomer.id}</span></p>
-              <p><span className="font-semibold text-slate-500 w-28 inline-block">Email:</span> <span className="font-medium text-slate-800">{currentCustomer.email}</span></p>
-              <p><span className="font-semibold text-slate-500 w-28 inline-block">Телефон:</span> <span className="font-medium text-slate-800">{currentCustomer.phone || 'Н/Д'}</span></p>
-              <p><span className="font-semibold text-slate-500 w-28 inline-block">Нік Instagram:</span> <span className="font-medium text-slate-800">{currentCustomer.instagramHandle || 'Н/Д'}</span></p>
-              <p><span className="font-semibold text-slate-500 w-28 inline-block">Номер Viber:</span> <span className="font-medium text-slate-800">{currentCustomer.viberNumber || 'Н/Д'}</span></p>
-              <p><span className="font-semibold text-slate-500 w-28 inline-block">Дата реєстрації:</span> <span className="font-medium text-slate-800">{currentCustomer.joinDate ? new Date(currentCustomer.joinDate).toLocaleDateString() : 'N/A'}</span></p>
-              <div className="mt-2 pt-3 border-t border-slate-200">
-                <p className="font-semibold text-slate-500 mb-1">Адреса:</p>
-                {currentCustomer.address && (currentCustomer.address.street || currentCustomer.address.city) ? (
-                  <div className='font-medium text-slate-800'>
-                    <p>{currentCustomer.address.street}</p>
-                    <p>{currentCustomer.address.city}{currentCustomer.address.state && `, ${currentCustomer.address.state}`} {currentCustomer.address.zip}</p>
-                    <p>{currentCustomer.address.country}</p>
+            <div className="space-y-4 text-sm overflow-y-auto pr-2 flex-grow">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p><span className="font-semibold text-slate-500 w-28 inline-block">ID Клієнта:</span> <span className="font-medium text-slate-800">{currentCustomer.id}</span></p>
+                    <p><span className="font-semibold text-slate-500 w-28 inline-block">Email:</span> <span className="font-medium text-slate-800">{currentCustomer.email}</span></p>
+                    <p><span className="font-semibold text-slate-500 w-28 inline-block">Телефон:</span> <span className="font-medium text-slate-800">{currentCustomer.phone || 'Н/Д'}</span></p>
+                    <p><span className="font-semibold text-slate-500 w-28 inline-block">Нік Instagram:</span> <span className="font-medium text-slate-800">{currentCustomer.instagramHandle || 'Н/Д'}</span></p>
+                    <p><span className="font-semibold text-slate-500 w-28 inline-block">Номер Viber:</span> <span className="font-medium text-slate-800">{currentCustomer.viberNumber || 'Н/Д'}</span></p>
+                    <p><span className="font-semibold text-slate-500 w-28 inline-block">Дата реєстрації:</span> <span className="font-medium text-slate-800">{currentCustomer.joinDate ? new Date(currentCustomer.joinDate).toLocaleDateString() : 'N/A'}</span></p>
                   </div>
-                ) : <p className="text-slate-800">Інформація про адресу відсутня.</p>}
+                  <div>
+                    <p className="font-semibold text-slate-500 mb-1">Адреса:</p>
+                    {currentCustomer.address && (currentCustomer.address.street || currentCustomer.address.city) ? (
+                      <div className='font-medium text-slate-800'>
+                        <p>{currentCustomer.address.street}</p>
+                        <p>{currentCustomer.address.city}{currentCustomer.address.state && `, ${currentCustomer.address.state}`} {currentCustomer.address.zip}</p>
+                        <p>{currentCustomer.address.country}</p>
+                      </div>
+                    ) : <p className="text-slate-800">Інформація про адресу відсутня.</p>}
+                  </div>
+              </div>
+
+              <div className="mt-6 pt-4 border-t border-slate-200">
+                <h4 className="text-lg font-semibold text-slate-800 mb-2">Історія замовлень</h4>
+                {isCustomerOrdersLoading ? (
+                    <div className="text-center p-4 text-slate-500">Завантаження замовлень...</div>
+                ) : customerOrdersError ? (
+                    <div className="p-3 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm">{customerOrdersError}</div>
+                ) : customerOrders.length > 0 ? (
+                    <div className="border border-slate-200 rounded-lg overflow-hidden max-h-64 overflow-y-auto">
+                        <table className="min-w-full divide-y divide-slate-200">
+                            <thead className="bg-slate-50 sticky top-0">
+                                <tr>
+                                    <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-slate-500 tracking-wider">ID Замовлення</th>
+                                    <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-slate-500 tracking-wider">Дата</th>
+                                    <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-slate-500 tracking-wider">Статус</th>
+                                    <th scope="col" className="px-4 py-2 text-right text-xs font-semibold text-slate-500 tracking-wider">Сума</th>
+                                </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-slate-200">
+                                {customerOrders.map(order => (
+                                    <tr key={order.id}>
+                                        <td className="px-4 py-2 whitespace-nowrap font-semibold text-rose-600">#{order.id.substring(0, 6)}</td>
+                                        <td className="px-4 py-2 whitespace-nowrap">{new Date(order.date).toLocaleDateString()}</td>
+                                        <td className="px-4 py-2 whitespace-nowrap"><StatusPill status={order.status} /></td>
+                                        <td className="px-4 py-2 whitespace-nowrap text-right font-medium">₴{order.totalAmount.toFixed(2)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                ) : (
+                    <div className="text-center p-4 bg-slate-50 rounded-lg text-slate-500">У цього клієнта ще немає замовлень.</div>
+                )}
               </div>
             </div>
             <div className="mt-6 pt-6 text-right border-t border-slate-200">
