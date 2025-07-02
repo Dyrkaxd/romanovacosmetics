@@ -51,17 +51,25 @@ export const requireAuth = async (event: HandlerEvent): Promise<AuthenticatedUse
   
   const userEmail = payload.email.toLowerCase();
 
-  try {
-    // 1. SUPER ADMIN Failsafe Check
-    if (userEmail === SUPER_ADMIN_EMAIL) {
-      // Ensure super admin exists in the DB, but don't fail if DB is down.
-      await supabase
-        .from('admins')
-        .upsert({ email: userEmail, added_by: 'system_bootstrap' }, { onConflict: 'email' })
-        .catch(dbError => console.error(`Non-fatal DB error during super admin upsert:`, dbError));
-      return { email: userEmail, role: 'admin', name: payload.name || 'Super Admin' };
-    }
+  // 1. SUPER ADMIN Failsafe Check. This is the highest priority.
+  // It returns immediately to guarantee the super admin can always log in,
+  // regardless of database status.
+  if (userEmail === SUPER_ADMIN_EMAIL) {
+    // The database upsert runs in the background (fire-and-forget)
+    // so it doesn't block the login process.
+    supabase
+      .from('admins')
+      .upsert({ email: userEmail, added_by: 'system_bootstrap' }, { onConflict: 'email' })
+      .then(({ error }) => {
+        if (error) {
+          console.error(`Non-fatal DB error during background super admin upsert:`, error);
+        }
+      });
+    return { email: userEmail, role: 'admin', name: payload.name || 'Super Admin' };
+  }
 
+  // For all other users, perform database checks.
+  try {
     // 2. Regular Admin Check
     const { data: adminRecord } = await supabase
       .from('admins')
