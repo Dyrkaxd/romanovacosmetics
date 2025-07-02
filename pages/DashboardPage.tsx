@@ -4,7 +4,6 @@ import { OrdersIcon, UsersIcon, CurrencyDollarIcon } from '../components/Icons';
 import { authenticatedFetch } from '../utils/api';
 import { useAuth } from '../AuthContext';
 import { Database } from '../types/supabase';
-import { PieChart } from 'react-minimal-pie-chart';
 
 type AdminRow = Database['public']['Tables']['admins']['Row'];
 
@@ -83,26 +82,56 @@ const ProfitReportChart: React.FC<{ report: ManagerStats[]; isLoading: boolean }
     color: COLORS[index % COLORS.length],
   }));
 
+  let accumulated = 0;
+  const segments = pieData.map(segment => {
+      const percentage = totalProfitForChart > 0 ? segment.value / totalProfitForChart : 0;
+      const startAngle = accumulated * 360;
+      accumulated += percentage;
+      const endAngle = accumulated * 360;
+      return { ...segment, startAngle, endAngle };
+  });
+
+  const getCoordinatesForAngle = (angle: number, radius = 0.5) => {
+    return [
+      Math.cos((angle * Math.PI) / 180) * radius,
+      Math.sin((angle * Math.PI) / 180) * radius,
+    ];
+  }
+
   return (
     <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
       <h3 className="text-lg font-semibold text-slate-800 mb-4">Розподіл прибутку по менеджерах</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
         <div className="relative h-64 md:h-72">
-          <PieChart
-            data={pieData}
-            lineWidth={35}
-            paddingAngle={2}
-            animate
-            animationDuration={800}
-            onMouseOver={(_, index) => setHoveredIndex(index)}
-            onMouseOut={() => setHoveredIndex(undefined)}
-            segmentsStyle={(index) => ({
-              transition: 'transform 0.2s ease-in-out, opacity 0.2s',
-              transform: hoveredIndex === index ? 'scale(1.05)' : 'scale(1)',
-              opacity: hoveredIndex !== undefined && hoveredIndex !== index ? 0.6 : 1,
-              cursor: 'pointer',
+          <svg viewBox="-0.5 -0.5 1 1" style={{ transform: 'rotate(-90deg)' }}>
+            {segments.map((segment, index) => {
+              const [startX, startY] = getCoordinatesForAngle(segment.startAngle);
+              const [endX, endY] = getCoordinatesForAngle(segment.endAngle);
+              const largeArcFlag = segment.endAngle - segment.startAngle > 180 ? 1 : 0;
+              const pathData = `M ${startX} ${startY} A 0.5 0.5 0 ${largeArcFlag} 1 ${endX} ${endY} L 0 0`;
+              
+              const isHovered = hoveredIndex === index;
+
+              return (
+                  <path
+                      key={segment.title}
+                      d={pathData}
+                      fill={segment.color}
+                      onMouseOver={() => setHoveredIndex(index)}
+                      onMouseOut={() => setHoveredIndex(undefined)}
+                      style={{
+                          transition: 'transform 0.2s ease-in-out, opacity 0.2s',
+                          transform: isHovered ? 'scale(1.05)' : 'scale(1)',
+                          opacity: hoveredIndex !== undefined && !isHovered ? 0.6 : 1,
+                          cursor: 'pointer',
+                          stroke: 'white',
+                          strokeWidth: 0.01,
+                          strokeLinejoin: 'round',
+                      }}
+                  />
+              );
             })}
-          />
+          </svg>
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none flex-col">
               <span className="text-3xl font-bold text-slate-800">
                 {hoveredIndex !== undefined 
