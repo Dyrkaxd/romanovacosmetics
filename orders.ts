@@ -1,4 +1,5 @@
 
+
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import { supabase } from '../../services/supabaseClient'; 
 import type { Order, OrderItem } from '../../types';
@@ -54,6 +55,8 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
 
     switch (event.httpMethod) {
       case 'GET': {
+        const customerIdQuery = event.queryStringParameters?.customerId;
+
         if (resourceId) {
           const { data: orderDbData, error: orderError } = await supabase
             .from('orders')
@@ -73,11 +76,16 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
           const clientOrder = dbOrderToClientOrder(orderDbData, itemsDbData || []);
           return { statusCode: 200, headers: commonHeaders, body: JSON.stringify(clientOrder) };
         } else {
-          const { data: ordersDbData, error: ordersError } = await supabase
+           const query = supabase
             .from('orders')
             .select('*, items:order_items(*), customer:customers(name)')
             .order('date', { ascending: false });
+          
+          if (customerIdQuery) {
+            query.eq('customer_id', customerIdQuery);
+          }
 
+          const { data: ordersDbData, error: ordersError } = await query;
           if (ordersError) throw ordersError;
 
           const ordersWithClientItems = (ordersDbData as any[] || []).map(orderWithJoinedData => {
