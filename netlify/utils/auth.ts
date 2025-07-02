@@ -63,6 +63,28 @@ export const requireAuth = async (event: HandlerEvent): Promise<AuthenticatedUse
       return { email: userEmail, role: 'admin', name: payload.name || 'Admin' };
     }
 
+    // Bootstrap logic: if no admins exist, make the default user an admin
+    const { count, error: countError } = await supabase
+      .from('admins')
+      .select('*', { count: 'exact', head: true });
+
+    if (countError) {
+      console.error('Supabase error counting admins:', countError);
+      throw { statusCode: 500, message: 'Database error during admin bootstrap check.' } as AuthError;
+    }
+
+    if (count === 0 && userEmail === 'samsonenkoroma@gmail.com') {
+      console.log(`Bootstrapping default admin: ${userEmail}`);
+      const { error: insertError } = await supabase
+        .from('admins')
+        .insert({ email: userEmail, added_by: 'system_bootstrap' });
+
+      if (insertError) {
+        console.error('Failed to bootstrap default admin, but granting access for this session:', insertError);
+      }
+      return { email: userEmail, role: 'admin', name: payload.name || 'Initial Admin' };
+    }
+
     // If not an admin, check if they are a managed user
     const { data: managedUser, error: managerCheckError } = await supabase
       .from('managed_users')
