@@ -1,0 +1,6 @@
+{
+  "name": "Romanova Cosmetics",
+  "description": "Management dashboard for Romanova Cosmetics, featuring real-time data, AI-powered insights, order filtering, invoice generation, and Supabase-backed manager roles.",
+  "requestFramePermissions": [],
+  "prompt": ""
+}
