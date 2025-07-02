@@ -39,7 +39,7 @@ const MainAppLayout: React.FC = () => {
   const location = useLocation();
   const pageTitle = getPageTitle(location.pathname);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const { user } = useAuth(); // Get user context for role-based routing
+  const { user } = useAuth();
 
   const toggleMobileSidebar = () => {
     setIsMobileSidebarOpen(!isMobileSidebarOpen);
@@ -52,13 +52,17 @@ const MainAppLayout: React.FC = () => {
         <Header title={pageTitle} onToggleMobileSidebar={toggleMobileSidebar} />
         <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
           <Routes>
-            <Route path="/" element={<DashboardPage />} />
-            {/* Conditionally render the ProductsPage route only for admins */}
+            {user?.role === 'admin' ? (
+              <Route path="/" element={<DashboardPage />} />
+            ) : (
+              // For managers, redirect root to the default page which is orders
+              <Route path="/" element={<Navigate to="/orders" replace />} />
+            )}
             {user?.role === 'admin' && <Route path="/products" element={<ProductsPage />} />}
             <Route path="/orders" element={<OrdersPage />} />
             <Route path="/customers" element={<CustomersPage />} />
             <Route path="/settings" element={<SettingsPage />} />
-            {/* Redirect any unknown paths or unauthorized attempts to the dashboard */}
+            {/* Redirect any unknown paths to the user's appropriate home page */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>

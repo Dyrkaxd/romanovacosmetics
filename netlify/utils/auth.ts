@@ -4,7 +4,6 @@ import { supabase } from '../../services/supabaseClient';
 
 // It's best practice to store these in Netlify environment variables
 const GOOGLE_CLIENT_ID = "207911989595-0d5jo71ibh1q3rr6qg9gdai9j8v8b75i.apps.googleusercontent.com";
-const ADMIN_EMAIL = 'samsonenkoroma@gmail.com';
 
 const client = new OAuth2Client(GOOGLE_CLIENT_ID);
 
@@ -48,18 +47,31 @@ export const requireAuth = async (event: HandlerEvent): Promise<AuthenticatedUse
 
     const userEmail = payload.email.toLowerCase();
 
-    if (userEmail === ADMIN_EMAIL.toLowerCase()) {
-      return { email: userEmail, role: 'admin', name: payload.name };
+    // Check if the user is in the admins table
+    const { data: adminRecord, error: adminCheckError } = await supabase
+      .from('admins')
+      .select('email')
+      .eq('email', userEmail)
+      .single();
+
+    if (adminCheckError && adminCheckError.code !== 'PGRST116') { // Ignore "no rows found"
+        console.error('Supabase error checking admins table:', adminCheckError);
+        throw { statusCode: 500, message: 'Database error while verifying admin status' } as AuthError;
+    }
+    
+    if (adminRecord) {
+      return { email: userEmail, role: 'admin', name: payload.name || 'Admin' };
     }
 
-    const { data: managedUser, error } = await supabase
+    // If not an admin, check if they are a managed user
+    const { data: managedUser, error: managerCheckError } = await supabase
       .from('managed_users')
       .select('id, name')
       .eq('email', userEmail)
       .single();
 
-    if (error && error.code !== 'PGRST116') { // Ignore "no rows found" which is not an error here
-      console.error('Supabase error checking managed user:', error);
+    if (managerCheckError && managerCheckError.code !== 'PGRST116') { // Ignore "no rows found" which is not an error here
+      console.error('Supabase error checking managed user:', managerCheckError);
       throw { statusCode: 500, message: 'Database error while verifying user permissions' } as AuthError;
     }
 

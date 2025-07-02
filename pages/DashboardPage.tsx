@@ -1,19 +1,20 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { DashboardStat, Order as AppOrder, Product as AppProduct, Customer as AppCustomer } from '../types';
+import { DashboardStat, Order as AppOrder, Product as AppProduct, Customer as AppCustomer, ManagedUser } from '../types';
 import { OrdersIcon, ProductsIcon, UsersIcon, DashboardIcon, LightBulbIcon } from '../components/Icons'; 
 import { authenticatedFetch } from '../utils/api';
+import { useAuth } from '../AuthContext';
 
 const API_BASE_URL = '/api';
 
 const DashboardCard: React.FC<DashboardStat & { isLoading?: boolean }> = ({ title, value, icon: Icon, color, percentageChange, isPositive, isLoading }) => {
   const percentageColor = isPositive ? 'text-green-600' : 'text-red-600';
   
-  // Use a map to get text/bg colors from the border color string
   const colorVariants: { [key: string]: { text: string; bg: string; } } = {
     'rose': { text: 'text-rose-600', bg: 'bg-rose-50' },
     'green': { text: 'text-green-600', bg: 'bg-green-50' },
     'amber': { text: 'text-amber-600', bg: 'bg-amber-50' },
     'sky': { text: 'text-sky-600', bg: 'bg-sky-50' },
+    'indigo': { text: 'text-indigo-600', bg: 'bg-indigo-50' },
   };
 
   const selectedColor = colorVariants[color] || { text: 'text-slate-600', bg: 'bg-slate-100' };
@@ -77,13 +78,16 @@ const SalesChartPlaceholder = () => (
 
 
 const DashboardPage: React.FC = () => {
+  const { user } = useAuth();
   const [totalSales, setTotalSales] = useState<number>(0);
   const [orderCount, setOrderCount] = useState<number>(0);
   const [productCount, setProductCount] = useState<number>(0);
   const [customerCount, setCustomerCount] = useState<number>(0);
+  const [managedUsers, setManagedUsers] = useState<ManagedUser[]>([]);
   const [aiSummary, setAiSummary] = useState<string>('');
   
   const [isLoadingStats, setIsLoadingStats] = useState(true);
+  const [isLoadingManagers, setIsLoadingManagers] = useState(true);
   const [isLoadingAiSummary, setIsLoadingAiSummary] = useState(true);
   const [statsError, setStatsError] = useState<string | null>(null);
   const [aiSummaryError, setAiSummaryError] = useState<string | null>(null);
@@ -120,6 +124,23 @@ const DashboardPage: React.FC = () => {
     }
   }, []);
 
+  const fetchManagedUsers = useCallback(async () => {
+    if (user?.role !== 'admin') return;
+    setIsLoadingManagers(true);
+    setStatsError(null);
+    try {
+        const response = await authenticatedFetch('/api/managedUsers');
+        if (!response.ok) throw new Error('Failed to fetch managers');
+        const data = await response.json();
+        setManagedUsers(data);
+    } catch (err: any) {
+        console.error("Failed to fetch managed users:", err);
+        setStatsError(err.message || "Could not load manager data.");
+    } finally {
+        setIsLoadingManagers(false);
+    }
+  }, [user?.role]);
+
   const fetchAiSummary = useCallback(async () => {
     setIsLoadingAiSummary(true);
     setAiSummaryError(null);
@@ -143,12 +164,13 @@ const DashboardPage: React.FC = () => {
   useEffect(() => {
     fetchDashboardData();
     fetchAiSummary();
-  }, [fetchDashboardData, fetchAiSummary]);
+    fetchManagedUsers();
+  }, [fetchDashboardData, fetchAiSummary, fetchManagedUsers]);
 
   const stats: DashboardStat[] = [
     { title: 'Загальні продажі', value: `₴${totalSales.toFixed(2)}`, icon: DashboardIcon, color: 'rose', isLoading: isLoadingStats },
     { title: 'Всього замовлень', value: orderCount.toString(), icon: OrdersIcon, color: 'green', isLoading: isLoadingStats },
-    { title: 'Всього товарів', value: productCount.toString(), icon: ProductsIcon, color: 'amber', isLoading: isLoadingStats },
+    { title: 'Кількість менеджерів', value: managedUsers.length.toString(), icon: UsersIcon, color: 'indigo', isLoading: isLoadingManagers },
     { title: 'Активні клієнти', value: customerCount.toString(), icon: UsersIcon, color: 'sky', isLoading: isLoadingStats },
   ];
 
@@ -187,32 +209,42 @@ const DashboardPage: React.FC = () => {
 
                 )}
             </div>
-
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-              <h3 className="text-lg font-semibold text-slate-800 mb-4">Останні дії</h3>
-              <ul className="space-y-4">
-                {[
-                  {user: 'Аліса', action: 'розмістила нове замовлення #ORD001.'},
-                  {user: 'Богдан', action: 'оновив товар "Бездротова миша".'},
-                  {user: 'Чарлі', action: 'переглянув "Ігрова клавіатура".'},
-                  {user: 'Давид', action: 'скасував замовлення #ORD004.'},
-                  {user: 'Єва', action: 'зареєструвала новий обліковий запис.'},
-                ].map((activity, index) => (
-                  <li key={index} className="flex items-start text-sm">
-                    <img src={`https://i.pravatar.cc/40?u=user${index}`} alt={activity.user} className="w-9 h-9 rounded-full mr-3.5 mt-0.5"/>
-                    <div>
-                      <p>
-                        <span className="font-semibold text-slate-800">{activity.user}</span>
-                        <span className="text-slate-500 ml-1">{activity.action}</span>
-                      </p>
-                      <p className="text-xs text-slate-400">{(index + 1) * 5} хвилин тому</p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
         </div>
       </div>
+
+      {user?.role === 'admin' && (
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+            <h3 className="text-lg font-semibold text-slate-800 mb-4">Огляд менеджерів</h3>
+            <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-slate-200">
+                    <thead className="bg-slate-50">
+                        <tr>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Ім'я</th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Email</th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider hidden md:table-cell">Дата додавання</th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider hidden sm:table-cell">Нотатки</th>
+                        </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-slate-200">
+                        {isLoadingManagers ? (
+                            <tr><td colSpan={4} className="text-center py-10 text-slate-500">Завантаження менеджерів...</td></tr>
+                        ) : managedUsers.length > 0 ? (
+                            managedUsers.map(manager => (
+                                <tr key={manager.id}>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-800">{manager.name}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{manager.email}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 hidden md:table-cell">{new Date(manager.dateAdded).toLocaleDateString()}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 hidden sm:table-cell truncate max-w-xs">{manager.notes || '-'}</td>
+                                </tr>
+                            ))
+                        ) : (
+                            <tr><td colSpan={4} className="text-center py-10 text-slate-500">Менеджерів не знайдено.</td></tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+      )}
     </div>
   );
 };

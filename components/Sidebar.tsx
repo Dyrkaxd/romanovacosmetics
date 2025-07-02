@@ -14,13 +14,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpenOnMobile, toggleMobileSidebar }
   const { user } = useAuth(); 
   const isAdmin = user?.role === 'admin';
 
-  // Conditionally include the Products nav item
+  // Conditionally include admin-only nav items
   const navItems: NavItem[] = [
-    { name: 'Панель керування', path: '/', icon: DashboardIcon },
+    isAdmin && { name: 'Панель керування', path: '/', icon: DashboardIcon },
     isAdmin && { name: 'Товари', path: '/products', icon: ProductsIcon },
     { name: 'Замовлення', path: '/orders', icon: OrdersIcon },
     { name: 'Клієнти', path: '/customers', icon: UsersIcon },
-  ].filter(Boolean) as NavItem[]; // Filter out falsy values (if not admin)
+  ].filter(Boolean) as NavItem[]; // Filter out falsy values
 
   const bottomNavItems: NavItem[] = [
     { name: 'Налаштування', path: '/settings', icon: SettingsIcon },
@@ -30,6 +30,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpenOnMobile, toggleMobileSidebar }
     <NavLink
       to={item.path}
       onClick={() => { if(isOpenOnMobile) toggleMobileSidebar();}} // Close sidebar on mobile nav click
+      end={item.path === '/'} // Make sure only root path is matched exactly
       className={({ isActive }) =>
         `group flex items-center px-4 py-2.5 text-sm font-medium rounded-lg transition-colors duration-150 ease-in-out ${
           isActive 

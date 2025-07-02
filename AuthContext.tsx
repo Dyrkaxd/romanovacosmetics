@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, ReactNode, useCallback, useEffect } from 'react';
-import { AuthenticatedUser, ManagedUser } from './types'; 
+import { AuthenticatedUser } from './types'; 
 import { googleLogout, CredentialResponse } from '@react-oauth/google';
 import { jwtDecode, type JwtPayload } from 'jwt-decode';
 
@@ -13,7 +13,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const ADMIN_EMAIL = 'samsonenkoroma@gmail.com';
 const API_BASE_URL = '/api';
 
 interface CustomTokenPayload extends JwtPayload {
@@ -36,30 +35,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (decodedToken.exp && decodedToken.exp * 1000 < Date.now()) {
         throw new Error('Token has expired');
     }
-    const userEmail = decodedToken.email.toLowerCase();
 
-    const baseUserData: AuthenticatedUser = {
-        email: userEmail,
-        name: decodedToken.name || `${decodedToken.given_name || ''} ${decodedToken.family_name || ''}`.trim() || 'Користувач',
-        picture: decodedToken.picture,
-    };
-
-    if (userEmail === ADMIN_EMAIL.toLowerCase()) {
-        return { ...baseUserData, role: 'admin', name: baseUserData.name || 'Адміністратор' };
-    }
-
-    const response = await fetch(`${API_BASE_URL}/managedUsers?email=${encodeURIComponent(userEmail)}`, {
+    const response = await fetch(`${API_BASE_URL}/users/me`, {
       headers: {
         'Authorization': `Bearer ${jwt}`
       }
     });
 
     if (response.status === 401 || response.status === 403) {
-      throw new Error('Unauthorized: Token is invalid or does not match user.');
+      const errorData = await response.json().catch(() => ({ message: 'Unauthorized or Forbidden' }));
+      throw new Error(errorData.message);
     }
     
     if (!response.ok) {
-        let errorMessage = `Failed to fetch managed user status. Status: ${response.status} ${response.statusText}`;
+        let errorMessage = `Failed to verify user role. Status: ${response.status} ${response.statusText}`;
         try {
             const errData = await response.json();
             errorMessage = errData.message || errorMessage;
@@ -67,10 +56,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         throw new Error(errorMessage);
     }
 
-    const managedUserEntry: ManagedUser | null = await response.json();
-
-    if (managedUserEntry && managedUserEntry.email === userEmail) {
-        return { ...baseUserData, role: 'manager', name: baseUserData.name || managedUserEntry.name };
+    const authorizedUser: AuthenticatedUser | null = await response.json();
+    
+    if (authorizedUser) {
+       // Enrich with details from JWT if not present
+      authorizedUser.name = authorizedUser.name || decodedToken.name || `${decodedToken.given_name || ''} ${decodedToken.family_name || ''}`.trim() || 'Користувач';
+      authorizedUser.picture = decodedToken.picture;
+      return authorizedUser;
     }
     
     return null; // Not an admin, not a managed user
