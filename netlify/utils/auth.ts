@@ -47,7 +47,23 @@ export const requireAuth = async (event: HandlerEvent): Promise<AuthenticatedUse
 
     const userEmail = payload.email.toLowerCase();
 
-    // Check if the user is in the admins table
+    // Special case: Ensure the default admin user 'samsonenkoroma@gmail.com' always has admin access.
+    // This prevents accidental lockout and serves as a bootstrap mechanism.
+    if (userEmail === 'samsonenkoroma@gmail.com') {
+      // Use upsert to ensure the user exists in the admins table without causing errors if they already do.
+      const { error } = await supabase
+        .from('admins')
+        .upsert({ email: userEmail, added_by: 'system_bootstrap' }, { onConflict: 'email' });
+
+      if (error) {
+        console.error(`Could not upsert default admin '${userEmail}', but granting access anyway. Error:`, error);
+      }
+      return { email: userEmail, role: 'admin', name: payload.name || 'Default Admin' };
+    }
+
+
+    // For all other users, follow the standard authorization flow.
+    // 1. Check if they are an admin.
     const { data: adminRecord, error: adminCheckError } = await supabase
       .from('admins')
       .select('email')
@@ -63,36 +79,14 @@ export const requireAuth = async (event: HandlerEvent): Promise<AuthenticatedUse
       return { email: userEmail, role: 'admin', name: payload.name || 'Admin' };
     }
 
-    // Bootstrap logic: if no admins exist, make the default user an admin
-    const { count, error: countError } = await supabase
-      .from('admins')
-      .select('*', { count: 'exact', head: true });
-
-    if (countError) {
-      console.error('Supabase error counting admins:', countError);
-      throw { statusCode: 500, message: 'Database error during admin bootstrap check.' } as AuthError;
-    }
-
-    if (count === 0 && userEmail === 'samsonenkoroma@gmail.com') {
-      console.log(`Bootstrapping default admin: ${userEmail}`);
-      const { error: insertError } = await supabase
-        .from('admins')
-        .insert({ email: userEmail, added_by: 'system_bootstrap' });
-
-      if (insertError) {
-        console.error('Failed to bootstrap default admin, but granting access for this session:', insertError);
-      }
-      return { email: userEmail, role: 'admin', name: payload.name || 'Initial Admin' };
-    }
-
-    // If not an admin, check if they are a managed user
+    // 2. If not an admin, check if they are a managed user.
     const { data: managedUser, error: managerCheckError } = await supabase
       .from('managed_users')
       .select('id, name')
       .eq('email', userEmail)
       .single();
 
-    if (managerCheckError && managerCheckError.code !== 'PGRST116') { // Ignore "no rows found" which is not an error here
+    if (managerCheckError && managerCheckError.code !== 'PGRST116') { // Ignore "no rows found"
       console.error('Supabase error checking managed user:', managerCheckError);
       throw { statusCode: 500, message: 'Database error while verifying user permissions' } as AuthError;
     }
@@ -101,7 +95,7 @@ export const requireAuth = async (event: HandlerEvent): Promise<AuthenticatedUse
       return { email: userEmail, role: 'manager', name: payload.name || managedUser.name };
     }
 
-    // If the user is neither admin nor a managed user, they are forbidden.
+    // 3. If the user is neither, they are forbidden.
     throw { statusCode: 403, message: 'User is not authorized to access this resource' } as AuthError;
 
   } catch (err: any) {
