@@ -106,6 +106,14 @@ export interface TopCustomer {
   orderCount: number;
 }
 
+export interface ManagerStats {
+  name: string;
+  email: string;
+  totalOrders: number;
+  totalSales: number;
+  totalProfit: number;
+}
+
 export interface PaginatedResponse<T> {
   data: T[];
   totalCount: number;

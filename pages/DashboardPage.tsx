@@ -1,12 +1,9 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { DashboardStat, Order, ManagedUser, Customer, PaginatedResponse } from '../types';
+import { DashboardStat, ManagerStats } from '../types';
 import { OrdersIcon, UsersIcon, CurrencyDollarIcon, LightBulbIcon, ArrowPathIcon } from '../components/Icons'; 
 import { authenticatedFetch } from '../utils/api';
 import { useAuth } from '../AuthContext';
-import { Database } from '../types/supabase';
-
-type AdminRow = Database['public']['Tables']['admins']['Row'];
 
 const API_BASE_URL = '/api';
 
@@ -70,14 +67,6 @@ const AISummaryCard: React.FC<{ summary: string; isLoading: boolean; error: stri
     </div>
   );
 };
-
-interface ManagerStats {
-  name: string;
-  email: string;
-  totalOrders: number;
-  totalSales: number;
-  totalProfit: number;
-}
 
 const ProfitReportChart: React.FC<{ report: ManagerStats[]; isLoading: boolean }> = ({ report, isLoading }) => {
   const [hoveredIndex, setHoveredIndex] = useState<number | undefined>(undefined);
@@ -208,14 +197,17 @@ const ProfitReportChart: React.FC<{ report: ManagerStats[]; isLoading: boolean }
   );
 };
 
+interface DashboardStatsData {
+    totalProfit: number;
+    totalOrders: number;
+    totalCustomers: number;
+    totalManagers: number;
+    managerReport: ManagerStats[];
+}
 
 const DashboardPage: React.FC = () => {
   const { user } = useAuth();
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [managedUsers, setManagedUsers] = useState<ManagedUser[]>([]);
-  const [admins, setAdmins] = useState<AdminRow[]>([]);
-  
+  const [statsData, setStatsData] = useState<DashboardStatsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -243,48 +235,21 @@ const DashboardPage: React.FC = () => {
 
 
   const fetchDashboardData = useCallback(async () => {
+    if (user?.role !== 'admin') {
+        setIsLoading(false);
+        return; 
+    }
     setIsLoading(true);
     setError(null);
     try {
-      // Fetch all data for dashboard stats, so use a large page size
-      const requests = [
-        authenticatedFetch('/api/orders?pageSize=10000'),
-        authenticatedFetch('/api/customers?pageSize=10000'),
-      ];
-
-      if (user?.role === 'admin') {
-        requests.push(authenticatedFetch('/api/managedUsers'));
-        requests.push(authenticatedFetch('/api/admins'));
+      const response = await authenticatedFetch('/api/dashboardStats');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: `An error occurred: ${response.statusText}` }));
+        throw new Error(errorData.message);
       }
-
-      const responses = await Promise.all(requests);
-
-      for (const res of responses) {
-        if (!res.ok) {
-          const errorData = await res.json().catch(() => ({ message: `An error occurred: ${res.statusText}` }));
-          throw new Error(errorData.message);
-        }
-      }
-
-      const [ordersRes, customersRes, managedUsersRes, adminsRes] = responses;
-
-      const ordersPaginated: PaginatedResponse<Order> = await ordersRes.json();
-      setOrders(ordersPaginated.data || []);
-
-      const customersPaginated: PaginatedResponse<Customer> = await customersRes.json();
-      setCustomers(customersPaginated.data || []);
-
-      if (user?.role === 'admin' && managedUsersRes && adminsRes) {
-        const managedUsersData: any[] = await managedUsersRes.json();
-        setManagedUsers((managedUsersData || []).map((u: any) => ({
-          id: u.id, name: u.name, email: u.email,
-          notes: u.notes || undefined, dateAdded: u.created_at || new Date().toISOString(),
-        })));
-
-        const adminsData: AdminRow[] = await adminsRes.json();
-        setAdmins(adminsData || []);
-        fetchSummary();
-      }
+      const data: DashboardStatsData = await response.json();
+      setStatsData(data);
+      fetchSummary();
     } catch (err: any) {
       console.error("Failed to fetch dashboard data:", err);
       setError(err.message || 'Could not load dashboard statistics.');
@@ -297,56 +262,12 @@ const DashboardPage: React.FC = () => {
     fetchDashboardData();
   }, [fetchDashboardData]);
 
-  const { totalProfit, managerReport } = useMemo(() => {
-    if (orders.length === 0) {
-      return { totalProfit: 0, managerReport: [] };
-    }
-
-    const statsByManager: Record<string, ManagerStats> = {};
-
-    // Create a map of all users (admins and managers) for easy name lookup
-    const allUsersMap: Record<string, string> = {};
-    admins.forEach(admin => { allUsersMap[admin.email] = user?.email === admin.email ? (user?.name || admin.email) : admin.email });
-    managedUsers.forEach(manager => { allUsersMap[manager.email] = manager.name });
-
-    orders.forEach(order => {
-      const managerEmail = order.managedByUserEmail || 'unassigned';
-      
-      if (!statsByManager[managerEmail]) {
-        statsByManager[managerEmail] = {
-          name: allUsersMap[managerEmail] || managerEmail,
-          email: managerEmail,
-          totalOrders: 0,
-          totalSales: 0,
-          totalProfit: 0,
-        };
-      }
-
-      statsByManager[managerEmail].totalOrders += 1;
-      statsByManager[managerEmail].totalSales += order.totalAmount;
-
-      const orderProfit = order.items.reduce((profit, item) => {
-        const retailPriceUAH = item.price * (1 - (item.discount || 0) / 100);
-        const costUAH = (item.salonPriceUsd || 0) * (item.exchangeRate || 0);
-        return profit + ((retailPriceUAH - costUAH) * item.quantity);
-      }, 0);
-
-      statsByManager[managerEmail].totalProfit += orderProfit;
-    });
-
-    const report = Object.values(statsByManager).sort((a,b) => b.totalProfit - a.totalProfit);
-    const total = report.reduce((sum, manager) => sum + manager.totalProfit, 0);
-    
-    return { totalProfit: total, managerReport: report };
-
-  }, [orders, managedUsers, admins, user]);
-
 
   const stats: DashboardStat[] = [
-    { title: 'Загальний прибуток', value: `₴${totalProfit.toFixed(2)}`, icon: CurrencyDollarIcon, color: 'green', isLoading: isLoading },
-    { title: 'Всього замовлень', value: orders.length.toString(), icon: OrdersIcon, color: 'rose', isLoading: isLoading },
-    { title: 'Активні клієнти', value: customers.length.toString(), icon: UsersIcon, color: 'sky', isLoading: isLoading },
-    { title: 'Кількість менеджерів', value: managedUsers.length.toString(), icon: UsersIcon, color: 'indigo', isLoading: isLoading },
+    { title: 'Загальний прибуток', value: `₴${(statsData?.totalProfit || 0).toFixed(2)}`, icon: CurrencyDollarIcon, color: 'green', isLoading: isLoading },
+    { title: 'Всього замовлень', value: (statsData?.totalOrders || 0).toString(), icon: OrdersIcon, color: 'rose', isLoading: isLoading },
+    { title: 'Активні клієнти', value: (statsData?.totalCustomers || 0).toString(), icon: UsersIcon, color: 'sky', isLoading: isLoading },
+    { title: 'Кількість менеджерів', value: (statsData?.totalManagers || 0).toString(), icon: UsersIcon, color: 'indigo', isLoading: isLoading },
   ];
 
   return (
@@ -364,12 +285,12 @@ const DashboardPage: React.FC = () => {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat) => (
-          (user?.role === 'admin' || stat.title !== 'Кількість менеджерів') && <DashboardCard key={stat.title} {...stat} isLoading={stat.isLoading} />
+          (user?.role === 'admin' || stat.title !== 'Кількість менеджерів') && <DashboardCard key={stat.title} {...stat} isLoading={isLoading || !statsData} />
         ))}
       </div>
       
       {user?.role === 'admin' && (
-        <ProfitReportChart report={managerReport} isLoading={isLoading} />
+        <ProfitReportChart report={statsData?.managerReport || []} isLoading={isLoading || !statsData} />
       )}
     </div>
   );
