@@ -105,3 +105,10 @@ export interface TopCustomer {
   totalSpent: number;
   orderCount: number;
 }
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  totalCount: number;
+  currentPage: number;
+  pageSize: number;
+}

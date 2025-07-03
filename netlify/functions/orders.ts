@@ -1,10 +1,7 @@
 
-
-
-
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import { supabase } from '../../services/supabaseClient'; 
-import type { Order, OrderItem, Product } from '../../types';
+import type { Order, OrderItem, Product, PaginatedResponse } from '../../types';
 import type { Database } from '../../types/supabase';
 import { requireAuth, AuthError, AuthenticatedUser } from '../utils/auth';
 
@@ -90,8 +87,6 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
 
     switch (event.httpMethod) {
       case 'GET': {
-        const customerIdQuery = event.queryStringParameters?.customerId;
-
         if (resourceId) {
           const { data: orderDbData, error: orderError } = await supabase
             .from('orders')
@@ -111,16 +106,41 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
           const clientOrder = dbOrderToClientOrder(orderDbData, itemsDbData || []);
           return { statusCode: 200, headers: commonHeaders, body: JSON.stringify(clientOrder) };
         } else {
+           // Pagination & Filtering
+           const {
+              page = '1',
+              pageSize = '20',
+              search = '',
+              status,
+              customerId,
+              managerEmail,
+              startDate,
+              endDate,
+            } = event.queryStringParameters || {};
+            
+            const currentPage = parseInt(page, 10);
+            const size = parseInt(pageSize, 10);
+            const from = (currentPage - 1) * size;
+            const to = from + size - 1;
+
            const query = supabase
             .from('orders')
-            .select('*, items:order_items(*), customer:customers(name)')
-            .order('date', { ascending: false });
+            .select('*, items:order_items(*), customer:customers(id, name)', { count: 'exact' });
           
-          if (customerIdQuery) {
-            query.eq('customer_id', customerIdQuery);
+          if(search){
+              query.or(`id.ilike.%${search}%,customer.name.ilike.%${search}%`, { referencedTable: 'customers' });
           }
+          if(status && status !== 'All') query.eq('status', status);
+          if(customerId && customerId !== 'All') query.eq('customer_id', customerId);
+          if(managerEmail && managerEmail !== 'All') query.eq('managed_by_user_email', managerEmail);
+          if(startDate) query.gte('date', startDate);
+          if(endDate) query.lte('date', endDate);
 
-          const { data: ordersDbData, error: ordersError } = await query;
+
+          const { data: ordersDbData, error: ordersError, count } = await query
+            .order('date', { ascending: false })
+            .range(from, to);
+
           if (ordersError) throw ordersError;
 
           const ordersWithClientItems = (ordersDbData as any[] || []).map(orderWithJoinedData => {
@@ -129,8 +149,15 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
                 orderWithJoinedData.items || []
             );
           });
+          
+          const response: PaginatedResponse<Order> = {
+              data: ordersWithClientItems,
+              totalCount: count || 0,
+              currentPage,
+              pageSize: size,
+          };
 
-          return { statusCode: 200, headers: commonHeaders, body: JSON.stringify(ordersWithClientItems) };
+          return { statusCode: 200, headers: commonHeaders, body: JSON.stringify(response) };
         }
       }
 

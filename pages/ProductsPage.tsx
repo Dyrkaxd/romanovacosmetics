@@ -1,10 +1,9 @@
 
-
-
-import React, { useState, useEffect, useCallback } from 'react';
-import { Product } from '../types';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Product, PaginatedResponse } from '../types';
 import { PlusIcon, XMarkIcon, EyeIcon, PencilIcon, TrashIcon } from '../components/Icons';
 import { authenticatedFetch } from '../utils/api';
+import Pagination from '../components/Pagination';
 
 const productGroups = ['BDR', 'LA', 'АГ', 'АБ', 'АР', 'без сокращений', 'АФ', 'ДС', 'м8', 'JDA', 'Faith', 'AB', 'ГФ', 'ЕС', 'ГП', 'СД', 'ATA', 'W'];
 
@@ -27,40 +26,62 @@ const ProductsPage: React.FC = () => {
   const [modalError, setModalError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [totalCount, setTotalCount] = useState(0);
+  
   const API_BASE_URL = '/api'; 
 
-  const fetchProducts = useCallback(async () => {
+  const fetchProducts = useCallback(async (page = 1, size = pageSize, search = searchTerm) => {
     setIsLoading(true);
     setPageError(null);
+    setCurrentPage(page);
     try {
-      const response = await authenticatedFetch(`${API_BASE_URL}/products`);
+      const query = new URLSearchParams({
+          page: String(page),
+          pageSize: String(size),
+          search: search,
+      });
+      const response = await authenticatedFetch(`${API_BASE_URL}/products?${query.toString()}`);
       if (!response.ok) {
-        let errorMessage = `Failed to fetch products. Status: ${response.status} ${response.statusText}`;
-        let responseBodyText = '';
-        try {
-            responseBodyText = await response.text(); 
-            const errData = JSON.parse(responseBodyText); 
-            errorMessage = errData.message || `Server error: ${response.status} ${response.statusText}`;
-        } catch (jsonError) {
-            errorMessage = `Server responded with non-JSON (${response.status} ${response.statusText}): ${responseBodyText.substring(0, 200)}...`;
-            console.error("Full non-JSON error response from server (fetchProducts):", responseBodyText);
-        }
-        throw new Error(errorMessage);
+        const errData = await response.json().catch(() => ({ message: 'Server error' }));
+        throw new Error(errData.message || `Failed to fetch products. Status: ${response.status}`);
       }
-      const data: Product[] = await response.json();
-      setProducts(data);
+      const data: PaginatedResponse<Product> = await response.json();
+      setProducts(data.data);
+      setTotalCount(data.totalCount);
+      setCurrentPage(data.currentPage);
+      setPageSize(data.pageSize);
     } catch (err: any) {
       console.error("Failed to fetch products:", err);
       setPageError(err.message || 'Could not load products. Please try again.');
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [pageSize, searchTerm]);
 
   useEffect(() => {
-    fetchProducts();
-  }, [fetchProducts]);
+    fetchProducts(1, pageSize, searchTerm);
+  }, [fetchProducts, pageSize, searchTerm]);
+
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+    setCurrentPage(1); // Reset to first page on new search
+  };
+  
+  const handlePageChange = (page: number) => {
+      fetchProducts(page, pageSize, searchTerm);
+  };
+  
+  const handlePageSizeChange = (size: number) => {
+      setPageSize(size);
+      setCurrentPage(1); // Reset to first page
+      fetchProducts(1, size, searchTerm);
+  };
+
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -104,19 +125,10 @@ const ProductsPage: React.FC = () => {
       }
 
       if (!response.ok) {
-        let errorMessage = `Failed to ${editingProduct ? 'update' : 'add'} product. Status: ${response.status} ${response.statusText}`;
-        let responseBodyText = '';
-        try {
-            responseBodyText = await response.text();
-            const errData = JSON.parse(responseBodyText);
-            errorMessage = errData.message || `Server error: ${response.status} ${response.statusText}`;
-        } catch (jsonError) {
-            errorMessage = `Server responded with non-JSON (${response.status} ${response.statusText}): ${responseBodyText.substring(0, 200)}...`;
-            console.error("Full non-JSON error response from server (handleSubmitProduct):", responseBodyText);
-        }
-        throw new Error(errorMessage);
+        const errData = await response.json().catch(() => ({ message: 'Server error' }));
+        throw new Error(errData.message || `Could not ${editingProduct ? 'update' : 'add'} product.`);
       }
-      fetchProducts(); 
+      fetchProducts(currentPage); // Refetch current page
       closeModal();
     } catch (err: any) {
       console.error("Failed to save product:", err);
@@ -157,23 +169,16 @@ const ProductsPage: React.FC = () => {
         setIsLoading(true);
         setPageError(null);
         try {
-            const response = await authenticatedFetch(`${API_BASE_URL}/products/${productId}`, {
-                method: 'DELETE',
-            });
+            const response = await authenticatedFetch(`${API_BASE_URL}/products/${productId}`, { method: 'DELETE' });
             if (!response.ok && response.status !== 204) {
-                 let errorMessage = `Failed to delete product. Status: ${response.status} ${response.statusText}`;
-                 let responseBodyText = '';
-                 try {
-                     responseBodyText = await response.text();
-                     const errData = JSON.parse(responseBodyText);
-                     errorMessage = errData.message || `Server error: ${response.status} ${response.statusText}`;
-                 } catch (jsonError) {
-                     errorMessage = `Server responded with non-JSON (${response.status} ${response.statusText}): ${responseBodyText.substring(0, 200)}...`;
-                     console.error("Full non-JSON error response from server (handleDeleteProduct):", responseBodyText);
-                 }
-                 throw new Error(errorMessage);
+                 const errData = await response.json().catch(() => ({ message: 'Server error' }));
+                 throw new Error(errData.message || 'Could not delete product.');
             }
-            fetchProducts(); 
+            // Refetch data, stay on the same page if possible, or go to previous if it was the last item
+            const newTotalCount = totalCount - 1;
+            const newTotalPages = Math.ceil(newTotalCount / pageSize);
+            const newCurrentPage = (currentPage > newTotalPages && newTotalPages > 0) ? newTotalPages : currentPage;
+            fetchProducts(newCurrentPage);
         } catch (err: any) {
             console.error("Failed to delete product:", err);
             setPageError(err.message || 'Could not delete product. Please try again.');
@@ -183,10 +188,6 @@ const ProductsPage: React.FC = () => {
     }
   };
   
-  const filteredProducts = products.filter(product =>
-    product.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-3 sm:space-y-0">
@@ -206,14 +207,12 @@ const ProductsPage: React.FC = () => {
         placeholder="Пошук товарів за назвою..."
         className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
         value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
+        onChange={handleSearchChange}
         aria-label="Пошук товарів"
       />
 
       {pageError && <div role="alert" className="p-4 bg-red-50 text-red-700 border border-red-200 rounded-lg">{pageError}</div>}
-      {isLoading && products.length === 0 && <div className="text-center p-4">Завантаження товарів...</div>}
-
-
+      
       <div className="bg-white shadow-sm rounded-xl overflow-hidden border border-slate-200">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-200">
@@ -228,7 +227,9 @@ const ProductsPage: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-slate-200">
-              {!isLoading && filteredProducts.length > 0 ? filteredProducts.map((product) => (
+              {isLoading ? (
+                <tr><td colSpan={6} className="px-6 py-10 text-center text-sm text-slate-500">Завантаження...</td></tr>
+              ) : products.length > 0 ? products.map((product) => (
                 <tr key={product.id} className="hover:bg-rose-50/50 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-800">{product.name}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{product.group}</td>
@@ -248,15 +249,23 @@ const ProductsPage: React.FC = () => {
               )) : (
                 <tr>
                   <td colSpan={6} className="px-6 py-10 text-center text-sm text-slate-500">
-                    { !isLoading && products.length === 0 && !pageError && "Товарів ще немає. Натисніть 'Додати новий товар', щоб створити."}
-                    { !isLoading && products.length > 0 && filteredProducts.length === 0 && "Товарів, що відповідають вашему пошуку, не знайдено."}
-                    { isLoading && "Завантаження..."}
+                    { !pageError && (totalCount === 0 && searchTerm === '' ? "Товарів ще немає. Натисніть 'Додати новий товар', щоб створити." : "Товарів, що відповідають вашему пошуку, не знайдено.")}
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
+        {totalCount > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            totalCount={totalCount}
+            pageSize={pageSize}
+            onPageChange={handlePageChange}
+            onPageSizeChange={handlePageSizeChange}
+            isLoading={isLoading}
+          />
+        )}
       </div>
 
       {isModalOpen && (

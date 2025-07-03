@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Customer, Order } from '../types';
+import { Customer, Order, PaginatedResponse } from '../types';
 import { PlusIcon, XMarkIcon, EyeIcon, PencilIcon, TrashIcon } from '../components/Icons';
 import { authenticatedFetch } from '../utils/api';
+import Pagination from '../components/Pagination';
 
 const orderStatusValues: Order['status'][] = ['Ordered', 'Shipped', 'Received', 'Calculation', 'AwaitingApproval', 'PaidByClient', 'WrittenOff', 'ReadyForPickup'];
 const orderStatusTranslations: Record<Order['status'], string> = {
@@ -56,6 +57,11 @@ const CustomersPage: React.FC = () => {
   const [modalError, setModalError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [totalCount, setTotalCount] = useState(0);
 
   const [customerOrders, setCustomerOrders] = useState<Order[]>([]);
   const [isCustomerOrdersLoading, setIsCustomerOrdersLoading] = useState(false);
@@ -64,11 +70,17 @@ const CustomersPage: React.FC = () => {
 
   const API_BASE_URL = '/api';
 
-  const fetchCustomers = useCallback(async () => {
+  const fetchCustomers = useCallback(async (page = 1, size = pageSize, search = searchTerm) => {
     setIsLoading(true);
     setPageError(null);
+    setCurrentPage(page);
     try {
-      const response = await authenticatedFetch(`${API_BASE_URL}/customers`);
+       const query = new URLSearchParams({
+          page: String(page),
+          pageSize: String(size),
+          search: search,
+      });
+      const response = await authenticatedFetch(`${API_BASE_URL}/customers?${query.toString()}`);
       if (!response.ok) {
         let errorMessage = `Failed to fetch customers. Status: ${response.status} ${response.statusText}`;
         try {
@@ -77,28 +89,54 @@ const CustomersPage: React.FC = () => {
         } catch (e) { /* ignore json parse error */ }
         throw new Error(errorMessage);
       }
-      let data: Customer[] = await response.json();
-      setCustomers(data);
+      let data: PaginatedResponse<Customer> = await response.json();
+      setCustomers(data.data);
+      setTotalCount(data.totalCount);
+      setCurrentPage(data.currentPage);
+      setPageSize(data.pageSize);
+
     } catch (err: any) {
       console.error("Failed to fetch customers:", err);
       setPageError(err.message || 'Could not load customers. Please try again.');
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [pageSize, searchTerm]);
+
+  useEffect(() => {
+    fetchCustomers(1, pageSize, searchTerm);
+  }, [fetchCustomers, pageSize, searchTerm]);
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+    setCurrentPage(1); // Reset to first page on new search
+  };
+  
+  const handlePageChange = (page: number) => {
+      fetchCustomers(page, pageSize, searchTerm);
+  };
+  
+  const handlePageSizeChange = (size: number) => {
+      setPageSize(size);
+      setCurrentPage(1); // Reset to first page
+      fetchCustomers(1, size, searchTerm);
+  };
+
 
   const fetchOrdersForCustomer = useCallback(async (customerId: string) => {
     if (!customerId) return;
     setIsCustomerOrdersLoading(true);
     setCustomerOrdersError(null);
     try {
+      // Note: This endpoint might also need pagination if a customer can have many orders.
+      // For now, fetching all for the modal view.
       const response = await authenticatedFetch(`${API_BASE_URL}/orders?customerId=${customerId}`);
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: 'Failed to fetch customer orders' }));
         throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
-      const data: Order[] = await response.json();
-      setCustomerOrders(data);
+      const data: Order[] | PaginatedResponse<Order> = await response.json();
+      setCustomerOrders(Array.isArray(data) ? data : data.data);
     } catch (err: any) {
       console.error("Failed to fetch customer orders:", err);
       setCustomerOrdersError(err.message || 'Could not load customer orders.');
@@ -108,9 +146,6 @@ const CustomersPage: React.FC = () => {
     }
   }, []);
 
-  useEffect(() => {
-    fetchCustomers();
-  }, [fetchCustomers]);
 
   useEffect(() => {
     if (isViewModalOpen && currentCustomer?.id) {
@@ -173,7 +208,7 @@ const CustomersPage: React.FC = () => {
         } catch (e) { /* ignore json parse error */ }
         throw new Error(errorMessage);
       }
-      fetchCustomers(); 
+      fetchCustomers(currentPage); 
       closeModal();
     } catch (err: any) {
       console.error("Failed to save customer:", err);
@@ -225,7 +260,10 @@ const CustomersPage: React.FC = () => {
           } catch (e) { /* ignore json parse error */ }
           throw new Error(errorMessage);
         }
-        fetchCustomers();
+        const newTotalCount = totalCount - 1;
+        const newTotalPages = Math.ceil(newTotalCount / pageSize);
+        const newCurrentPage = (currentPage > newTotalPages && newTotalPages > 0) ? newTotalPages : currentPage;
+        fetchCustomers(newCurrentPage);
       } catch (err: any) {
         console.error("Failed to delete customer:", err);
         setPageError(err.message || 'Could not delete customer. Please try again.');
@@ -234,12 +272,6 @@ const CustomersPage: React.FC = () => {
       }
     }
   };
-
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (customer.phone && customer.phone.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
 
   return (
     <div className="space-y-6">
@@ -261,12 +293,10 @@ const CustomersPage: React.FC = () => {
         placeholder="Пошук за ім'ям, email, або телефоном..."
         className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
         value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
+        onChange={handleSearchChange}
       />
       {pageError && <div role="alert" className="p-4 bg-red-50 text-red-700 border border-red-200 rounded-lg">{pageError}</div>}
-      {isLoading && customers.length === 0 && <div className="text-center p-4">Завантаження клієнтів...</div>}
-
-
+      
       <div className="bg-white shadow-sm rounded-xl overflow-hidden border border-slate-200">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-200">
@@ -280,31 +310,40 @@ const CustomersPage: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-slate-200">
-              {!isLoading && filteredCustomers.map((customer) => (
-                <tr key={customer.id} className="hover:bg-rose-50/50 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-800">{customer.name}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 hidden sm:table-cell">{customer.email}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 hidden md:table-cell">{customer.phone || 'Н/Д'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 hidden md:table-cell">{new Date(customer.joinDate).toLocaleDateString()}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-1">
-                    <button onClick={() => openViewModal(customer)} className="text-slate-500 hover:text-sky-600 transition-colors p-2 rounded-md hover:bg-sky-50" title="Переглянути деталі клієнта" aria-label={`Переглянути деталі для ${customer.name}`}><EyeIcon className="w-5 h-5"/></button>
-                    <button onClick={() => openEditModal(customer)} className="text-slate-500 hover:text-rose-600 transition-colors p-2 rounded-md hover:bg-rose-50" title="Редагувати клієнта" aria-label={`Редагувати ${customer.name}`}><PencilIcon className="w-5 h-5"/></button>
-                    <button onClick={() => handleDeleteCustomer(customer.id)} className="text-slate-500 hover:text-red-600 transition-colors p-2 rounded-md hover:bg-red-50" title="Видалити клієнта" aria-label={`Видалити ${customer.name}`}><TrashIcon className="w-5 h-5"/></button>
-                  </td>
-                </tr>
-              ))}
-              {isLoading && (
+              {isLoading ? (
                  <tr><td colSpan={5} className="px-6 py-10 text-center text-sm text-slate-500">Завантаження...</td></tr>
-              )}
-              {!isLoading && customers.length === 0 && !pageError && (
-                <tr><td colSpan={5} className="px-6 py-10 text-center text-sm text-slate-500">Клієнтів ще немає. Натисніть 'Додати клієнта', щоб почати.</td></tr>
-              )}
-              {!isLoading && customers.length > 0 && filteredCustomers.length === 0 && (
-                 <tr><td colSpan={5} className="px-6 py-10 text-center text-sm text-slate-500">Клієнтів, що відповідають вашому пошуку, не знайдено.</td></tr>
+              ) : customers.length > 0 ? (
+                customers.map((customer) => (
+                  <tr key={customer.id} className="hover:bg-rose-50/50 transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-800">{customer.name}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 hidden sm:table-cell">{customer.email}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 hidden md:table-cell">{customer.phone || 'Н/Д'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 hidden md:table-cell">{new Date(customer.joinDate).toLocaleDateString()}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-1">
+                      <button onClick={() => openViewModal(customer)} className="text-slate-500 hover:text-sky-600 transition-colors p-2 rounded-md hover:bg-sky-50" title="Переглянути деталі клієнта" aria-label={`Переглянути деталі для ${customer.name}`}><EyeIcon className="w-5 h-5"/></button>
+                      <button onClick={() => openEditModal(customer)} className="text-slate-500 hover:text-rose-600 transition-colors p-2 rounded-md hover:bg-rose-50" title="Редагувати клієнта" aria-label={`Редагувати ${customer.name}`}><PencilIcon className="w-5 h-5"/></button>
+                      <button onClick={() => handleDeleteCustomer(customer.id)} className="text-slate-500 hover:text-red-600 transition-colors p-2 rounded-md hover:bg-red-50" title="Видалити клієнта" aria-label={`Видалити ${customer.name}`}><TrashIcon className="w-5 h-5"/></button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr><td colSpan={5} className="px-6 py-10 text-center text-sm text-slate-500">
+                  {!pageError && (totalCount === 0 && searchTerm === '' ? "Клієнтів ще немає. Натисніть 'Додати клієнта', щоб почати." : "Клієнтів, що відповідають вашому пошуку, не знайдено.")}
+                </td></tr>
               )}
             </tbody>
           </table>
         </div>
+        {totalCount > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            totalCount={totalCount}
+            pageSize={pageSize}
+            onPageChange={handlePageChange}
+            onPageSizeChange={handlePageSizeChange}
+            isLoading={isLoading}
+          />
+        )}
       </div>
 
       {isModalOpen && (

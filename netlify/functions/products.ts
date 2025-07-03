@@ -1,6 +1,7 @@
+
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import { supabase } from '../../services/supabaseClient';
-import type { Product } from '../../types';
+import type { Product, PaginatedResponse } from '../../types';
 import type { Database } from '../../types/supabase';
 import { requireAuth } from '../utils/auth';
 
@@ -90,6 +91,11 @@ const handler: Handler = async (event: HandlerEvent) => {
           const product = transformDbRowToProduct(findResult.product, findResult.group);
           return { statusCode: 200, headers: commonHeaders, body: JSON.stringify(product) };
         } else {
+          // Server-side pagination and filtering
+          const { search = '', page = '1', pageSize = '20' } = event.queryStringParameters || {};
+          const currentPage = parseInt(page, 10);
+          const size = parseInt(pageSize, 10);
+
           const allProductsPromises = Object.entries(productGroups).map(async ([group, tableName]) => {
             const { data, error } = await supabase
               .from(tableName)
@@ -99,9 +105,26 @@ const handler: Handler = async (event: HandlerEvent) => {
           });
 
           const productsByGroup = await Promise.all(allProductsPromises);
-          const allProducts = productsByGroup.flat().sort((a,b) => (b.created_at || '').localeCompare(a.created_at || ''));
+          let allProducts = productsByGroup.flat().sort((a,b) => (a.name || '').localeCompare(b.name || ''));
+
+          // Filtering
+          if (search) {
+            allProducts = allProducts.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
+          }
           
-          return { statusCode: 200, headers: commonHeaders, body: JSON.stringify(allProducts) };
+          const totalCount = allProducts.length;
+          const from = (currentPage - 1) * size;
+          const to = from + size;
+          const paginatedData = allProducts.slice(from, to);
+
+          const response: PaginatedResponse<Product> = {
+            data: paginatedData,
+            totalCount,
+            currentPage,
+            pageSize: size,
+          };
+          
+          return { statusCode: 200, headers: commonHeaders, body: JSON.stringify(response) };
         }
 
       case 'POST':

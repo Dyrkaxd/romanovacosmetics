@@ -1,12 +1,13 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Order, OrderItem, Customer, Product, ManagedUser } from '../types';
+import { Order, OrderItem, Customer, Product, ManagedUser, PaginatedResponse } from '../types';
 import { EyeIcon, XMarkIcon, PlusIcon, TrashIcon, PencilIcon, DocumentTextIcon, PrinterIcon, FilterIcon, DownloadIcon, ChevronDownIcon } from '../components/Icons';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { logoBase64 } from '../assets/logo';
 import { authenticatedFetch } from '../utils/api';
 import { Database } from '../types/supabase';
+import Pagination from '../components/Pagination';
 
 type AdminRow = Database['public']['Tables']['admins']['Row'];
 
@@ -45,7 +46,6 @@ const API_BASE_URL = '/api';
 
 const OrdersPage: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
   const [viewOrder, setViewOrder] = useState<Order | null>(null);
   const [editableOrderStatus, setEditableOrderStatus] = useState<Order['status'] | undefined>(undefined);
   const [editableOrderNotes, setEditableOrderNotes] = useState<string>('');
@@ -70,13 +70,18 @@ const OrdersPage: React.FC = () => {
   const [selectedOrderForInvoice, setSelectedOrderForInvoice] = useState<Order | null>(null);
   const [customerForInvoice, setCustomerForInvoice] = useState<Customer | null>(null);
 
-  // Filtering state
+  // Filtering and Pagination state
+  const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<Order['status'] | 'All'>('All');
   const [filterCustomerId, setFilterCustomerId] = useState<string>('All');
   const [filterManagerEmail, setFilterManagerEmail] = useState<string>('All');
   const [filterStartDate, setFilterStartDate] = useState<string>('');
   const [filterEndDate, setFilterEndDate] = useState<string>('');
   const [showFilters, setShowFilters] = useState<boolean>(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [totalCount, setTotalCount] = useState(0);
+
 
   // State for searchable product dropdown
   const [openProductDropdown, setOpenProductDropdown] = useState<number | null>(null);
@@ -98,6 +103,7 @@ const OrdersPage: React.FC = () => {
 
   const fetchAuxiliaryData = useCallback(async () => {
     try {
+      // Fetch all for filter dropdowns, not paginated
       const [custRes, prodRes, managerRes, adminRes] = await Promise.all([
         authenticatedFetch(`${API_BASE_URL}/customers`),
         authenticatedFetch(`${API_BASE_URL}/products`),
@@ -114,8 +120,8 @@ const OrdersPage: React.FC = () => {
       const managerData: ManagedUser[] = await managerRes.json();
       const adminData: AdminRow[] = await adminRes.json();
       
-      setCustomers(custData || []);
-      setAvailableProducts(prodData || []);
+      setCustomers(custData?.data || custData || []); // Handle paginated or full response for filters
+      setAvailableProducts(prodData?.data || prodData || []);
       
       const combinedUsers = [
         ...(managerData || []).map(m => ({ email: m.email, name: m.name })),
@@ -132,68 +138,49 @@ const OrdersPage: React.FC = () => {
     }
   }, []);
   
-  const fetchOrders = useCallback(async () => {
+  const fetchOrders = useCallback(async (page = 1) => {
     setIsLoading(true);
     setPageError(null);
+    setCurrentPage(page);
+
+    const params = new URLSearchParams({
+        page: String(page),
+        pageSize: String(pageSize),
+        search: searchTerm,
+        status: filterStatus,
+        customerId: filterCustomerId,
+        managerEmail: filterManagerEmail,
+        startDate: filterStartDate,
+        endDate: filterEndDate,
+    });
+
     try {
-      const response = await authenticatedFetch(`${API_BASE_URL}/orders`);
+      const response = await authenticatedFetch(`${API_BASE_URL}/orders?${params.toString()}`);
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: 'Failed to fetch orders' }));
         throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
-      const data: Order[] = await response.json();
-      setOrders(data);
+      const data: PaginatedResponse<Order> = await response.json();
+      setOrders(data.data);
+      setTotalCount(data.totalCount);
+      setCurrentPage(data.currentPage);
+      setPageSize(data.pageSize);
     } catch (err: any) {
       console.error("Failed to fetch orders:", err);
       setPageError(err.message || 'Could not load orders. Please try again.');
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [pageSize, searchTerm, filterStatus, filterCustomerId, filterManagerEmail, filterStartDate, filterEndDate]);
 
   useEffect(() => {
-    const loadAllData = async () => {
-      setIsLoading(true);
-      await fetchAuxiliaryData();
-      await fetchOrders();
-      setIsLoading(false);
-    }
-    loadAllData();
-  }, [fetchAuxiliaryData, fetchOrders]);
+    fetchAuxiliaryData();
+  }, [fetchAuxiliaryData]);
 
-  const filteredOrders = useMemo(() => {
-    return orders.filter(order => {
-      const searchMatch = order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          order.customerName.toLowerCase().includes(searchTerm.toLowerCase());
-      const statusMatch = filterStatus === 'All' || order.status === filterStatus;
-      const customerMatch = filterCustomerId === 'All' || order.customerId === filterCustomerId;
-      const managerMatch = filterManagerEmail === 'All' || order.managedByUserEmail === filterManagerEmail;
-      
-      let dateMatch = true;
-      if (filterStartDate && filterEndDate) {
-        const orderDate = new Date(order.date);
-        const startDate = new Date(filterStartDate);
-        const endDate = new Date(filterEndDate);
-        orderDate.setHours(0,0,0,0);
-        startDate.setHours(0,0,0,0);
-        endDate.setHours(0,0,0,0);
-        dateMatch = orderDate >= startDate && orderDate <= endDate;
-      } else if (filterStartDate) {
-        const orderDate = new Date(order.date);
-        const startDate = new Date(filterStartDate);
-        orderDate.setHours(0,0,0,0);
-        startDate.setHours(0,0,0,0);
-        dateMatch = orderDate >= startDate;
-      } else if (filterEndDate) {
-        const orderDate = new Date(order.date);
-        const endDate = new Date(filterEndDate);
-        orderDate.setHours(0,0,0,0);
-        endDate.setHours(0,0,0,0);
-        dateMatch = orderDate <= endDate;
-      }
-      return searchMatch && statusMatch && customerMatch && managerMatch && dateMatch;
-    });
-  }, [orders, searchTerm, filterStatus, filterCustomerId, filterManagerEmail, filterStartDate, filterEndDate]);
+  useEffect(() => {
+    fetchOrders(1); // Fetch first page when filters change
+  }, [pageSize, searchTerm, filterStatus, filterCustomerId, filterManagerEmail, filterStartDate, filterEndDate]);
+
 
   const resetFilters = () => {
     setFilterStatus('All');
@@ -202,7 +189,18 @@ const OrdersPage: React.FC = () => {
     setFilterStartDate('');
     setFilterEndDate('');
     setSearchTerm('');
+    setCurrentPage(1);
   };
+  
+  const handlePageChange = (page: number) => {
+      fetchOrders(page);
+  };
+  
+  const handlePageSizeChange = (size: number) => {
+      setPageSize(size);
+      setCurrentPage(1); // Reset to first page
+  };
+
 
   const calculateTotalAmount = (items: OrderItem[] = []): number => {
     return items.reduce((sum, item) => {
@@ -304,7 +302,7 @@ const OrdersPage: React.FC = () => {
         const errorData = await response.json().catch(() => ({ message: `Failed to ${isEditing ? 'update' : 'create'} order` }));
         throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
-      fetchOrders(); 
+      fetchOrders(currentPage); 
       closeOrderModal();
     } catch (err: any) {
       console.error(`Failed to ${isEditing ? 'update' : 'create'} order:`, err);
@@ -396,7 +394,10 @@ const OrdersPage: React.FC = () => {
           const errorData = await response.json().catch(() => ({ message: 'Failed to delete order' }));
           throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
         }
-        fetchOrders(); 
+        const newTotalCount = totalCount - 1;
+        const newTotalPages = Math.ceil(newTotalCount / pageSize);
+        const newCurrentPage = (currentPage > newTotalPages && newTotalPages > 0) ? newTotalPages : currentPage;
+        fetchOrders(newCurrentPage);
       } catch (err: any) {
         console.error("Failed to delete order:", err);
         setPageError(err.message || 'Could not delete order.');
@@ -427,32 +428,32 @@ const OrdersPage: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
                 <div>
                     <label htmlFor="filterStatus" className="block text-sm font-medium text-slate-700">Статус</label>
-                    <select id="filterStatus" value={filterStatus} onChange={e => setFilterStatus(e.target.value as Order['status'] | 'All')} className="mt-1 block w-full p-2 border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500 sm:text-sm">
+                    <select id="filterStatus" value={filterStatus} onChange={e => {setFilterStatus(e.target.value as Order['status'] | 'All'); setCurrentPage(1);}} className="mt-1 block w-full p-2 border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500 sm:text-sm">
                         <option value="All">Всі статуси</option>
                         {orderStatusValues.map(status => <option key={status} value={status}>{orderStatusTranslations[status]}</option>)}
                     </select>
                 </div>
                 <div>
                     <label htmlFor="filterCustomer" className="block text-sm font-medium text-slate-700">Клієнт</label>
-                    <select id="filterCustomer" value={filterCustomerId} onChange={e => setFilterCustomerId(e.target.value)} className="mt-1 block w-full p-2 border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500 sm:text-sm">
+                    <select id="filterCustomer" value={filterCustomerId} onChange={e => {setFilterCustomerId(e.target.value); setCurrentPage(1);}} className="mt-1 block w-full p-2 border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500 sm:text-sm">
                         <option value="All">Всі клієнти</option>
                         {customers.map(customer => <option key={customer.id} value={customer.id}>{customer.name}</option>)}
                     </select>
                 </div>
                 <div>
                   <label htmlFor="filterManager" className="block text-sm font-medium text-slate-700">Менеджер</label>
-                  <select id="filterManager" value={filterManagerEmail} onChange={e => setFilterManagerEmail(e.target.value)} className="mt-1 block w-full p-2 border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500 sm:text-sm">
+                  <select id="filterManager" value={filterManagerEmail} onChange={e => {setFilterManagerEmail(e.target.value); setCurrentPage(1);}} className="mt-1 block w-full p-2 border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500 sm:text-sm">
                     <option value="All">Всі менеджери</option>
                     {allOrderManagers.map(manager => <option key={manager.email} value={manager.email}>{manager.name || manager.email}</option>)}
                   </select>
                 </div>
                 <div>
                     <label htmlFor="filterStartDate" className="block text-sm font-medium text-slate-700">Дата від</label>
-                    <input type="date" id="filterStartDate" value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} className="mt-1 block w-full p-2 border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500 sm:text-sm"/>
+                    <input type="date" id="filterStartDate" value={filterStartDate} onChange={e => {setFilterStartDate(e.target.value); setCurrentPage(1);}} className="mt-1 block w-full p-2 border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500 sm:text-sm"/>
                 </div>
                 <div>
                     <label htmlFor="filterEndDate" className="block text-sm font-medium text-slate-700">Дата до</label>
-                    <input type="date" id="filterEndDate" value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} className="mt-1 block w-full p-2 border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500 sm:text-sm"/>
+                    <input type="date" id="filterEndDate" value={filterEndDate} onChange={e => {setFilterEndDate(e.target.value); setCurrentPage(1);}} className="mt-1 block w-full p-2 border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500 sm:text-sm"/>
                 </div>
             </div>
             <div className="flex justify-end space-x-2">
@@ -460,11 +461,10 @@ const OrdersPage: React.FC = () => {
             </div>
         </div>
       )}
-      <input type="search" aria-label="Пошук замовлень за ID або ім'ям клієнта" placeholder="Пошук за ID, ім'ям клієнта..." className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+      <input type="search" aria-label="Пошук замовлень за ID або ім'ям клієнта" placeholder="Пошук за ID, ім'ям клієнта..." className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500" value={searchTerm} onChange={(e) => {setSearchTerm(e.target.value); setCurrentPage(1);}} />
       
       {pageError && <div role="alert" className="p-4 bg-red-50 text-red-700 border border-red-200 rounded-lg">{pageError}</div>}
-      {isLoading && orders.length === 0 && <div className="text-center p-4">Завантаження замовлень...</div>}
-
+      
       <div className="bg-white shadow-sm rounded-xl overflow-hidden border border-slate-200">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-200">
@@ -479,7 +479,9 @@ const OrdersPage: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-slate-200">
-              {!isLoading && filteredOrders.map((order) => (
+              {isLoading ? (
+                 <tr><td colSpan={6} className="px-6 py-10 text-center text-sm text-slate-500">Завантаження...</td></tr>
+              ) : orders.length > 0 ? (orders.map((order) => (
                 <tr key={order.id} className="hover:bg-rose-50/50 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-rose-600">#{order.id.substring(0,6)}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-800">{order.customerName}</td>
@@ -493,19 +495,24 @@ const OrdersPage: React.FC = () => {
                     <button onClick={() => handleDeleteOrder(order.id)} className="text-slate-500 hover:text-red-600 transition-colors p-2 rounded-md hover:bg-red-50" aria-label={`Видалити замовлення ${order.id}`} title="Видалити"><TrashIcon className="w-5 h-5" /></button>
                   </td>
                 </tr>
-              ))}
-               {isLoading && (
-                 <tr><td colSpan={6} className="px-6 py-10 text-center text-sm text-slate-500">Завантаження...</td></tr>
-              )}
-              {!isLoading && orders.length === 0 && !pageError && (
-                <tr><td colSpan={6} className="px-6 py-10 text-center text-sm text-slate-500">Замовлень ще немає. Натисніть 'Створити замовлення', щоб почати.</td></tr>
-              )}
-              {!isLoading && orders.length > 0 && filteredOrders.length === 0 && (
-                 <tr><td colSpan={6} className="px-6 py-10 text-center text-sm text-slate-500">Замовлень, що відповідають вашому пошуку та фільтрам, не знайдено.</td></tr>
+              ))) : (
+                <tr><td colSpan={6} className="px-6 py-10 text-center text-sm text-slate-500">
+                  {!pageError && (totalCount === 0 && searchTerm === '' ? "Замовлень ще немає. Натисніть 'Створити замовлення', щоб почати." : "Замовлень, що відповідають вашому пошуку та фільтрам, не знайдено.")}
+                </td></tr>
               )}
             </tbody>
           </table>
         </div>
+        {totalCount > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            totalCount={totalCount}
+            pageSize={pageSize}
+            onPageChange={handlePageChange}
+            onPageSizeChange={handlePageSizeChange}
+            isLoading={isLoading}
+          />
+        )}
       </div>
 
       {modalMode && activeOrderData && (

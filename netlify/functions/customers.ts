@@ -1,7 +1,7 @@
 
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import { supabase } from '../../services/supabaseClient'; 
-import type { Customer } from '../../types';
+import type { Customer, PaginatedResponse } from '../../types';
 import type { Database } from '../../types/supabase';
 import { requireAuth, AuthError } from '../utils/auth';
 
@@ -59,14 +59,37 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
           const customer = transformDbRowToCustomer(dbData as CustomerDbRow);
           return { statusCode: 200, headers: commonHeaders, body: JSON.stringify(customer) };
         } else {
-          const { data: dbData, error } = await supabase
+          // Server-side pagination
+          const { search = '', page = '1', pageSize = '20' } = event.queryStringParameters || {};
+          const currentPage = parseInt(page, 10);
+          const size = parseInt(pageSize, 10);
+          const from = (currentPage - 1) * size;
+          const to = from + size - 1;
+          
+          const query = supabase
             .from('customers')
-            .select('*')
-            .order('created_at', { ascending: false });
+            .select('*', { count: 'exact' });
+
+          if (search) {
+             query.or(`name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%`);
+          }
+
+          const { data: dbData, error, count } = await query
+            .order('created_at', { ascending: false })
+            .range(from, to);
+
           if (error) throw error;
 
           const customers = (dbData as CustomerDbRow[] || []).map(transformDbRowToCustomer);
-          return { statusCode: 200, headers: commonHeaders, body: JSON.stringify(customers) };
+          
+          const response: PaginatedResponse<Customer> = {
+            data: customers,
+            totalCount: count || 0,
+            currentPage: currentPage,
+            pageSize: size
+          };
+
+          return { statusCode: 200, headers: commonHeaders, body: JSON.stringify(response) };
         }
 
       case 'POST':
