@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { DashboardStat, Order, ManagedUser, Customer } from '../types';
-import { OrdersIcon, UsersIcon, CurrencyDollarIcon } from '../components/Icons'; 
+import { OrdersIcon, UsersIcon, CurrencyDollarIcon, LightBulbIcon, ArrowPathIcon } from '../components/Icons'; 
 import { authenticatedFetch } from '../utils/api';
 import { useAuth } from '../AuthContext';
 import { Database } from '../types/supabase';
@@ -37,6 +38,38 @@ const DashboardCard: React.FC<DashboardStat & { isLoading?: boolean }> = ({ titl
   );
 };
 
+const AISummaryCard: React.FC<{ summary: string; isLoading: boolean; error: string | null; onRegenerate: () => void; }> = ({ summary, isLoading, error, onRegenerate }) => {
+  return (
+    <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex space-x-4">
+      <div className="p-3 rounded-full bg-amber-50 h-fit">
+        <LightBulbIcon className="w-7 h-7 text-amber-500" />
+      </div>
+      <div className="flex-1">
+        <div className="flex justify-between items-center mb-1">
+            <p className="text-sm text-slate-500 font-medium">AI-аналітика продажів</p>
+            <button
+              onClick={onRegenerate}
+              disabled={isLoading}
+              className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors disabled:opacity-50 disabled:cursor-wait"
+              aria-label="Оновити AI-аналітику"
+            >
+              <ArrowPathIcon className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+            </button>
+        </div>
+        {isLoading ? (
+          <div className="space-y-2 mt-2">
+            <div className="h-4 bg-slate-200 rounded w-5/6 animate-pulse"></div>
+            <div className="h-4 bg-slate-200 rounded w-4/6 animate-pulse"></div>
+          </div>
+        ) : error ? (
+          <p className="text-sm text-red-600 bg-red-50 p-3 rounded-md">{error}</p>
+        ) : (
+          <p className="text-slate-700 font-medium leading-relaxed">{summary}</p>
+        )}
+      </div>
+    </div>
+  );
+};
 
 interface ManagerStats {
   name: string;
@@ -186,6 +219,29 @@ const DashboardPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [summary, setSummary] = useState<string>('');
+  const [isSummaryLoading, setIsSummaryLoading] = useState<boolean>(true);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
+
+  const fetchSummary = useCallback(async () => {
+    setIsSummaryLoading(true);
+    setSummaryError(null);
+    try {
+      const response = await authenticatedFetch(`${API_BASE_URL}/dashboardSummary`);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Failed to fetch AI summary.' }));
+        throw new Error(errorData.message);
+      }
+      const data = await response.json();
+      setSummary(data.summary);
+    } catch (err: any) {
+      setSummaryError(err.message || 'Could not load AI summary.');
+    } finally {
+      setIsSummaryLoading(false);
+    }
+  }, []);
+
+
   const fetchDashboardData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -216,6 +272,7 @@ const DashboardPage: React.FC = () => {
              notes: u.notes || undefined, dateAdded: u.created_at || new Date().toISOString(),
         })));
         setAdmins(adminsData || []);
+        fetchSummary(); // Fetch summary for admin
       }
 
     } catch (err: any) {
@@ -224,7 +281,7 @@ const DashboardPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [user?.role]);
+  }, [user?.role, fetchSummary]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -285,6 +342,16 @@ const DashboardPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {error && <div role="alert" className="p-4 bg-red-50 text-red-700 border border-red-200 rounded-lg">{error}</div>}
+      
+      {user?.role === 'admin' && (
+        <AISummaryCard 
+          summary={summary} 
+          isLoading={isSummaryLoading}
+          error={summaryError}
+          onRegenerate={fetchSummary}
+        />
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat) => (
           (user?.role === 'admin' || stat.title !== 'Кількість менеджерів') && <DashboardCard key={stat.title} {...stat} isLoading={stat.isLoading} />

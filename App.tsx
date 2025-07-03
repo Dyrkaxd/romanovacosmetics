@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
@@ -10,7 +11,7 @@ import OrdersPage from './pages/OrdersPage';
 import CustomersPage from './pages/CustomersPage';
 import SettingsPage from './pages/SettingsPage';
 import LoginPage from './pages/LoginPage'; // Import LoginPage
-
+import ReportsPage from './pages/ReportsPage'; // Import ReportsPage
 
 const getPageTitle = (pathname: string): string => {
   const normalizedPathname = pathname.endsWith('/') && pathname.length > 1 ? pathname.slice(0, -1) : pathname;
@@ -25,6 +26,8 @@ const getPageTitle = (pathname: string): string => {
       return 'Керування замовленнями';
     case '/customers':
       return 'Керування клієнтами';
+    case '/reports':
+      return 'Звіти';
     case '/settings':
       return 'Налаштування';
     default:
@@ -58,6 +61,7 @@ const MainAppLayout: React.FC = () => {
               // For managers, redirect root to the default page which is orders
               <Route path="/" element={<Navigate to="/orders" replace />} />
             )}
+            {user?.role === 'admin' && <Route path="/reports" element={<ReportsPage />} />}
             {user?.role === 'admin' && <Route path="/products" element={<ProductsPage />} />}
             <Route path="/orders" element={<OrdersPage />} />
             <Route path="/customers" element={<CustomersPage />} />

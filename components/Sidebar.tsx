@@ -1,7 +1,8 @@
+
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { NavItem } from '../types';
-import { DashboardIcon, ProductsIcon, OrdersIcon, UsersIcon, SettingsIcon, XMarkIcon } from './Icons';
+import { DashboardIcon, ProductsIcon, OrdersIcon, UsersIcon, SettingsIcon, XMarkIcon, ChartBarIcon } from './Icons';
 import { logoBase64 } from '../assets/logo';
 import { useAuth } from '../AuthContext'; 
 
@@ -17,8 +18,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpenOnMobile, toggleMobileSidebar }
   // Conditionally include admin-only nav items
   const navItems: NavItem[] = [
     isAdmin && { name: 'Панель керування', path: '/', icon: DashboardIcon },
-    isAdmin && { name: 'Товари', path: '/products', icon: ProductsIcon },
+    isAdmin && { name: 'Звіти', path: '/reports', icon: ChartBarIcon },
     { name: 'Замовлення', path: '/orders', icon: OrdersIcon },
+    isAdmin && { name: 'Товари', path: '/products', icon: ProductsIcon },
     { name: 'Клієнти', path: '/customers', icon: UsersIcon },
   ].filter(Boolean) as NavItem[]; // Filter out falsy values
 

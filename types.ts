@@ -86,3 +86,22 @@ export interface ManagedUser {
   dateAdded: string; // This will be derived from created_at from the database
   notes?: string;
 }
+
+export interface SalesDataPoint {
+  date: string;
+  totalSales: number;
+}
+
+export interface TopProduct {
+  productId: string;
+  productName: string;
+  totalRevenue: number;
+  totalQuantity: number;
+}
+
+export interface TopCustomer {
+  customerId: string;
+  customerName: string;
+  totalSpent: number;
+  orderCount: number;
+}
