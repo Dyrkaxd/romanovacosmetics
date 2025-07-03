@@ -405,12 +405,13 @@ const OrdersPage: React.FC = () => {
 
   const handleDeleteOrder = async (orderId: string) => {
     if (window.confirm('Ви впевнені, що хочете видалити це замовлення? Цю дію неможливо скасувати.')) {
-      setIsLoading(true); setPageError(null);
+      setIsLoading(true); 
+      setPageError(null);
       try {
         const response = await authenticatedFetch(`${API_BASE_URL}/orders/${orderId}`, { method: 'DELETE' });
         if (!response.ok && response.status !== 204) {
-          const errorData = await response.json().catch(() => ({ message: 'Failed to delete order' }));
-          throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+          const errData = await response.json().catch(() => ({ message: 'Server error' }));
+          throw new Error(errData.message || 'Could not delete order.');
         }
         const newTotalCount = totalCount - 1;
         const newTotalPages = Math.ceil(newTotalCount / pageSize);
@@ -418,86 +419,104 @@ const OrdersPage: React.FC = () => {
         fetchOrders(newCurrentPage);
       } catch (err: any) {
         console.error("Failed to delete order:", err);
-        setPageError(err.message || 'Could not delete order.');
+        setPageError(err.message || 'Could not delete order. Please try again.');
       } finally {
         setIsLoading(false);
       }
     }
   };
-  
+
   const handleShareInvoice = (orderId: string) => {
-    const url = `${window.location.origin}${window.location.pathname}#/invoice/${orderId}`;
-    navigator.clipboard.writeText(url).then(() => {
-        setSuccessMessage('Посилання на рахунок скопійовано в буфер обміну!');
+    const invoiceUrl = `${window.location.origin}/#/invoice/${orderId}`;
+    navigator.clipboard.writeText(invoiceUrl).then(() => {
+        setSuccessMessage('Посилання на рахунок скопійовано!');
     }, (err) => {
         console.error('Could not copy text: ', err);
         setPageError('Не вдалося скопіювати посилання.');
     });
   };
+  
+  const filteredProducts = useMemo(() => {
+    if (!productSearchTerm) return availableProducts;
+    return availableProducts.filter(p => p.name.toLowerCase().includes(productSearchTerm.toLowerCase()));
+  }, [productSearchTerm, availableProducts]);
 
   return (
     <div className="space-y-6">
-      {successMessage && (
-        <div role="status" className="fixed top-5 right-5 z-50 bg-green-500 text-white py-2 px-4 rounded-lg shadow-lg animate-fade-in-out">
-          {successMessage}
-        </div>
-      )}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-3 sm:space-y-0">
         <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Замовлення</h2>
-        <div className="flex items-center space-x-2">
-            <button onClick={() => setShowFilters(!showFilters)} aria-label="Показати/сховати фільтри" className="flex items-center bg-white hover:bg-slate-100 text-slate-600 font-semibold py-2 px-4 rounded-lg shadow-sm transition-colors border border-slate-300">
-              <FilterIcon className="w-5 h-5"/>
-              <span className="ml-2 hidden sm:inline">Фільтри</span>
-            </button>
-            <button onClick={() => openOrderModal('add')} aria-label="Додати нове замовлення" className="flex items-center bg-rose-500 hover:bg-rose-600 text-white font-semibold py-2 px-4 rounded-lg shadow-sm transition-colors">
-              <PlusIcon className="w-5 h-5" />
-              <span className="ml-2">Створити замовлення</span>
-            </button>
-        </div>
+        <button
+          onClick={() => openOrderModal('add')}
+          className="flex items-center bg-rose-500 hover:bg-rose-600 text-white font-semibold py-2 px-4 rounded-lg shadow-sm transition-colors"
+          aria-label="Створити нове замовлення"
+        >
+          <PlusIcon className="w-5 h-5" />
+          <span className="ml-2">Створити замовлення</span>
+        </button>
       </div>
-       {/* Filter Section */}
-      {showFilters && (
-        <div className="p-4 bg-white rounded-lg shadow-sm space-y-4 border border-slate-200">
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                <div>
-                    <label htmlFor="filterStatus" className="block text-sm font-medium text-slate-700">Статус</label>
-                    <select id="filterStatus" value={filterStatus} onChange={e => {setFilterStatus(e.target.value as Order['status'] | 'All'); setCurrentPage(1);}} className="mt-1 block w-full p-2 border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500 sm:text-sm">
-                        <option value="All">Всі статуси</option>
-                        {orderStatusValues.map(status => <option key={status} value={status}>{orderStatusTranslations[status]}</option>)}
+
+      <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-2">
+        <input
+            type="search"
+            aria-label="Пошук замовлень"
+            placeholder="Пошук за ID, ім'ям клієнта..."
+            className="w-full sm:flex-grow p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+        />
+        <button 
+            onClick={() => setShowFilters(!showFilters)}
+            className="w-full sm:w-auto flex items-center justify-center p-2.5 bg-white border border-slate-300 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 transition-colors"
+        >
+            <FilterIcon className="w-5 h-5 mr-2" />
+            <span>Фільтри</span>
+        </button>
+      </div>
+
+       {showFilters && (
+        <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+               <div>
+                 <label htmlFor="filterStatus" className="block text-sm font-medium text-slate-700 mb-1">Статус</label>
+                 <select id="filterStatus" value={filterStatus} onChange={e => setFilterStatus(e.target.value as Order['status'] | 'All')} className="w-full p-2 border border-slate-300 rounded-lg">
+                    <option value="All">Всі статуси</option>
+                    {orderStatusValues.map(s => <option key={s} value={s}>{orderStatusTranslations[s]}</option>)}
+                 </select>
+               </div>
+               {isAdmin && (
+                  <div>
+                    <label htmlFor="filterManager" className="block text-sm font-medium text-slate-700 mb-1">Менеджер</label>
+                    <select id="filterManager" value={filterManagerEmail} onChange={e => setFilterManagerEmail(e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg">
+                      <option value="All">Всі менеджери</option>
+                      {allOrderManagers.map(m => <option key={m.email} value={m.email}>{m.name}</option>)}
                     </select>
-                </div>
-                <div>
-                    <label htmlFor="filterCustomer" className="block text-sm font-medium text-slate-700">Клієнт</label>
-                    <select id="filterCustomer" value={filterCustomerId} onChange={e => {setFilterCustomerId(e.target.value); setCurrentPage(1);}} className="mt-1 block w-full p-2 border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500 sm:text-sm">
-                        <option value="All">Всі клієнти</option>
-                        {customers.map(customer => <option key={customer.id} value={customer.id}>{customer.name}</option>)}
-                    </select>
-                </div>
-                <div>
-                  <label htmlFor="filterManager" className="block text-sm font-medium text-slate-700">Менеджер</label>
-                  <select id="filterManager" value={filterManagerEmail} onChange={e => {setFilterManagerEmail(e.target.value); setCurrentPage(1);}} className="mt-1 block w-full p-2 border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500 sm:text-sm">
-                    <option value="All">Всі менеджери</option>
-                    {allOrderManagers.map(manager => <option key={manager.email} value={manager.email}>{manager.name || manager.email}</option>)}
+                  </div>
+               )}
+               <div>
+                  <label htmlFor="filterCustomer" className="block text-sm font-medium text-slate-700 mb-1">Клієнт</label>
+                  <select id="filterCustomer" value={filterCustomerId} onChange={e => setFilterCustomerId(e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg">
+                     <option value="All">Всі клієнти</option>
+                     {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
-                </div>
-                <div>
-                    <label htmlFor="filterStartDate" className="block text-sm font-medium text-slate-700">Дата від</label>
-                    <input type="date" id="filterStartDate" value={filterStartDate} onChange={e => {setFilterStartDate(e.target.value); setCurrentPage(1);}} className="mt-1 block w-full p-2 border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500 sm:text-sm"/>
-                </div>
-                <div>
-                    <label htmlFor="filterEndDate" className="block text-sm font-medium text-slate-700">Дата до</label>
-                    <input type="date" id="filterEndDate" value={filterEndDate} onChange={e => {setFilterEndDate(e.target.value); setCurrentPage(1);}} className="mt-1 block w-full p-2 border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500 sm:text-sm"/>
-                </div>
+               </div>
+               <div>
+                  <label htmlFor="filterStartDate" className="block text-sm font-medium text-slate-700 mb-1">З дати</label>
+                  <input type="date" id="filterStartDate" value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg"/>
+               </div>
+               <div>
+                  <label htmlFor="filterEndDate" className="block text-sm font-medium text-slate-700 mb-1">До дати</label>
+                  <input type="date" id="filterEndDate" value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg"/>
+               </div>
             </div>
-            <div className="flex justify-end space-x-2">
-                <button onClick={resetFilters} className="text-sm py-2 px-4 bg-slate-600 hover:bg-slate-700 text-white font-semibold rounded-md shadow-sm">Скинути фільтри</button>
+            <div className="mt-4 text-right">
+                <button onClick={resetFilters} className="text-sm font-semibold text-rose-600 hover:underline">Скинути фільтри</button>
             </div>
         </div>
       )}
-      <input type="search" aria-label="Пошук замовлень за ID або ім'ям клієнта" placeholder="Пошук за ID, ім'ям клієнта..." className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500" value={searchTerm} onChange={(e) => {setSearchTerm(e.target.value); setCurrentPage(1);}} />
-      
+
       {pageError && <div role="alert" className="p-4 bg-red-50 text-red-700 border border-red-200 rounded-lg">{pageError}</div>}
-      
+      {successMessage && <div role="alert" className="p-3 bg-green-50 text-green-700 border border-green-200 rounded-lg text-sm">{successMessage}</div>}
+
       <div className="bg-white shadow-sm rounded-xl overflow-hidden border border-slate-200">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-200">
@@ -507,31 +526,34 @@ const OrdersPage: React.FC = () => {
                 <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Клієнт</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider hidden sm:table-cell">Дата</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Статус</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider hidden sm:table-cell">Сума</th>
+                {isAdmin && <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider hidden md:table-cell">Менеджер</th>}
+                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Сума</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Дії</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-slate-200">
+             <tbody className="bg-white divide-y divide-slate-200">
               {isLoading ? (
-                 <tr><td colSpan={6} className="px-6 py-10 text-center text-sm text-slate-500">Завантаження...</td></tr>
-              ) : orders.length > 0 ? (orders.map((order) => (
-                <tr key={order.id} className="hover:bg-rose-50/50 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-rose-600">#{order.id.substring(0,6)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-800">{order.customerName}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 hidden sm:table-cell">{new Date(order.date).toLocaleDateString()}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm"><StatusPill status={order.status} /></td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 font-medium hidden sm:table-cell">₴{order.totalAmount.toFixed(2)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-1">
-                    <button onClick={() => handleViewOrder(order)} className="text-slate-500 hover:text-sky-600 transition-colors p-2 rounded-md hover:bg-sky-50" aria-label={`Переглянути деталі замовлення ${order.id}`} title="Переглянути"><EyeIcon className="w-5 h-5" /></button>
-                    <button onClick={() => openOrderModal('edit', order)} className="text-slate-500 hover:text-rose-600 transition-colors p-2 rounded-md hover:bg-rose-50" aria-label={`Редагувати замовлення ${order.id}`} title="Редагувати"><PencilIcon className="w-5 h-5" /></button>
-                    <button onClick={() => openInvoiceModal(order)} className="text-slate-500 hover:text-purple-600 transition-colors p-2 rounded-md hover:bg-purple-50" aria-label={`Рахунок для замовлення ${order.id}`} title="Рахунок-фактура"><DocumentTextIcon className="w-5 h-5" /></button>
-                    <button onClick={() => handleShareInvoice(order.id)} className="text-slate-500 hover:text-teal-600 transition-colors p-2 rounded-md hover:bg-teal-50" aria-label={`Поділитися рахунком для замовлення ${order.id}`} title="Поділитися рахунком"><ShareIcon className="w-5 h-5" /></button>
-                    <button onClick={() => handleDeleteOrder(order.id)} className="text-slate-500 hover:text-red-600 transition-colors p-2 rounded-md hover:bg-red-50" aria-label={`Видалити замовлення ${order.id}`} title="Видалити"><TrashIcon className="w-5 h-5" /></button>
-                  </td>
-                </tr>
-              ))) : (
-                <tr><td colSpan={6} className="px-6 py-10 text-center text-sm text-slate-500">
-                  {!pageError && (totalCount === 0 && searchTerm === '' ? "Замовлень ще немає. Натисніть 'Створити замовлення', щоб почати." : "Замовлень, що відповідають вашому пошуку та фільтрам, не знайдено.")}
+                 <tr><td colSpan={isAdmin ? 7 : 6} className="px-6 py-10 text-center text-sm text-slate-500">Завантаження...</td></tr>
+              ) : orders.length > 0 ? (
+                orders.map((order) => (
+                  <tr key={order.id} className="hover:bg-rose-50/50 transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-rose-600">#{order.id.substring(0, 6)}...</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-800">{order.customerName}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 hidden sm:table-cell">{new Date(order.date).toLocaleDateString()}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600"><StatusPill status={order.status} /></td>
+                    {isAdmin && <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 hidden md:table-cell">{order.managedByUserEmail || 'N/A'}</td>}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 font-medium">₴{order.totalAmount.toFixed(2)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-1">
+                      <button onClick={() => handleViewOrder(order)} className="p-2 rounded-md hover:bg-sky-50 text-slate-500 hover:text-sky-600" title="Переглянути"><EyeIcon className="w-5 h-5"/></button>
+                      <button onClick={() => openOrderModal('edit', order)} className="p-2 rounded-md hover:bg-rose-50 text-slate-500 hover:text-rose-600" title="Редагувати"><PencilIcon className="w-5 h-5"/></button>
+                      {isAdmin && <button onClick={() => handleShareInvoice(order.id)} className="p-2 rounded-md hover:bg-green-50 text-slate-500 hover:text-green-600" title="Поділитися рахунком"><ShareIcon className="w-5 h-5"/></button>}
+                      {isAdmin && <button onClick={() => handleDeleteOrder(order.id)} className="p-2 rounded-md hover:bg-red-50 text-slate-500 hover:text-red-600" title="Видалити"><TrashIcon className="w-5 h-5"/></button>}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr><td colSpan={isAdmin ? 7 : 6} className="px-6 py-10 text-center text-sm text-slate-500">
+                  {!pageError && (totalCount === 0 && searchTerm === '' ? "Замовлень ще немає. Натисніть 'Створити замовлення', щоб почати." : "Замовлень, що відповідають вашому пошуку, не знайдено.")}
                 </td></tr>
               )}
             </tbody>
@@ -549,290 +571,135 @@ const OrdersPage: React.FC = () => {
         )}
       </div>
 
-      {modalMode && activeOrderData && (
+       {viewOrder && (
+         <div role="dialog" aria-modal="true" aria-labelledby="view-order-modal-title" className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-6 rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+            <div className="flex justify-between items-center pb-4 mb-4 border-b border-slate-200">
+              <h3 id="view-order-modal-title" className="text-xl font-semibold text-slate-800">Перегляд замовлення #{viewOrder.id.substring(0, 6)}...</h3>
+              <button onClick={closeModalView} aria-label="Закрити"><XMarkIcon className="w-6 h-6 text-slate-400 hover:text-slate-600"/></button>
+            </div>
+            <div className="flex-grow overflow-y-auto pr-2 space-y-6">
+              {modalError && <div role="alert" className="p-3 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm">{modalError}</div>}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div><p className="text-sm text-slate-500">Клієнт</p><p className="font-semibold text-slate-800">{viewOrder.customerName}</p></div>
+                <div><p className="text-sm text-slate-500">Дата замовлення</p><p className="font-semibold text-slate-800">{new Date(viewOrder.date).toLocaleDateString()}</p></div>
+                <div><p className="text-sm text-slate-500">Загальна сума</p><p className="font-semibold text-slate-800">₴{viewOrder.totalAmount.toFixed(2)}</p></div>
+              </div>
+              <div className="border border-slate-200 rounded-lg overflow-hidden">
+                <table className="min-w-full divide-y divide-slate-200">
+                  <thead className="bg-slate-50"><tr className="text-left text-xs font-semibold text-slate-500"><th className="px-4 py-2">Товар</th><th className="px-4 py-2">К-сть</th><th className="px-4 py-2">Ціна</th><th className="px-4 py-2">Знижка</th><th className="px-4 py-2 text-right">Всього</th></tr></thead>
+                  <tbody className="bg-white divide-y divide-slate-200">
+                    {viewOrder.items.map(item => <tr key={item.id}><td className="px-4 py-2">{item.productName}</td><td className="px-4 py-2">{item.quantity}</td><td className="px-4 py-2">₴{item.price.toFixed(2)}</td><td className="px-4 py-2">{item.discount || 0}%</td><td className="px-4 py-2 text-right font-medium">₴{(item.quantity * item.price * (1-(item.discount || 0)/100)).toFixed(2)}</td></tr>)}
+                  </tbody>
+                </table>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label htmlFor="view-order-status" className="text-sm text-slate-500 block mb-1">Статус замовлення</label>
+                  <select id="view-order-status" value={editableOrderStatus} onChange={e => setEditableOrderStatus(e.target.value as Order['status'])} className="w-full p-2 border border-slate-300 rounded-lg">
+                    {orderStatusValues.map(s => <option key={s} value={s}>{orderStatusTranslations[s]}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="view-order-notes" className="text-sm text-slate-500 block mb-1">Нотатки</label>
+                  <textarea id="view-order-notes" value={editableOrderNotes} onChange={e => setEditableOrderNotes(e.target.value)} rows={3} className="w-full p-2 border border-slate-300 rounded-lg"></textarea>
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-col sm:flex-row justify-between items-center pt-6 mt-6 border-t border-slate-200">
+                <div className="flex space-x-2">
+                    <button onClick={async () => await generateInvoicePdf(viewOrder, customers.find(c => c.id === viewOrder.customerId)!)} className="flex items-center text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2 px-3 rounded-lg"><DocumentTextIcon className="w-4 h-4 mr-1.5"/>Рахунок</button>
+                    <button onClick={async () => await generateBillOfLadingPdf(viewOrder, customers.find(c => c.id === viewOrder.customerId)!)} className="flex items-center text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2 px-3 rounded-lg"><DownloadIcon className="w-4 h-4 mr-1.5"/>ТТН</button>
+                </div>
+                <div className="flex space-x-3 mt-4 sm:mt-0">
+                    <button onClick={closeModalView} className="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold py-2 px-4 rounded-lg">Закрити</button>
+                    <button onClick={handleUpdateOrderInViewModal} disabled={isLoading} className="bg-rose-500 hover:bg-rose-600 text-white font-semibold py-2 px-4 rounded-lg disabled:opacity-50">{isLoading ? 'Збереження...' : 'Зберегти зміни'}</button>
+                </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {modalMode && (
         <div role="dialog" aria-modal="true" aria-labelledby="order-modal-title" className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-6 rounded-xl shadow-xl w-full max-w-lg md:max-w-3xl max-h-[90vh] flex flex-col">
-            <div className="flex justify-between items-center pb-4 mb-6 border-b border-slate-200">
-              <h3 id="order-modal-title" className="text-xl font-semibold text-slate-800">
-                {modalMode === 'add' ? 'Створити нове замовлення' : `Редагувати замовлення: #${activeOrderData.id?.substring(0,6)}`}
-              </h3>
-              <button onClick={closeOrderModal} aria-label="Закрити модальне вікно замовлення" className="text-slate-400 hover:text-slate-600" disabled={isLoading}><XMarkIcon className="w-6 h-6"/></button>
-            </div>
-            {modalError && <div role="alert" className="mb-4 p-3 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm">{modalError}</div>}
-            <form onSubmit={handleSubmitOrder} className="space-y-6 overflow-y-auto pr-2 flex-grow">
-              <div>
-                <label htmlFor="customer" className="block text-sm font-medium text-slate-700 mb-1">Клієнт <span aria-hidden="true" className="text-red-500">*</span></label>
-                {modalMode === 'add' ? (
-                  <select id="customer" name="customerId" value={activeOrderData.customerId || ''} onChange={(e) => setActiveOrderData(prev => prev ? { ...prev, customerId: e.target.value } : null)} required aria-required="true" className="block w-full border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500 sm:text-sm p-2.5">
-                    <option value="" disabled>Виберіть клієнта</option>
-                    {customers.length > 0 ? customers.map(customer => (<option key={customer.id} value={customer.id}>{customer.name} ({customer.email})</option>)) : <option disabled>Клієнти відсутні</option>}
-                  </select>
-                ) : (
-                  <p className="mt-1 text-base text-slate-800 font-medium bg-slate-100 p-2.5 rounded-lg">{activeOrderData.customerName}</p>
-                )}
-              </div>
-              <div>
-                <h4 className="text-md font-medium text-slate-700 mb-2">Товари в замовленні <span aria-hidden="true" className="text-red-500">*</span></h4>
-                <div className="hidden sm:grid sm:grid-cols-12 gap-2 mb-1 px-2 text-xs font-semibold text-slate-500">
-                    <div className="col-span-4">Назва</div>
-                    <div className="col-span-2">Кількість</div>
-                    <div className="col-span-2">Ціна</div>
-                    <div className="col-span-2">Знижка (%)</div>
+            <div className="bg-white p-6 rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+                <div className="flex justify-between items-center pb-4 mb-6 border-b border-slate-200">
+                    <h3 id="order-modal-title" className="text-xl font-semibold text-slate-800">{modalMode === 'edit' ? 'Редагувати замовлення' : 'Створити нове замовлення'}</h3>
+                    <button onClick={closeOrderModal} aria-label="Закрити" disabled={isLoading}><XMarkIcon className="w-6 h-6 text-slate-400 hover:text-slate-600"/></button>
                 </div>
-                {(activeOrderData.items || []).map((item, index) => (
-                  <div key={item.id || `item-${index}`} className="grid grid-cols-1 sm:grid-cols-12 gap-2 mb-3 items-center p-3 border rounded-lg bg-slate-50/75 sm:border-0 sm:p-0 sm:bg-transparent">
-                    <div className="sm:col-span-4">
-                      <label htmlFor={`product-dropdown-toggle-${index}`} className="block text-xs font-medium text-slate-700 mb-1 sm:hidden">Назва</label>
-                      <div className="relative" ref={(el) => { productDropdownRefs.current[index] = el; }}>
-                          <button
-                              type="button"
-                              id={`product-dropdown-toggle-${index}`}
-                              onClick={() => {
-                                  const isOpening = openProductDropdown !== index;
-                                  setOpenProductDropdown(isOpening ? index : null);
-                                  if (isOpening) setProductSearchTerm('');
-                              }}
-                              className="text-left w-full border-slate-300 rounded-lg shadow-sm sm:text-sm p-2.5 bg-white focus:ring-2 focus:ring-rose-500 focus:outline-none flex justify-between items-center"
-                              aria-haspopup="listbox"
-                              aria-expanded={openProductDropdown === index}
-                          >
-                              <span className="truncate">{item.productName || 'Виберіть товар'}</span>
-                              <ChevronDownIcon className={`w-4 h-4 text-slate-400 transition-transform ${openProductDropdown === index ? 'rotate-180' : ''}`} />
-                          </button>
-  
-                          {openProductDropdown === index && (
-                              <div className="absolute z-20 mt-1 w-full bg-white shadow-lg rounded-md border border-slate-200 max-h-60 flex flex-col">
-                                  <div className="p-2 border-b border-slate-200">
-                                      <input type="search" value={productSearchTerm} onChange={(e) => setProductSearchTerm(e.target.value)} placeholder="Пошук товару..." autoFocus className="w-full p-2 border border-slate-300 rounded-md" />
-                                  </div>
-                                  <ul className="py-1 overflow-y-auto" role="listbox">
-                                      {(() => {
-                                          const filtered = availableProducts.filter(p => p.name.toLowerCase().includes(productSearchTerm.toLowerCase()));
-                                          if (filtered.length === 0) return <li className="px-4 py-2 text-sm text-slate-500">{availableProducts.length === 0 ? 'Товари відсутні' : 'Товар не знайдено'}</li>;
-                                          return filtered.map(product => (<li key={product.id} onClick={() => { handleItemChange(index, 'productIdSelect', product.id); setOpenProductDropdown(null); }} className="px-4 py-2 text-sm text-slate-700 hover:bg-rose-500 hover:text-white cursor-pointer" role="option" aria-selected={item.productId === product.id}>{product.name}</li>));
-                                      })()}
-                                  </ul>
-                              </div>
-                          )}
-                      </div>
+                {modalError && <div role="alert" className="mb-4 p-3 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm">{modalError}</div>}
+                <form onSubmit={handleSubmitOrder} className="flex-grow overflow-y-auto pr-2 space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label htmlFor="customer" className="block text-sm font-medium text-slate-700 mb-1">Клієнт</label>
+                        <select id="customer" value={activeOrderData?.customerId || ''} onChange={e => setActiveOrderData(p => ({...p, customerId: e.target.value}))} required className="w-full p-2.5 border border-slate-300 rounded-lg">
+                            <option value="">-- Виберіть клієнта --</option>
+                            {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
                     </div>
-                     <div className="sm:col-span-2">
-                       <label htmlFor={`quantity-${index}`} className="block text-xs font-medium text-slate-700 mb-1 sm:hidden">Кількість</label>
-                       <input id={`quantity-${index}`} type="number" placeholder="К-сть" min="1" value={item.quantity} onChange={(e) => handleItemChange(index, 'quantity', e.target.value)} required aria-required="true" disabled={!item.productId} className="block w-full border-slate-300 rounded-lg shadow-sm sm:text-sm p-2.5 disabled:bg-slate-100"/>
-                    </div>
-                    <div className="sm:col-span-2">
-                      <label htmlFor={`price-${index}`} className="block text-xs font-medium text-slate-700 mb-1 sm:hidden">Ціна</label>
-                      <input id={`price-${index}`} type="number" placeholder="Ціна" min="0" step="0.01" value={item.price} onChange={(e) => handleItemChange(index, 'price', e.target.value)} required aria-required="true" disabled={!item.productId} className="block w-full border-slate-300 rounded-lg shadow-sm sm:text-sm p-2.5 disabled:bg-slate-100"/>
-                    </div>
-                    <div className="sm:col-span-2">
-                       <label htmlFor={`discount-${index}`} className="block text-xs font-medium text-slate-700 mb-1 sm:hidden">Знижка (%)</label>
-                       <input id={`discount-${index}`} type="number" placeholder="%" min="0" max="100" step="1" value={item.discount || ''} onChange={(e) => handleItemChange(index, 'discount', e.target.value)} disabled={!item.productId} className="block w-full border-slate-300 rounded-lg shadow-sm sm:text-sm p-2.5 disabled:bg-slate-100"/>
-                    </div>
-                    <div className="sm:col-span-2 flex justify-end items-center">
-                      <button type="button" onClick={() => removeItem(index)} aria-label={`Видалити товар ${index + 1}`} className="text-slate-400 hover:text-red-600 p-2 rounded-md hover:bg-red-50 transition-colors"><TrashIcon className="w-5 h-5"/></button>
+                     <div>
+                        <label htmlFor="status" className="block text-sm font-medium text-slate-700 mb-1">Статус</label>
+                        <select id="status" value={activeOrderData?.status || 'Ordered'} onChange={e => setActiveOrderData(p => ({...p, status: e.target.value as Order['status']}))} required className="w-full p-2.5 border border-slate-300 rounded-lg">
+                            {orderStatusValues.map(s => <option key={s} value={s}>{orderStatusTranslations[s]}</option>)}
+                        </select>
                     </div>
                   </div>
-                ))}
-                <button type="button" onClick={addItem} className="text-sm text-rose-600 hover:text-rose-700 font-semibold flex items-center"><PlusIcon className="w-4 h-4 mr-1"/> Додати товар</button>
-              </div>
+                  
+                  <div className="space-y-3">
+                    <h4 className="text-md font-semibold text-slate-700 pt-4 border-t">Товари в замовленні</h4>
+                    {(activeOrderData?.items || []).map((item, index) => (
+                      <div key={index} className="grid grid-cols-12 gap-2 items-center p-2 rounded-lg bg-slate-50 border">
+                        <div className="col-span-12 md:col-span-5 relative" ref={el => productDropdownRefs.current[index] = el}>
+                           <input type="text" placeholder="Почніть вводити назву товару"
+                                value={openProductDropdown === index ? productSearchTerm : item.productName}
+                                onFocus={() => { setOpenProductDropdown(index); setProductSearchTerm(''); }}
+                                onChange={(e) => {
+                                  setProductSearchTerm(e.target.value);
+                                  handleItemChange(index, 'productName', e.target.value);
+                                }}
+                                className="w-full p-2 border border-slate-300 rounded-md"
+                            />
+                            {openProductDropdown === index && (
+                                <div className="absolute top-full left-0 w-full bg-white border border-slate-300 rounded-b-md shadow-lg z-10 max-h-48 overflow-y-auto">
+                                  {filteredProducts.map(p => (
+                                      <div key={p.id} 
+                                          onClick={() => {
+                                              handleItemChange(index, 'productIdSelect', p.id);
+                                              setOpenProductDropdown(null);
+                                          }}
+                                          className="p-2 hover:bg-rose-50 cursor-pointer text-sm">
+                                        {p.name}
+                                      </div>
+                                  ))}
+                                  {filteredProducts.length === 0 && <div className="p-2 text-sm text-slate-500">Товар не знайдено</div>}
+                                </div>
+                            )}
+                        </div>
+                        <div className="col-span-4 md:col-span-2"><input type="number" value={item.quantity} onChange={e => handleItemChange(index, 'quantity', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" placeholder="К-сть"/></div>
+                        <div className="col-span-4 md:col-span-2"><input type="number" step="0.01" value={item.price} onChange={e => handleItemChange(index, 'price', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" placeholder="Ціна"/></div>
+                        <div className="col-span-4 md:col-span-2"><input type="number" step="0.01" value={item.discount} onChange={e => handleItemChange(index, 'discount', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" placeholder="Знижка %"/></div>
+                        <div className="col-span-12 md:col-span-1 flex justify-end"><button type="button" onClick={() => removeItem(index)}><TrashIcon className="w-5 h-5 text-red-500 hover:text-red-700"/></button></div>
+                      </div>
+                    ))}
+                     <button type="button" onClick={addItem} className="text-sm font-semibold text-rose-600 hover:underline">+ Додати товар</button>
+                  </div>
+                   <div>
+                        <label htmlFor="notes" className="block text-sm font-medium text-slate-700 mb-1">Нотатки</label>
+                        <textarea id="notes" value={activeOrderData?.notes || ''} onChange={e => setActiveOrderData(p => ({...p, notes: e.target.value}))} rows={3} className="w-full p-2.5 border border-slate-300 rounded-lg"></textarea>
+                    </div>
 
-              <div>
-                <label htmlFor="notes" className="block text-sm font-medium text-slate-700 mb-1">Коментарі до замовлення</label>
-                <textarea
-                  id="notes"
-                  name="notes"
-                  rows={3}
-                  value={activeOrderData.notes || ''}
-                  onChange={(e) => setActiveOrderData(prev => prev ? { ...prev, notes: e.target.value } : null)}
-                  className="block w-full border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500 sm:text-sm p-2.5"
-                  placeholder="Внутрішні нотатки, особливі інструкції тощо."
-                ></textarea>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end pt-4">
-                <div className="sm:col-span-1">
-                  <label htmlFor="status" className="block text-sm font-medium text-slate-700 mb-1">Статус</label>
-                  <select id="status" name="status" value={activeOrderData.status} onChange={(e) => setActiveOrderData(prev => prev ? { ...prev, status: e.target.value as Order['status'] } : null)} className="block w-full border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500 sm:text-sm p-2.5">
-                    {orderStatusValues.map(statusValue => (<option key={statusValue} value={statusValue}>{orderStatusTranslations[statusValue]}</option>))}
-                  </select>
-                </div>
-                <div className="sm:col-span-1 text-right">
-                  <p className="text-sm font-medium text-slate-700">Загальна сума</p>
-                  <p className="text-3xl font-bold text-slate-800 mt-1">
-                      ₴{calculateTotalAmount(activeOrderData.items).toFixed(2)}
-                  </p>
-                </div>
-              </div>
-              <div className="mt-8 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 pt-6 border-t border-slate-200">
-                 <button type="button" onClick={closeOrderModal} className="w-full sm:w-auto bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold py-2 px-4 rounded-lg shadow-sm transition-colors" disabled={isLoading}>Скасувати</button>
-                <button type="submit" className="w-full sm:w-auto bg-rose-500 hover:bg-rose-600 text-white font-semibold py-2 px-4 rounded-lg shadow-sm transition-colors disabled:opacity-50" disabled={isLoading || !activeOrderData.customerId || (customers.length === 0) || (activeOrderData.items || []).some(item => !item.productId || item.quantity <= 0)}>
-                  {isLoading ? 'Збереження...' : (modalMode === 'add' ? 'Зберегти замовлення' : 'Зберегти зміни')}
-                </button>
-              </div>
-            </form>
-          </div>
+                    <div className="text-right font-bold text-lg text-slate-800 pt-4 border-t">Всього: ₴{calculateTotalAmount(activeOrderData?.items).toFixed(2)}</div>
+                    
+                    <div className="flex flex-col sm:flex-row justify-end pt-6 space-y-2 sm:space-y-0 sm:space-x-3 border-t border-slate-200">
+                        <button type="button" onClick={closeOrderModal} disabled={isLoading} className="w-full sm:w-auto bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold py-2 px-4 rounded-lg">Скасувати</button>
+                        <button type="submit" disabled={isLoading} className="w-full sm:w-auto bg-rose-500 hover:bg-rose-600 text-white font-semibold py-2 px-4 rounded-lg disabled:opacity-50">{isLoading ? 'Збереження...' : 'Зберегти замовлення'}</button>
+                    </div>
+                </form>
+            </div>
         </div>
       )}
-
-      {viewOrder && (
-        <div role="dialog" aria-modal="true" aria-labelledby={`view-order-modal-title-${viewOrder.id}`} className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-6 rounded-xl shadow-xl w-full max-w-md md:max-w-lg max-h-[90vh] flex flex-col">
-            <div className="flex justify-between items-center mb-6 pb-4 border-b border-slate-200">
-              <h3 id={`view-order-modal-title-${viewOrder.id}`} className="text-xl font-semibold text-slate-800">Деталі: #{viewOrder.id.substring(0,6)}</h3>
-              <button onClick={closeModalView} aria-label="Закрити модальне вікно перегляду замовлення" className="text-slate-400 hover:text-slate-600" disabled={isLoading}><XMarkIcon className="w-6 h-6"/></button>
-            </div>
-            {modalError && <div role="alert" className="mb-4 p-3 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm">{modalError}</div>}
-            <div className="space-y-4 overflow-y-auto pr-2 flex-grow">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
-                <div><p className="text-sm text-slate-500">Ім'я клієнта</p><p className="font-semibold text-slate-800 text-base">{viewOrder.customerName}</p></div>
-                <div><p className="text-sm text-slate-500">Дата замовлення</p><p className="font-semibold text-slate-800 text-base">{new Date(viewOrder.date).toLocaleDateString()}</p></div>
-              </div>
-              <div>
-                    <label htmlFor="view-order-status" className="block text-sm text-slate-500">Статус</label>
-                    <select id="view-order-status" value={editableOrderStatus} onChange={(e) => setEditableOrderStatus(e.target.value as Order['status'])} className="mt-1 block w-full border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500 sm:text-sm p-2.5 font-semibold">
-                        {orderStatusValues.map(statusValue => (<option key={statusValue} value={statusValue}>{orderStatusTranslations[statusValue]}</option>))}
-                    </select>
-              </div>
-              <div>
-                <label htmlFor="view-order-notes" className="block text-sm text-slate-500">Коментарі</label>
-                <textarea
-                  id="view-order-notes"
-                  rows={3}
-                  value={editableOrderNotes}
-                  onChange={(e) => setEditableOrderNotes(e.target.value)}
-                  className="mt-1 block w-full border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500 sm:text-sm p-2.5"
-                  placeholder="Коментарі до замовлення відсутні"
-                ></textarea>
-              </div>
-              
-              <div>
-                <p className="text-sm font-semibold text-slate-700 mb-2 mt-4">Замовлені товари ({viewOrder.items.length}):</p>
-                <ul className="divide-y divide-slate-200 border border-slate-200 rounded-lg max-h-60 overflow-y-auto">
-                  {viewOrder.items.map((item, index) => (
-                    <li key={item.id || index} className="p-3 flex justify-between items-center text-sm bg-slate-50/50 even:bg-white">
-                      <div>
-                        <p className="font-medium text-slate-800">{item.productName}</p>
-                        <p className="text-xs text-slate-600">
-                          К-сть: {item.quantity} @ ₴{item.price.toFixed(2)}
-                          {item.discount ? <span className="text-red-500 font-semibold"> (-{item.discount}%)</span> : ''}
-                        </p>
-                      </div>
-                      <p className="text-slate-700 font-medium">₴{(item.price * item.quantity * (1 - (item.discount || 0) / 100)).toFixed(2)}</p>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="mt-4 border-t border-slate-200 pt-4">
-                  <div className="flex justify-between text-sm">
-                      <p className="text-slate-600">Проміжна сума:</p>
-                      <p className="font-medium text-slate-800">₴{(viewOrder.items.reduce((acc, item) => acc + item.price * item.quantity, 0)).toFixed(2)}</p>
-                  </div>
-                  <div className="flex justify-between text-sm mt-1">
-                      <p className="text-slate-600">Загальна знижка:</p>
-                      <p className="font-medium text-red-500">-₴{(viewOrder.items.reduce((acc, item) => acc + (item.price * item.quantity * (item.discount || 0) / 100), 0)).toFixed(2)}</p>
-                  </div>
-                  <div className="flex justify-between text-lg font-bold mt-2 border-t pt-2">
-                      <p className="text-slate-800">Всього:</p>
-                      <p className="text-slate-900">₴{viewOrder.totalAmount.toFixed(2)}</p>
-                  </div>
-              </div>
-            </div>
-            <div className="mt-8 pt-6 border-t border-slate-200 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3">
-              <button onClick={closeModalView} className="w-full sm:w-auto bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold py-2 px-4 rounded-lg shadow-sm transition-colors" disabled={isLoading}>Закрити</button>
-              <button
-                onClick={handleUpdateOrderInViewModal}
-                disabled={isLoading || (editableOrderStatus === viewOrder.status && editableOrderNotes === (viewOrder.notes || ''))}
-                className="w-full sm:w-auto bg-rose-500 hover:bg-rose-600 text-white font-semibold py-2 px-4 rounded-lg shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isLoading ? 'Збереження...' : 'Зберегти зміни'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {isBillOfLadingModalOpen && selectedOrderForBoL && (<BillOfLadingModal order={selectedOrderForBoL} customer={customerForBoL} onClose={closeBillOfLadingModal}/>)}
-      {isInvoiceModalOpen && selectedOrderForInvoice && (<InvoiceModal order={selectedOrderForInvoice} customer={customerForInvoice} onClose={closeInvoiceModal} />)}
     </div>
   );
 };
-
-interface DocumentModalProps { order: Order | null; customer: Customer | null; onClose: () => void; }
-
-const BillOfLadingModal: React.FC<DocumentModalProps> = ({ order, customer, onClose }) => {
-  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
-
-  if (!order || !customer) return null;
-
-  const handleDownloadPdf = async () => {
-    setIsGeneratingPdf(true);
-    try {
-        await generateBillOfLadingPdf(order, customer);
-    } catch (error) {
-        console.error("Failed to generate PDF for Bill of Lading:", error);
-        alert('Не вдалося створити PDF. Будь ласка, спробуйте ще раз.');
-    } finally {
-        setIsGeneratingPdf(false);
-    }
-  };
-
-  return (
-    <div role="dialog" aria-modal="true" className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
-      <div className="bg-white p-6 rounded-xl shadow-xl w-full max-w-lg">
-        <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-semibold text-slate-800">Товарно-транспортна накладна (ТТН)</h3>
-            <button onClick={onClose} aria-label="Закрити" disabled={isGeneratingPdf}><XMarkIcon className="w-6 h-6 text-slate-400 hover:text-slate-600"/></button>
-        </div>
-        <p className="mt-2 text-slate-600">Сформувати та завантажити ТТН для замовлення <span className="font-bold">#{order.id.substring(0, 6)}</span>?</p>
-        <div className="mt-6 flex justify-end space-x-3">
-          <button onClick={onClose} disabled={isGeneratingPdf} className="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold py-2 px-4 rounded-lg shadow-sm transition-colors">Скасувати</button>
-          <button onClick={handleDownloadPdf} disabled={isGeneratingPdf} className="bg-rose-500 hover:bg-rose-600 text-white font-semibold py-2 px-4 rounded-lg shadow-sm transition-colors flex items-center">
-            <DownloadIcon className="w-5 h-5 mr-2" />
-            {isGeneratingPdf ? 'Створення PDF...' : 'Завантажити PDF'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const InvoiceModal: React.FC<DocumentModalProps> = ({ order, customer, onClose }) => {
-    const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
-    
-    if (!order || !customer) return null;
-
-    const handleDownloadPdf = async () => {
-        setIsGeneratingPdf(true);
-        try {
-            await generateInvoicePdf(order, customer);
-        } catch (error) {
-            console.error("Failed to generate PDF for Invoice:", error);
-            alert('Не вдалося створити PDF. Будь ласка, спробуйте ще раз.');
-        } finally {
-            setIsGeneratingPdf(false);
-        }
-    };
-
-  return (
-    <div role="dialog" aria-modal="true" className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
-       <div className="bg-white p-6 rounded-xl shadow-xl w-full max-w-lg">
-        <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-semibold text-slate-800">Рахунок-фактура</h3>
-            <button onClick={onClose} aria-label="Закрити" disabled={isGeneratingPdf}><XMarkIcon className="w-6 h-6 text-slate-400 hover:text-slate-600"/></button>
-        </div>
-        <p className="mt-2 text-slate-600">Сформувати та завантажити рахунок для замовлення <span className="font-bold">#{order.id.substring(0, 6)}</span>?</p>
-        <div className="mt-6 flex justify-end space-x-3">
-          <button onClick={onClose} disabled={isGeneratingPdf} className="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold py-2 px-4 rounded-lg shadow-sm transition-colors">Скасувати</button>
-          <button onClick={handleDownloadPdf} disabled={isGeneratingPdf} className="bg-rose-500 hover:bg-rose-600 text-white font-semibold py-2 px-4 rounded-lg shadow-sm transition-colors flex items-center">
-             <DownloadIcon className="w-5 h-5 mr-2" />
-            {isGeneratingPdf ? 'Створення PDF...' : 'Завантажити PDF'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 
 export default OrdersPage;
