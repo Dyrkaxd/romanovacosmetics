@@ -56,7 +56,7 @@ const InvoiceViewPage: React.FC = () => {
             await generateInvoicePdf(order, customer);
         } catch (e) {
             console.error(e);
-            setError("Не вдалося створити PDF. Будь ласка, спробуйте ще раз.");
+            setError("На жаль, не вдалося створити PDF. Будь ласка, спробуйте ще раз.");
         } finally {
             setIsDownloading(false);
         }
