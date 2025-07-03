@@ -473,15 +473,13 @@ const OrdersPage: React.FC = () => {
                         {customers.map(customer => <option key={customer.id} value={customer.id}>{customer.name}</option>)}
                     </select>
                 </div>
-                {isAdmin && (
-                  <div>
-                    <label htmlFor="filterManager" className="block text-sm font-medium text-slate-700">Менеджер</label>
-                    <select id="filterManager" value={filterManagerEmail} onChange={e => {setFilterManagerEmail(e.target.value); setCurrentPage(1);}} className="mt-1 block w-full p-2 border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500 sm:text-sm">
-                      <option value="All">Всі менеджери</option>
-                      {allOrderManagers.map(manager => <option key={manager.email} value={manager.email}>{manager.name || manager.email}</option>)}
-                    </select>
-                  </div>
-                )}
+                <div>
+                  <label htmlFor="filterManager" className="block text-sm font-medium text-slate-700">Менеджер</label>
+                  <select id="filterManager" value={filterManagerEmail} onChange={e => {setFilterManagerEmail(e.target.value); setCurrentPage(1);}} className="mt-1 block w-full p-2 border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500 sm:text-sm">
+                    <option value="All">Всі менеджери</option>
+                    {allOrderManagers.map(manager => <option key={manager.email} value={manager.email}>{manager.name || manager.email}</option>)}
+                  </select>
+                </div>
                 <div>
                     <label htmlFor="filterStartDate" className="block text-sm font-medium text-slate-700">Дата від</label>
                     <input type="date" id="filterStartDate" value={filterStartDate} onChange={e => {setFilterStartDate(e.target.value); setCurrentPage(1);}} className="mt-1 block w-full p-2 border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500 sm:text-sm"/>
