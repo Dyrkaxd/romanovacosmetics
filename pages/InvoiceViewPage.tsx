@@ -56,7 +56,7 @@ const InvoiceViewPage: React.FC = () => {
             await generateInvoicePdf(order, customer);
         } catch (e) {
             console.error(e);
-            setError("Помилка при створенні PDF.");
+            setError("Не вдалося створити PDF. Будь ласка, спробуйте ще раз.");
         } finally {
             setIsDownloading(false);
         }
@@ -119,8 +119,6 @@ const InvoiceViewPage: React.FC = () => {
                         <div className="text-left sm:text-right">
                              <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wide">Дата рахунку</h3>
                              <p className="mt-2 text-slate-700">{new Date(order.date).toLocaleDateString('uk-UA', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                             <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mt-4">Статус</h3>
-                             <p className="mt-1 text-green-600 font-bold">Оплачено</p>
                         </div>
                     </section>
                     <section>
