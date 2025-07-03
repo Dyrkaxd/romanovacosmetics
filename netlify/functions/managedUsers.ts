@@ -54,16 +54,14 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
           if (error && error.code !== 'PGRST116' && !isMissingTableError(error)) throw error; // Ignore "no rows found" and missing table
           return { statusCode: 200, headers: commonHeaders, body: JSON.stringify(data ? transformDbRowToManagedUser(data) : null) };
         } else {
-          // List all users. Admin only.
-          return handleAdminOnlyRequest(user, async () => {
-            const { data, error } = await supabase.from('managed_users').select('*').order('created_at', { ascending: false });
-            if (error && isMissingTableError(error)) {
-              console.warn('`managed_users` table not found. Returning empty list. This may indicate a database setup issue.');
-              return { statusCode: 200, headers: commonHeaders, body: JSON.stringify([]) };
-            }
-            if (error) throw error;
-            return { statusCode: 200, headers: commonHeaders, body: JSON.stringify((data || []).map(transformDbRowToManagedUser)) };
-          });
+          // List all users for filter dropdowns. Allowed for any authenticated user.
+          const { data, error } = await supabase.from('managed_users').select('*').order('created_at', { ascending: false });
+          if (error && isMissingTableError(error)) {
+            console.warn('`managed_users` table not found. Returning empty list. This may indicate a database setup issue.');
+            return { statusCode: 200, headers: commonHeaders, body: JSON.stringify([]) };
+          }
+          if (error) throw error;
+          return { statusCode: 200, headers: commonHeaders, body: JSON.stringify((data || []).map(transformDbRowToManagedUser)) };
         }
       }
 
