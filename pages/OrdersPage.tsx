@@ -6,6 +6,7 @@ import { authenticatedFetch } from '../utils/api';
 import { Database } from '../types/supabase';
 import Pagination from '../components/Pagination';
 import { generateInvoicePdf, generateBillOfLadingPdf } from '../utils/pdfUtils';
+import { useAuth } from '../AuthContext';
 
 type AdminRow = Database['public']['Tables']['admins']['Row'];
 
@@ -43,6 +44,9 @@ const StatusPill: React.FC<{ status: Order['status'] }> = ({ status }) => {
 const API_BASE_URL = '/api';
 
 const OrdersPage: React.FC = () => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
+
   const [orders, setOrders] = useState<Order[]>([]);
   const [viewOrder, setViewOrder] = useState<Order | null>(null);
   const [editableOrderStatus, setEditableOrderStatus] = useState<Order['status'] | undefined>(undefined);
@@ -109,24 +113,32 @@ const OrdersPage: React.FC = () => {
 
   const fetchAuxiliaryData = useCallback(async () => {
     try {
-      // Fetch all for filter dropdowns, not paginated
-      const [custRes, prodRes, managerRes, adminRes] = await Promise.all([
+      const promises = [
         authenticatedFetch(`${API_BASE_URL}/customers?pageSize=10000`),
         authenticatedFetch(`${API_BASE_URL}/products?pageSize=10000`),
         authenticatedFetch(`${API_BASE_URL}/managedUsers`),
-        authenticatedFetch(`${API_BASE_URL}/admins`),
-      ]);
+      ];
+
+      if (isAdmin) {
+        promises.push(authenticatedFetch(`${API_BASE_URL}/admins`));
+      }
+
+      const responses = await Promise.all(promises);
+
+      const [custRes, prodRes, managerRes] = responses;
+      const adminRes = isAdmin ? responses[3] : null;
+
       if (!custRes.ok) throw new Error(`Failed to fetch customers: ${custRes.statusText}`);
       if (!prodRes.ok) throw new Error(`Failed to fetch products: ${prodRes.statusText}`);
       if (!managerRes.ok) throw new Error(`Failed to fetch managers: ${managerRes.statusText}`);
-      if (!adminRes.ok) throw new Error(`Failed to fetch admins: ${adminRes.statusText}`);
-      
+      if (adminRes && !adminRes.ok) throw new Error(`Failed to fetch admins: ${adminRes.statusText}`);
+
       const custData = await custRes.json();
       const prodData = await prodRes.json();
       const managerData: ManagedUser[] = await managerRes.json();
-      const adminData: AdminRow[] = await adminRes.json();
+      const adminData: AdminRow[] = adminRes ? await adminRes.json() : [];
       
-      setCustomers(custData?.data || custData || []); // Handle paginated or full response for filters
+      setCustomers(custData?.data || custData || []);
       setAvailableProducts(prodData?.data || prodData || []);
       
       const combinedUsers = [
@@ -142,7 +154,7 @@ const OrdersPage: React.FC = () => {
       console.error("Failed to fetch auxiliary data:", err);
       setPageError(err.message || 'Could not load required data for orders.');
     }
-  }, []);
+  }, [isAdmin]);
   
   const fetchOrders = useCallback(async (page = 1) => {
     setIsLoading(true);
@@ -461,13 +473,15 @@ const OrdersPage: React.FC = () => {
                         {customers.map(customer => <option key={customer.id} value={customer.id}>{customer.name}</option>)}
                     </select>
                 </div>
-                <div>
-                  <label htmlFor="filterManager" className="block text-sm font-medium text-slate-700">Менеджер</label>
-                  <select id="filterManager" value={filterManagerEmail} onChange={e => {setFilterManagerEmail(e.target.value); setCurrentPage(1);}} className="mt-1 block w-full p-2 border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500 sm:text-sm">
-                    <option value="All">Всі менеджери</option>
-                    {allOrderManagers.map(manager => <option key={manager.email} value={manager.email}>{manager.name || manager.email}</option>)}
-                  </select>
-                </div>
+                {isAdmin && (
+                  <div>
+                    <label htmlFor="filterManager" className="block text-sm font-medium text-slate-700">Менеджер</label>
+                    <select id="filterManager" value={filterManagerEmail} onChange={e => {setFilterManagerEmail(e.target.value); setCurrentPage(1);}} className="mt-1 block w-full p-2 border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500 sm:text-sm">
+                      <option value="All">Всі менеджери</option>
+                      {allOrderManagers.map(manager => <option key={manager.email} value={manager.email}>{manager.name || manager.email}</option>)}
+                    </select>
+                  </div>
+                )}
                 <div>
                     <label htmlFor="filterStartDate" className="block text-sm font-medium text-slate-700">Дата від</label>
                     <input type="date" id="filterStartDate" value={filterStartDate} onChange={e => {setFilterStartDate(e.target.value); setCurrentPage(1);}} className="mt-1 block w-full p-2 border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500 sm:text-sm"/>
