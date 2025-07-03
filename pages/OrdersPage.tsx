@@ -1,12 +1,14 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Order, OrderItem, Customer, Product } from '../types';
+import { Order, OrderItem, Customer, Product, ManagedUser } from '../types';
 import { EyeIcon, XMarkIcon, PlusIcon, TrashIcon, PencilIcon, DocumentTextIcon, PrinterIcon, FilterIcon, DownloadIcon, ChevronDownIcon } from '../components/Icons';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { logoBase64 } from '../assets/logo';
 import { authenticatedFetch } from '../utils/api';
+import { Database } from '../types/supabase';
 
+type AdminRow = Database['public']['Tables']['admins']['Row'];
 
 const orderStatusValues: Order['status'][] = ['Ordered', 'Shipped', 'Received', 'Calculation', 'AwaitingApproval', 'PaidByClient', 'WrittenOff', 'ReadyForPickup'];
 const orderStatusTranslations: Record<Order['status'], string> = {
@@ -54,6 +56,7 @@ const OrdersPage: React.FC = () => {
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [availableProducts, setAvailableProducts] = useState<Product[]>([]);
+  const [allOrderManagers, setAllOrderManagers] = useState<{ email: string; name: string }[]>([]);
 
   const [isLoading, setIsLoading] = useState(false);
   const [pageError, setPageError] = useState<string | null>(null);
@@ -70,6 +73,7 @@ const OrdersPage: React.FC = () => {
   // Filtering state
   const [filterStatus, setFilterStatus] = useState<Order['status'] | 'All'>('All');
   const [filterCustomerId, setFilterCustomerId] = useState<string>('All');
+  const [filterManagerEmail, setFilterManagerEmail] = useState<string>('All');
   const [filterStartDate, setFilterStartDate] = useState<string>('');
   const [filterEndDate, setFilterEndDate] = useState<string>('');
   const [showFilters, setShowFilters] = useState<boolean>(false);
@@ -94,18 +98,34 @@ const OrdersPage: React.FC = () => {
 
   const fetchAuxiliaryData = useCallback(async () => {
     try {
-      const [custRes, prodRes] = await Promise.all([
+      const [custRes, prodRes, managerRes, adminRes] = await Promise.all([
         authenticatedFetch(`${API_BASE_URL}/customers`),
         authenticatedFetch(`${API_BASE_URL}/products`),
+        authenticatedFetch(`${API_BASE_URL}/managedUsers`),
+        authenticatedFetch(`${API_BASE_URL}/admins`),
       ]);
       if (!custRes.ok) throw new Error(`Failed to fetch customers: ${custRes.statusText}`);
       if (!prodRes.ok) throw new Error(`Failed to fetch products: ${prodRes.statusText}`);
+      if (!managerRes.ok) throw new Error(`Failed to fetch managers: ${managerRes.statusText}`);
+      if (!adminRes.ok) throw new Error(`Failed to fetch admins: ${adminRes.statusText}`);
       
       const custData = await custRes.json();
       const prodData = await prodRes.json();
+      const managerData: ManagedUser[] = await managerRes.json();
+      const adminData: AdminRow[] = await adminRes.json();
       
       setCustomers(custData || []);
       setAvailableProducts(prodData || []);
+      
+      const combinedUsers = [
+        ...(managerData || []).map(m => ({ email: m.email, name: m.name })),
+        ...(adminData || []).map(a => ({ email: a.email, name: a.email }))
+      ];
+      const uniqueUsers = Array.from(new Map(combinedUsers.map(item => [item.email.toLowerCase(), item])).values())
+        .sort((a,b) => a.name.localeCompare(b.name));
+      
+      setAllOrderManagers(uniqueUsers);
+
     } catch (err: any) {
       console.error("Failed to fetch auxiliary data:", err);
       setPageError(err.message || 'Could not load required data for orders.');
@@ -147,6 +167,7 @@ const OrdersPage: React.FC = () => {
                           order.customerName.toLowerCase().includes(searchTerm.toLowerCase());
       const statusMatch = filterStatus === 'All' || order.status === filterStatus;
       const customerMatch = filterCustomerId === 'All' || order.customerId === filterCustomerId;
+      const managerMatch = filterManagerEmail === 'All' || order.managedByUserEmail === filterManagerEmail;
       
       let dateMatch = true;
       if (filterStartDate && filterEndDate) {
@@ -170,13 +191,14 @@ const OrdersPage: React.FC = () => {
         endDate.setHours(0,0,0,0);
         dateMatch = orderDate <= endDate;
       }
-      return searchMatch && statusMatch && customerMatch && dateMatch;
+      return searchMatch && statusMatch && customerMatch && managerMatch && dateMatch;
     });
-  }, [orders, searchTerm, filterStatus, filterCustomerId, filterStartDate, filterEndDate]);
+  }, [orders, searchTerm, filterStatus, filterCustomerId, filterManagerEmail, filterStartDate, filterEndDate]);
 
   const resetFilters = () => {
     setFilterStatus('All');
     setFilterCustomerId('All');
+    setFilterManagerEmail('All');
     setFilterStartDate('');
     setFilterEndDate('');
     setSearchTerm('');
@@ -402,7 +424,7 @@ const OrdersPage: React.FC = () => {
        {/* Filter Section */}
       {showFilters && (
         <div className="p-4 bg-white rounded-lg shadow-sm space-y-4 border border-slate-200">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
                 <div>
                     <label htmlFor="filterStatus" className="block text-sm font-medium text-slate-700">Статус</label>
                     <select id="filterStatus" value={filterStatus} onChange={e => setFilterStatus(e.target.value as Order['status'] | 'All')} className="mt-1 block w-full p-2 border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500 sm:text-sm">
@@ -416,6 +438,13 @@ const OrdersPage: React.FC = () => {
                         <option value="All">Всі клієнти</option>
                         {customers.map(customer => <option key={customer.id} value={customer.id}>{customer.name}</option>)}
                     </select>
+                </div>
+                <div>
+                  <label htmlFor="filterManager" className="block text-sm font-medium text-slate-700">Менеджер</label>
+                  <select id="filterManager" value={filterManagerEmail} onChange={e => setFilterManagerEmail(e.target.value)} className="mt-1 block w-full p-2 border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500 sm:text-sm">
+                    <option value="All">Всі менеджери</option>
+                    {allOrderManagers.map(manager => <option key={manager.email} value={manager.email}>{manager.name || manager.email}</option>)}
+                  </select>
                 </div>
                 <div>
                     <label htmlFor="filterStartDate" className="block text-sm font-medium text-slate-700">Дата від</label>

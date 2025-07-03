@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Customer, Order } from '../types';
 import { PlusIcon, XMarkIcon, EyeIcon, PencilIcon, TrashIcon } from '../components/Icons';
@@ -133,8 +134,8 @@ const CustomersPage: React.FC = () => {
 
   const handleSubmitCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentCustomer.name || !currentCustomer.email) {
-      setModalError("Ім'я та email клієнта є обов'язковими.");
+    if (!currentCustomer.name) {
+      setModalError("Ім'я клієнта є обов'язковим.");
       return;
     }
     setModalError(null);
@@ -142,7 +143,7 @@ const CustomersPage: React.FC = () => {
 
     const customerDataToSubmit: Partial<Customer> = {
       name: currentCustomer.name,
-      email: currentCustomer.email,
+      email: currentCustomer.email || '',
       phone: currentCustomer.phone || '',
       instagramHandle: currentCustomer.instagramHandle || '',
       viberNumber: currentCustomer.viberNumber || '',
@@ -321,8 +322,8 @@ const CustomersPage: React.FC = () => {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1">Email <span aria-hidden="true" className="text-red-500">*</span></label>
-                  <input type="email" name="email" id="email" value={currentCustomer.email || ''} onChange={handleInputChange} required aria-required="true" className="block w-full border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500 sm:text-sm p-2.5" />
+                  <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                  <input type="email" name="email" id="email" value={currentCustomer.email || ''} onChange={handleInputChange} className="block w-full border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500 sm:text-sm p-2.5" />
                 </div>
                 <div>
                   <label htmlFor="phone" className="block text-sm font-medium text-slate-700 mb-1">Телефон</label>
