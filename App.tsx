@@ -12,6 +12,7 @@ import CustomersPage from './pages/CustomersPage';
 import SettingsPage from './pages/SettingsPage';
 import LoginPage from './pages/LoginPage'; // Import LoginPage
 import ReportsPage from './pages/ReportsPage'; // Import ReportsPage
+import InvoiceViewPage from './pages/InvoiceViewPage'; // Import InvoiceViewPage
 
 const getPageTitle = (pathname: string): string => {
   const normalizedPathname = pathname.endsWith('/') && pathname.length > 1 ? pathname.slice(0, -1) : pathname;
@@ -34,6 +35,7 @@ const getPageTitle = (pathname: string): string => {
       if (normalizedPathname.startsWith('/orders/')) return 'Деталі замовлення';
       if (normalizedPathname.startsWith('/products/')) return 'Деталі товару';
       if (normalizedPathname.startsWith('/customers/')) return 'Деталі клієнта';
+      if (normalizedPathname.startsWith('/invoice/')) return 'Рахунок-фактура';
       return 'Менеджер ел. комерції';
   }
 };
@@ -96,6 +98,7 @@ const AppContent: React.FC = () => {
 
   return (
     <Routes>
+      <Route path="/invoice/:orderId" element={<InvoiceViewPage />} />
       {user ? (
         // User is authenticated, show main app layout
         <Route path="/*" element={<MainAppLayout />} />

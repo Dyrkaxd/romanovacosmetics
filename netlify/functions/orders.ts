@@ -1,13 +1,15 @@
 
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import { supabase } from '../../services/supabaseClient'; 
-import type { Order, OrderItem, Product, PaginatedResponse } from '../../types';
+import type { Order, OrderItem, Product, Customer, PaginatedResponse } from '../../types';
 import type { Database } from '../../types/supabase';
 import { requireAuth, AuthError, AuthenticatedUser } from '../utils/auth';
 
 type OrderDbRow = Database['public']['Tables']['orders']['Row'];
 type OrderItemDbRow = Database['public']['Tables']['order_items']['Row'];
 type ProductDbRow = Database['public']['Tables']['products_bdr']['Row'];
+type CustomerDbRow = Database['public']['Tables']['customers']['Row'];
+
 
 const commonHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -27,6 +29,7 @@ const productGroupsMap: Record<string, string> = {
 
 // Helper to find a product across all tables
 const findProductById = async (id: string): Promise<Product | null> => {
+  if (!id) return null;
   for (const [group, tableName] of Object.entries(productGroupsMap)) {
     const { data, error } = await supabase.from(tableName).select('*').eq('id', id).single();
     if (data) {
@@ -45,6 +48,26 @@ const findProductById = async (id: string): Promise<Product | null> => {
   return null;
 };
 
+// Helper function to transform a database customer row into a client-facing Customer object.
+const transformDbRowToCustomer = (dbCustomer: CustomerDbRow): Customer => {
+  return {
+    id: dbCustomer.id,
+    name: dbCustomer.name,
+    email: dbCustomer.email,
+    phone: dbCustomer.phone || '',
+    address: {
+      street: dbCustomer.address_street || '',
+      city: dbCustomer.address_city || '',
+      state: dbCustomer.address_state || '',
+      zip: dbCustomer.address_zip || '',
+      country: dbCustomer.address_country || '',
+    },
+    joinDate: dbCustomer.join_date, 
+    instagramHandle: dbCustomer.instagram_handle || undefined,
+    viberNumber: dbCustomer.viber_number || undefined,
+    created_at: dbCustomer.created_at || undefined,
+  };
+};
 
 // Helper to transform DB row to Client Order type
 const dbOrderToClientOrder = (dbOrder: OrderDbRow & { customers?: { name: string } | null, customer?: { name: string } | null }, items: OrderItemDbRow[] = []): Order => {
@@ -78,87 +101,94 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, headers: commonHeaders, body: '' };
   }
+  
+  const pathParts = event.path.split('/').filter(Boolean);
+  const resourceId = pathParts.length > 2 ? pathParts[2] : null;
 
-  try {
-    const user = await requireAuth(event);
-
-    const pathParts = event.path.split('/').filter(Boolean);
-    const resourceId = pathParts.length > 2 ? pathParts[2] : null;
-
-    switch (event.httpMethod) {
-      case 'GET': {
-        if (resourceId) {
-          const { data: orderDbData, error: orderError } = await supabase
+  // PUBLIC ACCESS FOR INVOICE VIEW: Allow GET for a single order without authentication.
+  // Security relies on the unguessable UUID of the order ID.
+  if (event.httpMethod === 'GET' && resourceId) {
+    try {
+        const { data: orderDbData, error: orderError } = await supabase
             .from('orders')
-            .select('*, customers ( name )')
+            .select('*, customer:customers(*)')
             .eq('id', resourceId)
             .single();
-          if (orderError) throw orderError;
-          if (!orderDbData) return { statusCode: 404, headers: commonHeaders, body: JSON.stringify({ message: 'Order not found' }) };
 
-          const { data: itemsDbData, error: itemsError } = await supabase
+        if (orderError) throw orderError;
+        if (!orderDbData) return { statusCode: 404, headers: commonHeaders, body: JSON.stringify({ message: 'Order not found' }) };
+
+        const { data: itemsDbData, error: itemsError } = await supabase
             .from('order_items')
             .select('*')
             .eq('order_id', orderDbData.id)
             .returns<OrderItemDbRow[]>();
-          if (itemsError) throw itemsError;
+        if (itemsError) throw itemsError;
+        
+        const clientOrder = dbOrderToClientOrder(orderDbData as any, itemsDbData || []);
+        const fullCustomerData = orderDbData.customer ? transformDbRowToCustomer(orderDbData.customer as CustomerDbRow) : null;
+        
+        const responsePayload = { order: clientOrder, customer: fullCustomerData };
+        return { statusCode: 200, headers: commonHeaders, body: JSON.stringify(responsePayload) };
+
+    } catch (error: any) {
+        console.error('Public order fetch error:', error);
+        return { statusCode: 500, headers: commonHeaders, body: JSON.stringify({ message: 'Error fetching order data.'})};
+    }
+  }
+
+  // All other requests require authentication
+  try {
+    const user = await requireAuth(event);
+
+    switch (event.httpMethod) {
+      case 'GET': {
+        // This now only handles the list view, as single GET is public.
+        const {
+            page = '1', pageSize = '20', search = '', status, customerId,
+            managerEmail, startDate, endDate,
+          } = event.queryStringParameters || {};
           
-          const clientOrder = dbOrderToClientOrder(orderDbData, itemsDbData || []);
-          return { statusCode: 200, headers: commonHeaders, body: JSON.stringify(clientOrder) };
-        } else {
-           // Pagination & Filtering
-           const {
-              page = '1',
-              pageSize = '20',
-              search = '',
-              status,
-              customerId,
-              managerEmail,
-              startDate,
-              endDate,
-            } = event.queryStringParameters || {};
-            
-            const currentPage = parseInt(page, 10);
-            const size = parseInt(pageSize, 10);
-            const from = (currentPage - 1) * size;
-            const to = from + size - 1;
+          const currentPage = parseInt(page, 10);
+          const size = parseInt(pageSize, 10);
+          const from = (currentPage - 1) * size;
+          const to = from + size - 1;
 
-           const query = supabase
-            .from('orders')
-            .select('*, items:order_items(*), customer:customers(id, name)', { count: 'exact' });
-          
-          if(search){
-              query.or(`id.ilike.%${search}%,customer.name.ilike.%${search}%`, { referencedTable: 'customers' });
-          }
-          if(status && status !== 'All') query.eq('status', status);
-          if(customerId && customerId !== 'All') query.eq('customer_id', customerId);
-          if(managerEmail && managerEmail !== 'All') query.eq('managed_by_user_email', managerEmail);
-          if(startDate) query.gte('date', startDate);
-          if(endDate) query.lte('date', endDate);
-
-
-          const { data: ordersDbData, error: ordersError, count } = await query
-            .order('date', { ascending: false })
-            .range(from, to);
-
-          if (ordersError) throw ordersError;
-
-          const ordersWithClientItems = (ordersDbData as any[] || []).map(orderWithJoinedData => {
-            return dbOrderToClientOrder(
-                orderWithJoinedData,
-                orderWithJoinedData.items || []
-            );
-          });
-          
-          const response: PaginatedResponse<Order> = {
-              data: ordersWithClientItems,
-              totalCount: count || 0,
-              currentPage,
-              pageSize: size,
-          };
-
-          return { statusCode: 200, headers: commonHeaders, body: JSON.stringify(response) };
+         const query = supabase
+          .from('orders')
+          .select('*, items:order_items(*), customer:customers(id, name)', { count: 'exact' });
+        
+        if(search){
+            query.or(`id.ilike.%${search}%,customer.name.ilike.%${search}%`, { referencedTable: 'customers' });
         }
+        if(status && status !== 'All') query.eq('status', status);
+        if(customerId && customerId !== 'All') query.eq('customer_id', customerId);
+        if(managerEmail && managerEmail !== 'All') query.eq('managed_by_user_email', managerEmail);
+        if(startDate) query.gte('date', startDate);
+        if(endDate) query.lte('date', endDate);
+
+
+        const { data: ordersDbData, error: ordersError, count } = await query
+          .order('date', { ascending: false })
+          .range(from, to);
+
+        if (ordersError) throw ordersError;
+
+        const ordersWithClientItems = (ordersDbData as any[] || []).map(orderWithJoinedData => {
+          return dbOrderToClientOrder(
+              orderWithJoinedData,
+              orderWithJoinedData.items || []
+          );
+        });
+        
+        const response: PaginatedResponse<Order> = {
+            data: ordersWithClientItems,
+            totalCount: count || 0,
+            currentPage,
+            pageSize: size,
+        };
+
+        return { statusCode: 200, headers: commonHeaders, body: JSON.stringify(response) };
       }
 
       case 'POST': {
@@ -289,11 +319,14 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
             finalItemsDb = existingItemsDbData || [];
         }
 
-        const completeUpdatedClientOrder = dbOrderToClientOrder(updatedOrderDbBase, finalItemsDb);
+        const completeUpdatedClientOrder = dbOrderToClientOrder(updatedOrderDbBase as any, finalItemsDb);
         return { statusCode: 200, headers: commonHeaders, body: JSON.stringify(completeUpdatedClientOrder) };
       }
 
       case 'DELETE': {
+        if (user.role !== 'admin') {
+          return { statusCode: 403, headers: commonHeaders, body: JSON.stringify({ message: 'Forbidden: Only administrators can delete orders.' }) };
+        }
         if (!resourceId) return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: 'Order ID required for delete' }) };
         const { error: deleteItemsError } = await supabase
             .from('order_items')
