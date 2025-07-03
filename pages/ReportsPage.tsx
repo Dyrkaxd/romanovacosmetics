@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { authenticatedFetch } from '../utils/api';
-import { Order, Customer, SalesDataPoint, TopProduct, TopCustomer } from '../types';
+import { Order, SalesDataPoint, TopProduct, TopCustomer, PaginatedResponse } from '../types';
 import { ChartBarIcon, CurrencyDollarIcon, UsersIcon } from '../components/Icons';
 
 // Helper to get the last N days
@@ -89,7 +89,6 @@ const TopList: React.FC<{ items: (TopProduct | TopCustomer)[]; type: 'product' |
 
 const ReportsPage: React.FC = () => {
     const [orders, setOrders] = useState<Order[]>([]);
-    const [customers, setCustomers] = useState<Customer[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [timeframe, setTimeframe] = useState<number>(30); // 7, 30, 90 days
@@ -98,15 +97,12 @@ const ReportsPage: React.FC = () => {
         setIsLoading(true);
         setError(null);
         try {
-            const [ordersRes, customersRes] = await Promise.all([
-                authenticatedFetch('/api/orders'),
-                authenticatedFetch('/api/customers'),
-            ]);
+            // Fetch all orders for the report
+            const ordersRes = await authenticatedFetch('/api/orders?pageSize=10000');
             if (!ordersRes.ok) throw new Error('Failed to fetch orders.');
-            if (!customersRes.ok) throw new Error('Failed to fetch customers.');
 
-            setOrders(await ordersRes.json());
-            setCustomers(await customersRes.json());
+            const ordersPaginated: PaginatedResponse<Order> = await ordersRes.json();
+            setOrders(ordersPaginated.data || []);
         } catch (err: any) {
             setError(err.message || 'An error occurred while fetching report data.');
         } finally {

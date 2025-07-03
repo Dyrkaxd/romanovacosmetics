@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { DashboardStat, Order, ManagedUser, Customer } from '../types';
+import { DashboardStat, Order, ManagedUser, Customer, PaginatedResponse } from '../types';
 import { OrdersIcon, UsersIcon, CurrencyDollarIcon, LightBulbIcon, ArrowPathIcon } from '../components/Icons'; 
 import { authenticatedFetch } from '../utils/api';
 import { useAuth } from '../AuthContext';
@@ -246,35 +246,45 @@ const DashboardPage: React.FC = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const endpoints = ['/api/orders', '/api/customers'];
-      if(user?.role === 'admin') {
-          endpoints.push('/api/managedUsers', '/api/admins');
-      }
-      
-      const responses = await Promise.all(
-        endpoints.map(ep => authenticatedFetch(ep))
-      );
+      // Fetch all data for dashboard stats, so use a large page size
+      const requests = [
+        authenticatedFetch('/api/orders?pageSize=10000'),
+        authenticatedFetch('/api/customers?pageSize=10000'),
+      ];
 
-      for(const res of responses) {
-          if(!res.ok) {
-              const errorData = await res.json().catch(() => ({ message: `An error occurred: ${res.statusText}`}));
-              throw new Error(errorData.message);
-          }
+      if (user?.role === 'admin') {
+        requests.push(authenticatedFetch('/api/managedUsers'));
+        requests.push(authenticatedFetch('/api/admins'));
       }
 
-      const [ordersData, customersData, managedUsersData, adminsData] = await Promise.all(responses.map(res => res.json()));
-      
-      setOrders(ordersData || []);
-      setCustomers(customersData || []);
-      if(user?.role === 'admin') {
+      const responses = await Promise.all(requests);
+
+      for (const res of responses) {
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({ message: `An error occurred: ${res.statusText}` }));
+          throw new Error(errorData.message);
+        }
+      }
+
+      const [ordersRes, customersRes, managedUsersRes, adminsRes] = responses;
+
+      const ordersPaginated: PaginatedResponse<Order> = await ordersRes.json();
+      setOrders(ordersPaginated.data || []);
+
+      const customersPaginated: PaginatedResponse<Customer> = await customersRes.json();
+      setCustomers(customersPaginated.data || []);
+
+      if (user?.role === 'admin' && managedUsersRes && adminsRes) {
+        const managedUsersData: any[] = await managedUsersRes.json();
         setManagedUsers((managedUsersData || []).map((u: any) => ({
-             id: u.id, name: u.name, email: u.email,
-             notes: u.notes || undefined, dateAdded: u.created_at || new Date().toISOString(),
+          id: u.id, name: u.name, email: u.email,
+          notes: u.notes || undefined, dateAdded: u.created_at || new Date().toISOString(),
         })));
-        setAdmins(adminsData || []);
-        fetchSummary(); // Fetch summary for admin
-      }
 
+        const adminsData: AdminRow[] = await adminsRes.json();
+        setAdmins(adminsData || []);
+        fetchSummary();
+      }
     } catch (err: any) {
       console.error("Failed to fetch dashboard data:", err);
       setError(err.message || 'Could not load dashboard statistics.');
