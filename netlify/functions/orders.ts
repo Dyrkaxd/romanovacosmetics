@@ -1,4 +1,3 @@
-
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import { supabase } from '../../services/supabaseClient'; 
 import type { Order, OrderItem, Product, Customer, PaginatedResponse } from '../../types';
@@ -319,8 +318,8 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       }
 
       case 'DELETE': {
-        if (user.role !== 'admin') {
-          return { statusCode: 403, headers: commonHeaders, body: JSON.stringify({ message: 'Forbidden: Only administrators can delete orders.' }) };
+        if (user.role !== 'admin' && user.role !== 'manager') {
+          return { statusCode: 403, headers: commonHeaders, body: JSON.stringify({ message: 'Forbidden: You do not have permission to delete orders.' }) };
         }
         if (!resourceId) return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: 'Order ID required for delete' }) };
         const { error: deleteItemsError } = await supabase

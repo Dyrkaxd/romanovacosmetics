@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Order, OrderItem, Customer, Product, ManagedUser, PaginatedResponse } from '../types';
 import { EyeIcon, XMarkIcon, PlusIcon, TrashIcon, PencilIcon, DocumentTextIcon, FilterIcon, DownloadIcon, ChevronDownIcon, ShareIcon } from '../components/Icons';
@@ -525,7 +524,7 @@ const OrdersPage: React.FC = () => {
                       <button onClick={() => handleViewOrder(order)} className="p-2 rounded-md hover:bg-sky-50 text-slate-500 hover:text-sky-600" title="Переглянути"><EyeIcon className="w-5 h-5"/></button>
                       <button onClick={() => openOrderModal('edit', order)} className="p-2 rounded-md hover:bg-rose-50 text-slate-500 hover:text-rose-600" title="Редагувати"><PencilIcon className="w-5 h-5"/></button>
                       <button onClick={() => handleShareInvoice(order.id)} className="p-2 rounded-md hover:bg-green-50 text-slate-500 hover:text-green-600" title="Поділитися рахунком"><ShareIcon className="w-5 h-5"/></button>
-                      {isAdmin && <button onClick={() => handleDeleteOrder(order.id)} className="p-2 rounded-md hover:bg-red-50 text-slate-500 hover:text-red-600" title="Видалити"><TrashIcon className="w-5 h-5"/></button>}
+                      {(isAdmin || user?.role === 'manager') && <button onClick={() => handleDeleteOrder(order.id)} className="p-2 rounded-md hover:bg-red-50 text-slate-500 hover:text-red-600" title="Видалити"><TrashIcon className="w-5 h-5"/></button>}
                     </td>
                   </tr>
                 ))

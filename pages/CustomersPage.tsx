@@ -1,9 +1,9 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Customer, Order, PaginatedResponse } from '../types';
 import { PlusIcon, XMarkIcon, EyeIcon, PencilIcon, TrashIcon } from '../components/Icons';
 import { authenticatedFetch } from '../utils/api';
 import Pagination from '../components/Pagination';
+import { useAuth } from '../AuthContext';
 
 const orderStatusValues: Order['status'][] = ['Ordered', 'Shipped', 'Received', 'Calculation', 'AwaitingApproval', 'PaidByClient', 'WrittenOff', 'ReadyForPickup'];
 const orderStatusTranslations: Record<Order['status'], string> = {
@@ -37,6 +37,8 @@ const StatusPill: React.FC<{ status: Order['status'] }> = ({ status }) => {
 
 
 const CustomersPage: React.FC = () => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
@@ -277,14 +279,16 @@ const CustomersPage: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-3 sm:space-y-0">
         <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Клієнти</h2>
-        <button
-          onClick={openAddModal}
-          aria-label="Додати нового клієнта"
-          className="flex items-center bg-rose-500 hover:bg-rose-600 text-white font-semibold py-2 px-4 rounded-lg shadow-sm transition-colors"
-        >
-          <PlusIcon className="w-5 h-5" />
-          <span className="ml-2">Додати клієнта</span>
-        </button>
+        {isAdmin && (
+            <button
+                onClick={openAddModal}
+                aria-label="Додати нового клієнта"
+                className="flex items-center bg-rose-500 hover:bg-rose-600 text-white font-semibold py-2 px-4 rounded-lg shadow-sm transition-colors"
+            >
+                <PlusIcon className="w-5 h-5" />
+                <span className="ml-2">Додати клієнта</span>
+            </button>
+        )}
       </div>
 
       <input
@@ -321,8 +325,12 @@ const CustomersPage: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 hidden md:table-cell">{new Date(customer.joinDate).toLocaleDateString()}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-1">
                       <button onClick={() => openViewModal(customer)} className="text-slate-500 hover:text-sky-600 transition-colors p-2 rounded-md hover:bg-sky-50" title="Переглянути деталі клієнта" aria-label={`Переглянути деталі для ${customer.name}`}><EyeIcon className="w-5 h-5"/></button>
-                      <button onClick={() => openEditModal(customer)} className="text-slate-500 hover:text-rose-600 transition-colors p-2 rounded-md hover:bg-rose-50" title="Редагувати клієнта" aria-label={`Редагувати ${customer.name}`}><PencilIcon className="w-5 h-5"/></button>
-                      <button onClick={() => handleDeleteCustomer(customer.id)} className="text-slate-500 hover:text-red-600 transition-colors p-2 rounded-md hover:bg-red-50" title="Видалити клієнта" aria-label={`Видалити ${customer.name}`}><TrashIcon className="w-5 h-5"/></button>
+                      {isAdmin && (
+                          <>
+                            <button onClick={() => openEditModal(customer)} className="text-slate-500 hover:text-rose-600 transition-colors p-2 rounded-md hover:bg-rose-50" title="Редагувати клієнта" aria-label={`Редагувати ${customer.name}`}><PencilIcon className="w-5 h-5"/></button>
+                            <button onClick={() => handleDeleteCustomer(customer.id)} className="text-slate-500 hover:text-red-600 transition-colors p-2 rounded-md hover:bg-red-50" title="Видалити клієнта" aria-label={`Видалити ${customer.name}`}><TrashIcon className="w-5 h-5"/></button>
+                          </>
+                      )}
                     </td>
                   </tr>
                 ))
