@@ -661,7 +661,7 @@ const OrdersPage: React.FC = () => {
                             )}
                         </div>
                         <div className="col-span-4 md:col-span-2"><input type="number" value={item.quantity} onChange={e => handleItemChange(index, 'quantity', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" placeholder="К-сть"/></div>
-                        <div className="col-span-4 md:col-span-2"><input type="number" step="0.01" value={item.price} onChange={e => handleItemChange(index, 'price', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" placeholder="Ціна"/></div>
+                        <div className="col-span-4 md:col-span-2"><input type="number" step="0.01" value={item.price} readOnly className="w-full p-2 border border-slate-300 rounded-md bg-slate-100 text-slate-500 cursor-not-allowed" placeholder="Ціна"/></div>
                         <div className="col-span-4 md:col-span-2"><input type="number" step="0.01" value={item.discount || ''} onChange={e => handleItemChange(index, 'discount', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" placeholder="Знижка %"/></div>
                         <div className="col-span-12 md:col-span-1 flex justify-end"><button type="button" onClick={() => removeItem(index)}><TrashIcon className="w-5 h-5 text-red-500 hover:text-red-700"/></button></div>
                       </div>
