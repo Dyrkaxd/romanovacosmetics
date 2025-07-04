@@ -90,7 +90,7 @@ export const generateInvoicePdf = async (order: Order, customer: Customer) => {
         });
 
         doc.setFont('Roboto', 'normal'); // Reset font state after autoTable
-        const finalY = (doc as any).lastAutoTable.finalY;
+        const finalY = doc.lastAutoTable.finalY || 80;
         const subtotal = order.items.reduce((acc, item) => acc + item.quantity * item.price, 0);
         const totalDiscount = subtotal - order.totalAmount;
 
@@ -156,7 +156,7 @@ export const generateBillOfLadingPdf = async (order: Order, customer: Customer) 
         });
 
         doc.setFont('Roboto', 'normal'); // Reset font state after autoTable
-        const finalY = (doc as any).lastAutoTable.finalY;
+        const finalY = doc.lastAutoTable.finalY || 75;
         
         doc.setFontSize(10);
         doc.text('Всього місць:', 14, finalY + 10);
