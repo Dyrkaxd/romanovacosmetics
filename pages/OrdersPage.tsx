@@ -524,7 +524,7 @@ const OrdersPage: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-1">
                       <button onClick={() => handleViewOrder(order)} className="p-2 rounded-md hover:bg-sky-50 text-slate-500 hover:text-sky-600" title="Переглянути"><EyeIcon className="w-5 h-5"/></button>
                       <button onClick={() => openOrderModal('edit', order)} className="p-2 rounded-md hover:bg-rose-50 text-slate-500 hover:text-rose-600" title="Редагувати"><PencilIcon className="w-5 h-5"/></button>
-                      {isAdmin && <button onClick={() => handleShareInvoice(order.id)} className="p-2 rounded-md hover:bg-green-50 text-slate-500 hover:text-green-600" title="Поділитися рахунком"><ShareIcon className="w-5 h-5"/></button>}
+                      <button onClick={() => handleShareInvoice(order.id)} className="p-2 rounded-md hover:bg-green-50 text-slate-500 hover:text-green-600" title="Поділитися рахунком"><ShareIcon className="w-5 h-5"/></button>
                       {isAdmin && <button onClick={() => handleDeleteOrder(order.id)} className="p-2 rounded-md hover:bg-red-50 text-slate-500 hover:text-red-600" title="Видалити"><TrashIcon className="w-5 h-5"/></button>}
                     </td>
                   </tr>
@@ -585,9 +585,10 @@ const OrdersPage: React.FC = () => {
               </div>
             </div>
             <div className="flex flex-col sm:flex-row justify-between items-center pt-6 mt-6 border-t border-slate-200">
-                <div className="flex space-x-2">
+                <div className="flex flex-wrap gap-2">
                     <button onClick={() => window.open(`${window.location.origin}/#/invoice/${viewOrder.id}`, '_blank')} className="flex items-center text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2 px-3 rounded-lg"><DocumentTextIcon className="w-4 h-4 mr-1.5"/>Рахунок</button>
                     <button onClick={() => window.open(`${window.location.origin}/#/bill-of-lading/${viewOrder.id}`, '_blank')} className="flex items-center text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2 px-3 rounded-lg"><DownloadIcon className="w-4 h-4 mr-1.5"/>ТТН</button>
+                    <button onClick={() => handleShareInvoice(viewOrder.id)} className="flex items-center text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2 px-3 rounded-lg"><ShareIcon className="w-4 h-4 mr-1.5"/>Копіювати посилання</button>
                 </div>
                 <div className="flex space-x-3 mt-4 sm:mt-0">
                     <button onClick={closeModalView} className="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold py-2 px-4 rounded-lg">Закрити</button>
