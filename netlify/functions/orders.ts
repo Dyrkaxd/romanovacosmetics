@@ -193,18 +193,17 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
 
       case 'POST': {
         const clientNewOrderData = JSON.parse(event.body || '{}') as Partial<Order>;
-        const { items: clientItems, customerId, customerName, totalAmount, notes, ...restOfClientOrderData } = clientNewOrderData;
+        const { items: clientItems, customerId, totalAmount, notes, status, date } = clientNewOrderData;
         
         if (!customerId || totalAmount === undefined || totalAmount === null) {
           return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: 'Customer ID and total amount are required.' }) };
         }
 
-        const orderPayloadForDb = {
-            ...restOfClientOrderData,
-            date: restOfClientOrderData.date || new Date().toISOString(),
+        const orderPayloadForDb: Partial<OrderDbRow> = {
+            date: date || new Date().toISOString(),
             customer_id: customerId,
             total_amount: totalAmount,
-            status: restOfClientOrderData.status || 'Ordered',
+            status: status || 'Ordered',
             notes: notes || null,
             managed_by_user_email: user.email, // Track who created the order
         };
@@ -254,21 +253,17 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       case 'PUT': {
         if (!resourceId) return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: 'Order ID required for update' }) };
         const clientUpdateOrderData = JSON.parse(event.body || '{}') as Partial<Order>;
-        const { items: clientUpdatedItems, customerId: clientCustomerIdToUpdate, customerName: customerNameToIgnore, totalAmount, notes, ...restOfClientUpdateData } = clientUpdateOrderData;
+        const { items: clientUpdatedItems, customerId, totalAmount, notes, status, date } = clientUpdateOrderData;
         
         const orderUpdatePayloadForDb: Partial<OrderDbRow> = {
-            ...restOfClientUpdateData,
-            managed_by_user_email: user.email, // Track who updated the order
+            managed_by_user_email: user.email, // Always track the last updater
         };
 
+        if (date !== undefined) orderUpdatePayloadForDb.date = date;
+        if (status !== undefined) orderUpdatePayloadForDb.status = status;
         if (totalAmount !== undefined) orderUpdatePayloadForDb.total_amount = totalAmount;
-        if (clientCustomerIdToUpdate !== undefined) orderUpdatePayloadForDb.customer_id = clientCustomerIdToUpdate;
+        if (customerId !== undefined) orderUpdatePayloadForDb.customer_id = customerId;
         if (notes !== undefined) orderUpdatePayloadForDb.notes = notes || null;
-
-        delete (orderUpdatePayloadForDb as any).id;
-        delete (orderUpdatePayloadForDb as any).items; 
-        delete (orderUpdatePayloadForDb as any).customerId;
-        delete (orderUpdatePayloadForDb as any).created_at;
 
         const { data: updatedOrderDbBase, error: updateOrderError } = await supabase
           .from('orders')
