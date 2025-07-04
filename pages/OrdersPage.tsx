@@ -441,6 +441,11 @@ const OrdersPage: React.FC = () => {
     return availableProducts.filter(p => p.name.toLowerCase().includes(productSearchTerm.toLowerCase()));
   }, [productSearchTerm, availableProducts]);
 
+  const customerForViewOrder = useMemo(() => {
+    if (!viewOrder) return null;
+    return customers.find(c => c.id === viewOrder.customerId);
+  }, [viewOrder, customers]);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-3 sm:space-y-0">
@@ -608,8 +613,20 @@ const OrdersPage: React.FC = () => {
             </div>
             <div className="flex flex-col sm:flex-row justify-between items-center pt-6 mt-6 border-t border-slate-200">
                 <div className="flex space-x-2">
-                    <button onClick={async () => await generateInvoicePdf(viewOrder, customers.find(c => c.id === viewOrder.customerId)!)} className="flex items-center text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2 px-3 rounded-lg"><DocumentTextIcon className="w-4 h-4 mr-1.5"/>Рахунок</button>
-                    <button onClick={async () => await generateBillOfLadingPdf(viewOrder, customers.find(c => c.id === viewOrder.customerId)!)} className="flex items-center text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2 px-3 rounded-lg"><DownloadIcon className="w-4 h-4 mr-1.5"/>ТТН</button>
+                    <button onClick={async () => {
+                        if (!customerForViewOrder) {
+                            setModalError("Не вдалося створити PDF: дані клієнта для цього замовлення не знайдено.");
+                            return;
+                        }
+                        await generateInvoicePdf(viewOrder, customerForViewOrder);
+                    }} className="flex items-center text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2 px-3 rounded-lg"><DocumentTextIcon className="w-4 h-4 mr-1.5"/>Рахунок</button>
+                    <button onClick={async () => {
+                        if (!customerForViewOrder) {
+                            setModalError("Не вдалося створити PDF: дані клієнта для цього замовлення не знайдено.");
+                            return;
+                        }
+                        await generateBillOfLadingPdf(viewOrder, customerForViewOrder);
+                    }} className="flex items-center text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2 px-3 rounded-lg"><DownloadIcon className="w-4 h-4 mr-1.5"/>ТТН</button>
                 </div>
                 <div className="flex space-x-3 mt-4 sm:mt-0">
                     <button onClick={closeModalView} className="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold py-2 px-4 rounded-lg">Закрити</button>
@@ -649,7 +666,7 @@ const OrdersPage: React.FC = () => {
                     <h4 className="text-md font-semibold text-slate-700 pt-4 border-t">Товари в замовленні</h4>
                     {(activeOrderData?.items || []).map((item, index) => (
                       <div key={index} className="grid grid-cols-12 gap-2 items-center p-2 rounded-lg bg-slate-50 border">
-                        <div className="col-span-12 md:col-span-5 relative" ref={el => productDropdownRefs.current[index] = el}>
+                        <div className="col-span-12 md:col-span-5 relative" ref={el => { productDropdownRefs.current[index] = el; }}>
                            <input type="text" placeholder="Почніть вводити назву товару"
                                 value={openProductDropdown === index ? productSearchTerm : item.productName}
                                 onFocus={() => { setOpenProductDropdown(index); setProductSearchTerm(''); }}
