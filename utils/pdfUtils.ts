@@ -1,19 +1,19 @@
 
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import { dejavuSansNormal } from '../assets/DejaVuSans-normal';
+import { robotoRegularNormal } from '../assets/Roboto-Regular-normal';
 import type { Order, Customer, OrderItem } from '../types';
 
 // Function to add the font to jsPDF instance
-const addDejaVuFont = (doc: jsPDF) => {
+const addRobotoFont = (doc: jsPDF) => {
     // Add the font to jsPDF
-    doc.addFileToVFS('DejaVuSans-normal.ttf', dejavuSansNormal);
-    doc.addFont('DejaVuSans-normal.ttf', 'DejaVu', 'normal');
-    doc.setFont('DejaVu', 'normal');
+    doc.addFileToVFS('Roboto-Regular.ttf', robotoRegularNormal);
+    doc.addFont('Roboto-Regular.ttf', 'Roboto', 'normal');
+    doc.setFont('Roboto', 'normal');
 };
 
 const drawHeader = (doc: jsPDF, title: string) => {
-    doc.setFont('DejaVu', 'normal');
+    doc.setFont('Roboto', 'normal');
     
     doc.setFontSize(22);
     doc.setTextColor(34, 34, 34);
@@ -36,7 +36,7 @@ const drawFooter = (doc: jsPDF) => {
     const pageCount = (doc.internal as any).getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
-        doc.setFont('DejaVu', 'normal');
+        doc.setFont('Roboto', 'normal');
         doc.setFontSize(8);
         doc.setTextColor(150);
         doc.text(`Сторінка ${i} з ${pageCount}`, doc.internal.pageSize.width / 2, doc.internal.pageSize.height - 10, { align: 'center' });
@@ -46,7 +46,7 @@ const drawFooter = (doc: jsPDF) => {
 export const generateInvoicePdf = async (order: Order, customer: Customer) => {
     try {
         const doc = new jsPDF();
-        addDejaVuFont(doc);
+        addRobotoFont(doc);
 
         drawHeader(doc, 'Рахунок-фактура');
 
@@ -85,11 +85,11 @@ export const generateInvoicePdf = async (order: Order, customer: Customer) => {
             head: [['#', 'Товар', 'К-сть', 'Ціна', 'Знижка', 'Всього']],
             body: tableData,
             theme: 'striped',
-            headStyles: { fillColor: [225, 29, 72], font: 'DejaVu', fontStyle: 'normal' },
-            bodyStyles: { font: 'DejaVu', fontStyle: 'normal' },
+            headStyles: { fillColor: [225, 29, 72], font: 'Roboto', fontStyle: 'normal' },
+            bodyStyles: { font: 'Roboto', fontStyle: 'normal' },
         });
 
-        doc.setFont('DejaVu', 'normal'); // Reset font state after autoTable
+        doc.setFont('Roboto', 'normal'); // Reset font state after autoTable
         const finalY = doc.lastAutoTable.finalY || 80;
         const subtotal = order.items.reduce((acc, item) => acc + item.quantity * item.price, 0);
         const totalDiscount = subtotal - order.totalAmount;
@@ -118,7 +118,7 @@ export const generateInvoicePdf = async (order: Order, customer: Customer) => {
 export const generateBillOfLadingPdf = async (order: Order, customer: Customer) => {
     try {
         const doc = new jsPDF();
-        addDejaVuFont(doc);
+        addRobotoFont(doc);
 
         drawHeader(doc, 'ТТН');
         
@@ -151,11 +151,11 @@ export const generateBillOfLadingPdf = async (order: Order, customer: Customer) 
             head: [['#', 'Найменування вантажу', 'Кількість місць']],
             body: tableData,
             theme: 'grid',
-            headStyles: { fillColor: [80, 80, 80], font: 'DejaVu', fontStyle: 'normal' },
-            bodyStyles: { font: 'DejaVu', fontStyle: 'normal' },
+            headStyles: { fillColor: [80, 80, 80], font: 'Roboto', fontStyle: 'normal' },
+            bodyStyles: { font: 'Roboto', fontStyle: 'normal' },
         });
 
-        doc.setFont('DejaVu', 'normal'); // Reset font state after autoTable
+        doc.setFont('Roboto', 'normal'); // Reset font state after autoTable
         const finalY = doc.lastAutoTable.finalY || 75;
         
         doc.setFontSize(10);
