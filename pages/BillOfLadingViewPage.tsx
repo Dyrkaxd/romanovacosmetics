@@ -96,15 +96,6 @@ const BillOfLadingViewPage: React.FC = () => {
 
     return (
         <div className="bg-slate-100 min-h-screen py-12 px-4 sm:px-6 lg:px-8 printable-area">
-             <div className="p-4 bg-slate-50 rounded-b-lg flex justify-center no-print sticky top-0 z-10 border-b shadow-sm mb-4">
-                <button
-                    onClick={handlePrint}
-                    className="flex items-center bg-rose-500 hover:bg-rose-600 text-white font-semibold py-2 px-6 rounded-lg shadow-sm transition-colors"
-                >
-                    <PrinterIcon className="w-5 h-5 mr-2" />
-                    Роздрукувати / Зберегти як PDF
-                </button>
-            </div>
             <div className="max-w-3xl mx-auto bg-white shadow-lg rounded-lg">
                 <div className="p-8 sm:p-12">
                     <header className="flex justify-between items-start pb-8 border-b border-slate-200">
@@ -177,6 +168,15 @@ const BillOfLadingViewPage: React.FC = () => {
                         </div>
                     </footer>
                 </div>
+            </div>
+            <div className="p-4 flex justify-center no-print mt-8">
+                <button
+                    onClick={handlePrint}
+                    className="flex items-center bg-rose-500 hover:bg-rose-600 text-white font-semibold py-2 px-6 rounded-lg shadow-sm transition-colors"
+                >
+                    <PrinterIcon className="w-5 h-5 mr-2" />
+                    Роздрукувати / Зберегти як PDF
+                </button>
             </div>
         </div>
     );
