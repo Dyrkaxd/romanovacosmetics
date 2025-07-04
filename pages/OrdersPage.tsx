@@ -618,14 +618,24 @@ const OrdersPage: React.FC = () => {
                             setModalError("Не вдалося створити PDF: дані клієнта для цього замовлення не знайдено.");
                             return;
                         }
-                        await generateInvoicePdf(viewOrder, customerForViewOrder);
+                        try {
+                            await generateInvoicePdf(viewOrder, customerForViewOrder);
+                        } catch (e: any) {
+                            console.error("PDF generation error:", e);
+                            setModalError("На жаль, не вдалося створити PDF. Будь ласка, спробуйте ще раз.");
+                        }
                     }} className="flex items-center text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2 px-3 rounded-lg"><DocumentTextIcon className="w-4 h-4 mr-1.5"/>Рахунок</button>
                     <button onClick={async () => {
                         if (!customerForViewOrder) {
                             setModalError("Не вдалося створити PDF: дані клієнта для цього замовлення не знайдено.");
                             return;
                         }
-                        await generateBillOfLadingPdf(viewOrder, customerForViewOrder);
+                        try {
+                            await generateBillOfLadingPdf(viewOrder, customerForViewOrder);
+                        } catch (e: any) {
+                            console.error("PDF generation error:", e);
+                            setModalError("На жаль, не вдалося створити PDF. Будь ласка, спробуйте ще раз.");
+                        }
                     }} className="flex items-center text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2 px-3 rounded-lg"><DownloadIcon className="w-4 h-4 mr-1.5"/>ТТН</button>
                 </div>
                 <div className="flex space-x-3 mt-4 sm:mt-0">
