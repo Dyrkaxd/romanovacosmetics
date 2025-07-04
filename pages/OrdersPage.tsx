@@ -674,6 +674,13 @@ const OrdersPage: React.FC = () => {
                   
                   <div className="space-y-3">
                     <h4 className="text-md font-semibold text-slate-700 pt-4 border-t">Товари в замовленні</h4>
+                    <div className="hidden md:grid grid-cols-12 gap-2 px-2 pb-1">
+                      <div className="col-span-5"><label className="text-xs font-semibold text-slate-500">Товар</label></div>
+                      <div className="col-span-2"><label className="text-xs font-semibold text-slate-500">Кількість</label></div>
+                      <div className="col-span-2"><label className="text-xs font-semibold text-slate-500">Ціна</label></div>
+                      <div className="col-span-2"><label className="text-xs font-semibold text-slate-500">Знижка, %</label></div>
+                      <div className="col-span-1 flex justify-end"><label className="text-xs font-semibold text-slate-500">Дія</label></div>
+                    </div>
                     {(activeOrderData?.items || []).map((item, index) => (
                       <div key={index} className="grid grid-cols-12 gap-2 items-center p-2 rounded-lg bg-slate-50 border">
                         <div className="col-span-12 md:col-span-5 relative" ref={el => { productDropdownRefs.current[index] = el; }}>
@@ -704,7 +711,7 @@ const OrdersPage: React.FC = () => {
                         </div>
                         <div className="col-span-4 md:col-span-2"><input type="number" value={item.quantity} onChange={e => handleItemChange(index, 'quantity', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" placeholder="К-сть"/></div>
                         <div className="col-span-4 md:col-span-2"><input type="number" step="0.01" value={item.price} onChange={e => handleItemChange(index, 'price', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" placeholder="Ціна"/></div>
-                        <div className="col-span-4 md:col-span-2"><input type="number" step="0.01" value={item.discount} onChange={e => handleItemChange(index, 'discount', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" placeholder="Знижка %"/></div>
+                        <div className="col-span-4 md:col-span-2"><input type="number" step="0.01" value={item.discount || ''} onChange={e => handleItemChange(index, 'discount', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" placeholder="Знижка %"/></div>
                         <div className="col-span-12 md:col-span-1 flex justify-end"><button type="button" onClick={() => removeItem(index)}><TrashIcon className="w-5 h-5 text-red-500 hover:text-red-700"/></button></div>
                       </div>
                     ))}
