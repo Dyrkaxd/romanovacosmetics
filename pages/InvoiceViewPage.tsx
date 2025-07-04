@@ -48,7 +48,21 @@ const InvoiceViewPage: React.FC = () => {
     }, [orderId]);
 
     const handlePrint = () => {
+        if (!order) return;
+        const originalTitle = document.title;
+        document.title = `Invoice_${order.id}`;
+
+        const restoreTitle = () => {
+            document.title = originalTitle;
+            window.removeEventListener('afterprint', restoreTitle);
+        };
+
+        window.addEventListener('afterprint', restoreTitle);
+        
         window.print();
+
+        // A timeout fallback for browsers that might not fire 'afterprint' reliably
+        setTimeout(restoreTitle, 500);
     };
 
     if (isLoading) {

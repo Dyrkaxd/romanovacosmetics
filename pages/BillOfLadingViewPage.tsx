@@ -48,7 +48,22 @@ const BillOfLadingViewPage: React.FC = () => {
     }, [orderId]);
 
     const handlePrint = () => {
+        if (!order) return;
+        const originalTitle = document.title;
+        // TTN is the common Ukrainian abbreviation for Bill of Lading
+        document.title = `TTN_${order.id}`;
+
+        const restoreTitle = () => {
+            document.title = originalTitle;
+            window.removeEventListener('afterprint', restoreTitle);
+        };
+
+        window.addEventListener('afterprint', restoreTitle);
+        
         window.print();
+        
+        // Fallback timeout
+        setTimeout(restoreTitle, 500);
     };
 
     if (isLoading) {
