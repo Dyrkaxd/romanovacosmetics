@@ -2,56 +2,26 @@
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import type { Order, Customer } from '../types';
-
-// Memoization cache for the font data
-let cachedFontBase64: string | null = null;
+import { robotoRegularNormal } from '../assets/Roboto-Regular-normal';
 
 /**
- * Fetches the font file from a CDN, converts it to Base64, and caches it.
- * This is a robust way to ensure a valid font file is always used.
- * @returns {Promise<string>} The Base64 encoded font data.
+ * Initializes a jsPDF document and adds the required font.
+ * This is now synchronous and uses a local font file.
+ * @returns {jsPDF} A jsPDF instance ready for use.
  */
-const getRobotoFontBase64 = async (): Promise<string> => {
-    if (cachedFontBase64) {
-        return cachedFontBase64;
-    }
-
-    try {
-        // Using a reliable CDN for the font file, known to work with jsPDF examples.
-        const fontUrl = 'https://raw.githack.com/MrRio/jsPDF/master/test/fonts/Roboto-Regular.ttf';
-        const response = await fetch(fontUrl);
-        if (!response.ok) {
-            throw new Error(`Failed to fetch font: ${response.status} ${response.statusText}`);
-        }
-        
-        const arrayBuffer = await response.arrayBuffer();
-
-        // Convert ArrayBuffer to Base64 string
-        let binary = '';
-        const bytes = new Uint8Array(arrayBuffer);
-        for (let i = 0; i < bytes.byteLength; i++) {
-            binary += String.fromCharCode(bytes[i]);
-        }
-        const base64 = window.btoa(binary);
-        
-        cachedFontBase64 = base64; // Cache the result
-        return base64;
-    } catch (error) {
-        console.error("Error fetching or processing font:", error);
-        throw new Error("Could not load the required font for PDF generation. Please check your internet connection.");
-    }
-};
-
-/**
- * Initializes a jsPDF document and adds the required Roboto font.
- * @returns {Promise<jsPDF>} A jsPDF instance ready for use.
- */
-const initializePdfDoc = async (): Promise<jsPDF> => {
+const initializePdfDoc = (): jsPDF => {
     const doc = new jsPDF();
-    const robotoBase64 = await getRobotoFontBase64();
-    doc.addFileToVFS('Roboto-Regular.ttf', robotoBase64);
-    doc.addFont('Roboto-Regular.ttf', 'Roboto', 'normal');
-    doc.setFont('Roboto', 'normal');
+    try {
+        // Add the font file to the virtual file system
+        doc.addFileToVFS('Roboto-Regular.ttf', robotoRegularNormal);
+        // Add the font to jsPDF
+        doc.addFont('Roboto-Regular.ttf', 'Roboto', 'normal');
+        // Set the font for the document
+        doc.setFont('Roboto', 'normal');
+    } catch (e) {
+        console.error("Error adding font to jsPDF:", e);
+        throw new Error("Failed to initialize PDF font. The font data may be corrupt.");
+    }
     return doc;
 };
 
@@ -87,9 +57,9 @@ const drawFooter = (doc: jsPDF) => {
     }
 };
 
-export const generateInvoicePdf = async (order: Order, customer: Customer) => {
+export const generateInvoicePdf = (order: Order, customer: Customer) => {
     try {
-        const doc = await initializePdfDoc();
+        const doc = initializePdfDoc();
 
         drawHeader(doc, 'Рахунок-фактура');
 
@@ -158,9 +128,9 @@ export const generateInvoicePdf = async (order: Order, customer: Customer) => {
     }
 };
 
-export const generateBillOfLadingPdf = async (order: Order, customer: Customer) => {
+export const generateBillOfLadingPdf = (order: Order, customer: Customer) => {
     try {
-        const doc = await initializePdfDoc();
+        const doc = initializePdfDoc();
 
         drawHeader(doc, 'ТТН');
         
