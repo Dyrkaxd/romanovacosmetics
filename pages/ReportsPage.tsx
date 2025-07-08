@@ -340,12 +340,13 @@ const ReportsPage: React.FC = () => {
             
             <div id="report-content-wrapper" ref={reportContentRef} className="bg-slate-50 p-4 sm:p-6 rounded-2xl">
                 <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <StatCard title="Загальний дохід" value={`₴${(reportData?.totalRevenue ?? 0).toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} isLoading={isLoading} />
                         <StatCard title="Загальний прибуток" value={`₴${(reportData?.totalProfit ?? 0).toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} isLoading={isLoading} colorClass="text-green-600" />
                         <StatCard title="Кількість замовлень" value={(reportData?.totalOrders ?? 0).toString()} isLoading={isLoading} />
-                        <AIAnalysisCard analysis={aiAnalysis} isLoading={isAiLoading} error={aiError} onRegenerate={() => reportData && fetchAiAnalysis(reportData)} />
                     </div>
+
+                    <AIAnalysisCard analysis={aiAnalysis} isLoading={isAiLoading} error={aiError} onRegenerate={() => reportData && fetchAiAnalysis(reportData)} />
                     
                     <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                         <h3 className="text-lg font-semibold text-slate-800 mb-4">Динаміка продажів</h3>
