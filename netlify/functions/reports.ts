@@ -43,7 +43,7 @@ const handler: Handler = async (event) => {
 
     const [
         { data: fetchedOrders, error: fetchError },
-        { data: productGroupLookups, error: productFetchError }
+        productGroupLookups
     ] = await Promise.all([
         supabase
             .from('orders')
@@ -61,10 +61,9 @@ const handler: Handler = async (event) => {
     ]);
       
     if (fetchError) throw fetchError;
-    if (productFetchError) throw productFetchError;
 
     const productToGroupMap = new Map<string, string>();
-    productGroupLookups.flat().forEach(p => productToGroupMap.set(p.id, p.group));
+    (productGroupLookups || []).flat().forEach(p => productToGroupMap.set(p.id, p.group));
     
     const orders: OrderWithItemsAndCustomer[] = fetchedOrders || [];
     let totalRevenue = 0, totalProfit = 0;
