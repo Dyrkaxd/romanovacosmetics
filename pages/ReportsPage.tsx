@@ -9,14 +9,17 @@ import html2canvas from 'html2canvas';
 // Helper to format date as YYYY-MM-DD
 const toYYYYMMDD = (date: Date) => date.toISOString().split('T')[0];
 
-// Helper to create a date range for the chart
+// Helper to create a date range for the chart (UTC-aware)
 const getDateRange = (start: string, end: string): string[] => {
     const dates = [];
-    let currentDate = new Date(start + 'T00:00:00'); // Ensure we start at the beginning of the day in local time
-    const endDate = new Date(end + 'T00:00:00');
+    if (!start || !end || new Date(start) > new Date(end)) return [];
+
+    let currentDate = new Date(`${start}T00:00:00Z`);
+    const endDate = new Date(`${end}T00:00:00Z`);
+
     while (currentDate <= endDate) {
-        dates.push(toYYYYMMDD(currentDate));
-        currentDate.setDate(currentDate.getDate() + 1);
+        dates.push(currentDate.toISOString().split('T')[0]);
+        currentDate.setUTCDate(currentDate.getUTCDate() + 1);
     }
     return dates;
 };
@@ -53,7 +56,7 @@ const SalesChart: React.FC<{ data: SalesDataPoint[] }> = ({ data }) => {
                                 style={{ height: `${barHeight}%` }}
                             />
                         </div>
-                        <span className="text-xs text-slate-500 mt-2 text-center w-full">{data.length <= 15 ? new Date(point.date + 'T00:00:00').toLocaleDateString('uk-UA', { month: 'short', day: 'numeric' }) : ''}</span>
+                        <span className="text-xs text-slate-500 mt-2 text-center w-full">{data.length <= 15 ? new Date(point.date + 'T00:00:00Z').toLocaleDateString('uk-UA', { month: 'short', day: 'numeric', timeZone: 'UTC' }) : ''}</span>
                     </div>
                 );
             })}
@@ -131,7 +134,6 @@ const ReportsPage: React.FC = () => {
         setIsLoading(true);
         setError(null);
         try {
-            // Fetch all orders for the report. In a larger app, you'd filter by date on the backend.
             const ordersRes = await authenticatedFetch('/api/orders?pageSize=10000');
             if (!ordersRes.ok) throw new Error('Failed to fetch orders.');
 
@@ -150,13 +152,38 @@ const ReportsPage: React.FC = () => {
 
     const filteredOrders = useMemo(() => {
         if (!startDate || !endDate) return [];
-        const start = new Date(startDate + 'T00:00:00');
-        const end = new Date(endDate + 'T23:59:59');
+        
+        const startUTC = new Date(`${startDate}T00:00:00.000Z`);
+        const endUTC = new Date(`${endDate}T23:59:59.999Z`);
+        
         return orders.filter(order => {
             const orderDate = new Date(order.date);
-            return orderDate >= start && orderDate <= end;
+            return orderDate >= startUTC && orderDate <= endUTC;
         });
     }, [orders, startDate, endDate]);
+
+    const reportStats = useMemo(() => {
+        let totalRevenue = 0;
+        let totalProfit = 0;
+
+        filteredOrders.forEach(order => {
+            totalRevenue += order.totalAmount;
+
+            order.items.forEach(item => {
+                const retailPriceUAH = item.price * (1 - (item.discount || 0) / 100);
+                const costUAH = (item.salonPriceUsd || 0) * (item.exchangeRate || 0);
+                if (costUAH > 0) {
+                   totalProfit += (retailPriceUAH - costUAH) * item.quantity;
+                }
+            });
+        });
+
+        return {
+            totalRevenue,
+            totalProfit,
+            totalOrders: filteredOrders.length,
+        };
+    }, [filteredOrders]);
 
     const salesByDay = useMemo<SalesDataPoint[]>(() => {
         if (!startDate || !endDate) return [];
@@ -164,7 +191,7 @@ const ReportsPage: React.FC = () => {
         const salesMap = new Map<string, number>();
 
         filteredOrders.forEach(order => {
-            const orderDate = order.date.split('T')[0];
+            const orderDate = new Date(order.date).toISOString().split('T')[0];
             salesMap.set(orderDate, (salesMap.get(orderDate) || 0) + order.totalAmount);
         });
 
@@ -304,7 +331,22 @@ const ReportsPage: React.FC = () => {
             </div>
             
             <div id="report-content" className="space-y-6">
-                <ReportCard title={`Динаміка продажів (${new Date(startDate).toLocaleDateString()} - ${new Date(endDate).toLocaleDateString()})`} icon={ChartBarIcon}>
+                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 text-center">
+                        <p className="text-sm font-medium text-slate-500">Загальний дохід</p>
+                        <p className="text-3xl font-bold text-slate-800 mt-1">₴{reportStats.totalRevenue.toFixed(2)}</p>
+                    </div>
+                    <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 text-center">
+                        <p className="text-sm font-medium text-slate-500">Загальний прибуток</p>
+                        <p className="text-3xl font-bold text-green-600 mt-1">₴{reportStats.totalProfit.toFixed(2)}</p>
+                    </div>
+                    <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 text-center">
+                        <p className="text-sm font-medium text-slate-500">Кількість замовлень</p>
+                        <p className="text-3xl font-bold text-slate-800 mt-1">{reportStats.totalOrders}</p>
+                    </div>
+                </div>
+
+                <ReportCard title={`Динаміка продажів (${new Date(startDate + 'T00:00:00Z').toLocaleDateString('uk-UA', { timeZone: 'UTC' })} - ${new Date(endDate + 'T00:00:00Z').toLocaleDateString('uk-UA', { timeZone: 'UTC' })})`} icon={ChartBarIcon}>
                     <SalesChart data={salesByDay} />
                 </ReportCard>
 
