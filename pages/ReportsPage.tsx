@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { authenticatedFetch } from '../utils/api';
 import { ReportData, SalesDataPoint, TopProduct, TopCustomer, RevenueByGroup } from '../types';
@@ -105,7 +106,7 @@ const RevenueDonutChart: React.FC<{ data: RevenueByGroup[], isLoading: boolean }
                         />
                     ))}
                     <text x="50" y="52" textAnchor="middle" dominantBaseline="middle" className="transform rotate-90 origin-center fill-slate-800 font-bold text-[8px]">
-                        {hoveredIndex !== undefined ? `${chartData[hoveredIndex].percentage * 100toFixed(1)}%` : 'Дохід'}
+                        {hoveredIndex !== undefined ? `${(chartData[hoveredIndex].percentage * 100).toFixed(1)}%` : 'Дохід'}
                     </text>
                      {hoveredIndex !== undefined &&
                         <text x="50" y="60" textAnchor="middle" dominantBaseline="middle" className="transform rotate-90 origin-center fill-slate-500 text-[5px] truncate">
@@ -182,7 +183,7 @@ const AIAnalysisCard: React.FC<{ analysis: string | null; isLoading: boolean; er
                 <div className="flex justify-between items-center mb-1">
                     <p className="text-sm text-slate-500 font-medium">AI-Аналіз Звіту</p>
                     <button onClick={onRegenerate} disabled={isLoading} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100/50 rounded-full transition-colors disabled:opacity-50 disabled:cursor-wait" aria-label="Оновити AI-аналітику">
-                        <svg className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 11.667 0l3.181-3.183m-11.667 0l-3.181 3.183m0 0l-3.181-3.183m11.667 0l3.181-3.183" /></svg>
+                        <svg className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0 0 11.667 0l3.181-3.183m-11.667 0l-3.181 3.183m0 0l-3.181-3.183m11.667 0l3.181-3.183" /></svg>
                     </button>
                 </div>
                 {isLoading ? (
