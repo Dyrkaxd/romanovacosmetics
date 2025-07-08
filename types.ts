@@ -92,6 +92,7 @@ export interface ManagedUser {
 export interface SalesDataPoint {
   date: string;
   totalSales: number;
+  totalProfit: number;
 }
 
 export interface TopProduct {

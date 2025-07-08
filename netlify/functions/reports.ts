@@ -1,4 +1,5 @@
 
+
 import { Handler } from '@netlify/functions';
 import { supabase } from '../../services/supabaseClient';
 import { requireAuth } from '../utils/auth';
@@ -24,6 +25,19 @@ type OrderWithItemsAndCustomer = (Database['public']['Tables']['orders']['Row'] 
     items: Database['public']['Tables']['order_items']['Row'][];
     customers: { name: string } | null;
 });
+
+// Helper function to calculate profit for a single order
+const calculateOrderProfit = (order: OrderWithItemsAndCustomer): number => {
+    return (order.items || []).reduce((profit, item) => {
+        // Use salon_price_usd and exchange_rate stored with the item for historical accuracy
+        const retailPriceUAH = item.price * (1 - (item.discount || 0) / 100);
+        const costUAH = (item.salon_price_usd || 0) * (item.exchange_rate || 0);
+        if (costUAH > 0) {
+            return profit + ((retailPriceUAH - costUAH) * item.quantity);
+        }
+        return profit;
+    }, 0);
+};
 
 const handler: Handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') {
@@ -67,15 +81,21 @@ const handler: Handler = async (event) => {
     
     const orders: OrderWithItemsAndCustomer[] = fetchedOrders || [];
     let totalRevenue = 0, totalProfit = 0;
-    const salesMap = new Map<string, number>();
+    const dailyStatsMap = new Map<string, { sales: number, profit: number }>();
     const productsMap = new Map<string, TopProduct>();
     const customersMap = new Map<string, TopCustomer>();
     const revenueByGroupMap = new Map<string, number>();
 
     orders.forEach(order => {
+      const orderProfit = calculateOrderProfit(order);
       totalRevenue += order.total_amount;
+      totalProfit += orderProfit;
+      
       const orderDate = new Date(order.date).toISOString().split('T')[0];
-      salesMap.set(orderDate, (salesMap.get(orderDate) || 0) + order.total_amount);
+      const dailyStats = dailyStatsMap.get(orderDate) || { sales: 0, profit: 0 };
+      dailyStats.sales += order.total_amount;
+      dailyStats.profit += orderProfit;
+      dailyStatsMap.set(orderDate, dailyStats);
 
       const customer = customersMap.get(order.customer_id);
       if (customer) {
@@ -86,10 +106,6 @@ const handler: Handler = async (event) => {
       }
 
       order.items.forEach(item => {
-        const retailPriceUAH = item.price * (1 - (item.discount || 0) / 100);
-        const costUAH = (item.salon_price_usd || 0) * (item.exchange_rate || 0);
-        if (costUAH > 0) totalProfit += (retailPriceUAH - costUAH) * item.quantity;
-        
         const itemRevenue = item.quantity * item.price * (1 - (item.discount || 0) / 100);
         
         if (item.product_id) {
@@ -118,7 +134,11 @@ const handler: Handler = async (event) => {
     };
 
     const dateRange = getDateRange(startDate, endDate);
-    const salesByDay: SalesDataPoint[] = dateRange.map(date => ({ date, totalSales: salesMap.get(date) || 0 }));
+    const salesByDay: SalesDataPoint[] = dateRange.map(date => ({ 
+        date, 
+        totalSales: dailyStatsMap.get(date)?.sales || 0,
+        totalProfit: dailyStatsMap.get(date)?.profit || 0 
+    }));
     const topProducts: TopProduct[] = Array.from(productsMap.values()).sort((a, b) => b.totalRevenue - a.totalRevenue).slice(0, 10);
     const topCustomers: TopCustomer[] = Array.from(customersMap.values()).sort((a, b) => b.totalSpent - a.totalSpent).slice(0, 10);
     const revenueByGroup: RevenueByGroup[] = Array.from(revenueByGroupMap.entries()).map(([group, revenue]) => ({ group, revenue })).sort((a, b) => b.revenue - a.revenue);

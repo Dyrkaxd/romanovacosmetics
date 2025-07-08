@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { authenticatedFetch } from '../utils/api';
 import { ReportData, SalesDataPoint, TopProduct, TopCustomer, RevenueByGroup } from '../types';
@@ -22,40 +23,84 @@ const StatCard: React.FC<{ title: string; value: string; subValue?: string, isLo
     </div>
 );
 
-const SalesLineChart: React.FC<{ data: SalesDataPoint[], isLoading: boolean }> = ({ data, isLoading }) => {
-    const svgRef = useRef<SVGSVGElement>(null);
+const ReportSalesProfitChart: React.FC<{ data: SalesDataPoint[], isLoading: boolean }> = ({ data, isLoading }) => {
+    const chartRef = useRef<SVGSVGElement>(null);
     const [tooltip, setTooltip] = useState<{ x: number; y: number; content: string } | null>(null);
 
-    const chartData = useMemo(() => {
-        const maxValue = Math.max(...data.map(d => d.totalSales), 0);
-        const points = data.map((point, index) => {
-            const x = (index / (data.length - 1)) * 100;
-            const y = 100 - (maxValue > 0 ? (point.totalSales / maxValue) * 90 : 0); // 90% to leave space at top
-            return { x, y, date: point.date, sales: point.totalSales };
-        });
-        const path = points.map((p, i) => (i === 0 ? 'M' : 'L') + ` ${p.x},${p.y}`).join(' ');
-        return { points, path, maxValue };
-    }, [data]);
-    
-    if (isLoading) {
-        return <div className="h-80 bg-slate-50 rounded-lg animate-pulse"></div>;
-    }
-    if (data.every(d => d.totalSales === 0)) {
-        return <div className="h-80 flex items-center justify-center text-center py-10 text-slate-500 bg-slate-50 rounded-lg">Дані про продажі за цей період відсутні.</div>;
-    }
+    const chartMetrics = useMemo(() => {
+        const maxSales = Math.max(...data.map(d => d.totalSales), 0);
+        const maxProfit = Math.max(...data.map(d => d.totalProfit), 0);
+        const overallMax = Math.max(maxSales, maxProfit, 1); // Avoid division by zero
+        
+        if (data.length < 2) return { salesPath: '', profitPath: '', points: [], overallMax };
+        
+        const points = data.map((point, index) => ({
+            x: (index / (data.length - 1)) * 100,
+            salesY: 100 - (overallMax > 0 ? (point.totalSales / overallMax) * 95 : 0),
+            profitY: 100 - (overallMax > 0 ? (point.totalProfit / overallMax) * 95 : 0),
+            date: new Date(point.date).toLocaleDateString('uk-UA', { day: 'numeric', month: 'short' }),
+            sales: point.totalSales,
+            profit: point.totalProfit,
+        }));
 
+        const salesPath = points.map((p, i) => (i === 0 ? 'M' : 'L') + ` ${p.x.toFixed(2)},${p.salesY.toFixed(2)}`).join(' ');
+        const profitPath = points.map((p, i) => (i === 0 ? 'M' : 'L') + ` ${p.x.toFixed(2)},${p.profitY.toFixed(2)}`).join(' ');
+
+        return { salesPath, profitPath, points, overallMax };
+    }, [data]);
+
+    const handleMouseMove = (event: React.MouseEvent<SVGSVGElement>) => {
+        if (!chartRef.current || chartMetrics.points.length === 0) return;
+        
+        const svgRect = chartRef.current.getBoundingClientRect();
+        const x = event.clientX - svgRect.left;
+        const relativeX = (x / svgRect.width) * 100;
+        
+        const closestPoint = chartMetrics.points.reduce((prev, curr) => 
+            Math.abs(curr.x - relativeX) < Math.abs(prev.x - relativeX) ? curr : prev
+        );
+        
+        const tooltipX = (closestPoint.x / 100) * svgRect.width;
+        const tooltipY = (Math.min(closestPoint.salesY, closestPoint.profitY) / 100) * svgRect.height;
+        
+        setTooltip({
+            x: tooltipX,
+            y: tooltipY,
+            content: `${closestPoint.date}: ₴${closestPoint.sales.toFixed(0)} (Дохід) / ₴${closestPoint.profit.toFixed(0)} (Прибуток)`
+        });
+    };
+
+    if (isLoading) return <div className="h-80 w-full bg-white rounded-lg animate-pulse"></div>;
+
+    const noData = data.every(d => d.totalSales === 0 && d.totalProfit === 0);
+    if (noData) {
+        return <div className="h-80 flex items-center justify-center text-center py-10 text-slate-500 bg-white rounded-lg">Дані про продажі та прибуток за цей період відсутні.</div>;
+    }
+    
     return (
-        <div className="relative h-80 bg-slate-50/75 rounded-lg p-4">
-            <svg ref={svgRef} viewBox="0 0 100 100" className="w-full h-full" preserveAspectRatio="none">
-                <defs>
-                    <linearGradient id="salesGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#f43f5e" stopOpacity="0.2"/>
-                        <stop offset="100%" stopColor="#f43f5e" stopOpacity="0"/>
-                    </linearGradient>
-                </defs>
-                <path d={chartData.path + ' V 100 H 0 Z'} fill="url(#salesGradient)" stroke="none" />
-                <path d={chartData.path} fill="none" stroke="#f43f5e" strokeWidth="0.5" strokeLinejoin="round" strokeLinecap="round" />
-            </svg>
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 h-full">
+            <h3 className="text-lg font-semibold text-slate-800 mb-4">Динаміка продажів і прибутку</h3>
+            <div className="relative h-80" onMouseLeave={() => setTooltip(null)}>
+                <svg ref={chartRef} viewBox="0 0 100 105" className="w-full h-full" preserveAspectRatio="none" onMouseMove={handleMouseMove}>
+                    {/* Grid lines */}
+                    {[0, 25, 50, 75, 100].map(y => (
+                       <line key={y} x1="0" x2="100" y1={y} y2={y} stroke="#f1f5f9" strokeWidth="0.3"/>
+                    ))}
+                    <path d={chartMetrics.salesPath} fill="none" stroke="#f43f5e" strokeWidth="0.7" strokeLinejoin="round" strokeLinecap="round" />
+                    <path d={chartMetrics.profitPath} fill="none" stroke="#16a34a" strokeWidth="0.7" strokeLinejoin="round" strokeLinecap="round" />
+                    
+                    {tooltip && chartRef.current && <line x1={tooltip.x / chartRef.current.getBoundingClientRect().width * 100} y1="0" x2={tooltip.x / chartRef.current.getBoundingClientRect().width * 100} y2="100" stroke="#94a3b8" strokeWidth="0.3" strokeDasharray="2"/>}
+                </svg>
+                {tooltip && (
+                    <div className="absolute p-2 bg-slate-800 text-white text-xs rounded-md shadow-lg pointer-events-none" style={{ left: tooltip.x, top: tooltip.y, transform: `translate(-50%, -120%)` }}>
+                        {tooltip.content}
+                    </div>
+                )}
+            </div>
+             <div className="flex justify-center space-x-4 mt-4 text-sm font-medium">
+                <span className="flex items-center"><span className="w-3 h-3 bg-rose-500 rounded-full mr-2"></span>Дохід</span>
+                <span className="flex items-center"><span className="w-3 h-3 bg-green-500 rounded-full mr-2"></span>Прибуток</span>
+            </div>
         </div>
     );
 };
@@ -348,10 +393,7 @@ const ReportsPage: React.FC = () => {
 
                     <AIAnalysisCard analysis={aiAnalysis} isLoading={isAiLoading} error={aiError} onRegenerate={() => reportData && fetchAiAnalysis(reportData)} />
                     
-                    <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                        <h3 className="text-lg font-semibold text-slate-800 mb-4">Динаміка продажів</h3>
-                        <SalesLineChart data={reportData?.salesByDay || []} isLoading={isLoading} />
-                    </div>
+                    <ReportSalesProfitChart data={reportData?.salesByDay || []} isLoading={isLoading} />
 
                     <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
                         <div className="lg:col-span-3 bg-white p-6 rounded-xl shadow-sm border border-slate-200">
