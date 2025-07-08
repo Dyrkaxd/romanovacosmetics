@@ -494,15 +494,16 @@ const OrdersPage: React.FC = () => {
       {pageError && <div role="alert" className="p-4 bg-red-50 text-red-700 border border-red-200 rounded-lg">{pageError}</div>}
       {successMessage && <div role="alert" className="p-3 bg-green-50 text-green-700 border border-green-200 rounded-lg text-sm">{successMessage}</div>}
 
-      <div className="bg-white shadow-sm rounded-xl overflow-hidden border border-slate-200">
-        <div className="overflow-x-auto">
+      <div className="bg-white shadow-sm rounded-xl border border-slate-200">
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-200">
             <thead className="bg-slate-50">
               <tr>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Клієнт</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider hidden sm:table-cell">Дата</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Дата</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Статус</th>
-                {isAdmin && <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider hidden md:table-cell">Менеджер</th>}
+                {isAdmin && <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Менеджер</th>}
                 <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Сума</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Дії</th>
               </tr>
@@ -514,9 +515,9 @@ const OrdersPage: React.FC = () => {
                 orders.map((order) => (
                   <tr key={order.id} className="hover:bg-rose-50/50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-800">{order.customerName}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 hidden sm:table-cell">{new Date(order.date).toLocaleDateString()}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{new Date(order.date).toLocaleDateString()}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600"><StatusPill status={order.status} /></td>
-                    {isAdmin && <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 hidden md:table-cell">{order.managedByUserEmail || 'N/A'}</td>}
+                    {isAdmin && <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{order.managedByUserEmail || 'N/A'}</td>}
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 font-medium">₴{order.totalAmount.toFixed(2)}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-1">
                       <button onClick={() => handleViewOrder(order)} className="p-2 rounded-md hover:bg-sky-50 text-slate-500 hover:text-sky-600" title="Переглянути"><EyeIcon className="w-5 h-5"/></button>
@@ -534,6 +535,54 @@ const OrdersPage: React.FC = () => {
             </tbody>
           </table>
         </div>
+        
+        {/* Mobile Card View */}
+        <div className="md:hidden">
+            {isLoading ? (
+                <div className="p-6 text-center text-sm text-slate-500">Завантаження...</div>
+            ) : orders.length > 0 ? (
+                <ul className="divide-y divide-slate-200">
+                    {orders.map(order => (
+                        <li key={order.id} className="p-4 space-y-3">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <p className="font-semibold text-slate-800">{order.customerName}</p>
+                                    <p className="text-xs text-slate-500">#{order.id.substring(0,8)}</p>
+                                </div>
+                                <StatusPill status={order.status} />
+                            </div>
+                            <div className="grid grid-cols-2 gap-y-2 text-sm">
+                                <div>
+                                    <p className="text-slate-500">Дата</p>
+                                    <p className="font-medium text-slate-700">{new Date(order.date).toLocaleDateString()}</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-slate-500">Сума</p>
+                                    <p className="font-bold text-slate-800">₴{order.totalAmount.toFixed(2)}</p>
+                                </div>
+                                {isAdmin && order.managedByUserEmail && (
+                                    <div className="col-span-2">
+                                        <p className="text-slate-500">Менеджер</p>
+                                        <p className="font-medium text-slate-700">{order.managedByUserEmail}</p>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="flex justify-end space-x-1 border-t border-slate-100 pt-3 mt-3">
+                              <button onClick={() => handleViewOrder(order)} className="p-2 rounded-md hover:bg-sky-50 text-slate-500 hover:text-sky-600" title="Переглянути"><EyeIcon className="w-5 h-5"/></button>
+                              <button onClick={() => openOrderModal('edit', order)} className="p-2 rounded-md hover:bg-rose-50 text-slate-500 hover:text-rose-600" title="Редагувати"><PencilIcon className="w-5 h-5"/></button>
+                              <button onClick={() => handleShareInvoice(order.id)} className="p-2 rounded-md hover:bg-green-50 text-slate-500 hover:text-green-600" title="Поділитися рахунком"><ShareIcon className="w-5 h-5"/></button>
+                              {(isAdmin || user?.role === 'manager') && <button onClick={() => handleDeleteOrder(order.id)} className="p-2 rounded-md hover:bg-red-50 text-slate-500 hover:text-red-600" title="Видалити"><TrashIcon className="w-5 h-5"/></button>}
+                            </div>
+                        </li>
+                    ))}
+                </ul>
+            ) : (
+                <div className="px-6 py-10 text-center text-sm text-slate-500">
+                    {!pageError && (totalCount === 0 && searchTerm === '' ? "Замовлень ще немає. Натисніть 'Створити замовлення', щоб почати." : "Замовлень, що відповідають вашому пошуку, не знайдено.")}
+                </div>
+            )}
+        </div>
+        
         {totalCount > 0 && (
           <Pagination
             currentPage={currentPage}
