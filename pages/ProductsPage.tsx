@@ -213,8 +213,9 @@ const ProductsPage: React.FC = () => {
 
       {pageError && <div role="alert" className="p-4 bg-red-50 text-red-700 border border-red-200 rounded-lg">{pageError}</div>}
       
-      <div className="bg-white shadow-sm rounded-xl overflow-hidden border border-slate-200">
-        <div className="overflow-x-auto">
+      <div className="bg-white shadow-sm rounded-xl border border-slate-200">
+        {/* Desktop Table View */}
+        <div className="overflow-x-auto hidden md:block">
           <table className="min-w-full divide-y divide-slate-200">
             <thead className="bg-slate-50">
               <tr>
@@ -256,6 +257,52 @@ const ProductsPage: React.FC = () => {
             </tbody>
           </table>
         </div>
+
+        {/* Mobile Card View */}
+        <div className="md:hidden">
+          {isLoading ? (
+            <div className="p-6 text-center text-sm text-slate-500">Завантаження...</div>
+          ) : products.length > 0 ? (
+            <ul className="divide-y divide-slate-200">
+              {products.map(product => (
+                <li key={product.id} className="p-4 space-y-3">
+                  <div className="flex justify-between items-start">
+                    <p className="font-semibold text-slate-800 pr-4">{product.name}</p>
+                    <span className="font-medium text-rose-600 bg-rose-50 px-2.5 py-0.5 rounded-full text-xs inline-block flex-shrink-0">{product.group}</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-y-2 text-sm pt-3 border-t border-slate-100">
+                    <div>
+                      <p className="text-slate-500">Салон ($)</p>
+                      <p className="font-medium text-slate-700">{product.salonPrice.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-500">Роздріб ($)</p>
+                      <p className="font-medium text-slate-700">{product.retailPrice.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-500">Курс (₴)</p>
+                      <p className="font-medium text-slate-700">{product.exchangeRate.toFixed(2)}</p>
+                    </div>
+                  </div>
+                  <div className="flex justify-end space-x-1 border-t border-slate-100 pt-3">
+                    <button onClick={() => openViewModal(product)} className="text-slate-500 hover:text-sky-600 transition-colors p-2 rounded-md hover:bg-sky-50" aria-label={`Переглянути деталі для ${product.name}`} title="Переглянути"><EyeIcon className="w-5 h-5"/></button>
+                    <button onClick={() => openEditModal(product)} className="text-slate-500 hover:text-rose-600 transition-colors p-2 rounded-md hover:bg-rose-50" aria-label={`Редагувати ${product.name}`} title="Редагувати">
+                      <PencilIcon className="w-5 h-5"/>
+                    </button>
+                    <button onClick={() => handleDeleteProduct(product.id)} className="text-slate-500 hover:text-red-600 transition-colors p-2 rounded-md hover:bg-red-50" aria-label={`Видалити ${product.name}`} title="Видалити">
+                      <TrashIcon className="w-5 h-5"/>
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="px-6 py-10 text-center text-sm text-slate-500">
+              {!pageError && (totalCount === 0 && searchTerm === '' ? "Товарів ще немає. Натисніть 'Додати новий товар', щоб створити." : "Товарів, що відповідають вашему пошуку, не знайдено.")}
+            </div>
+          )}
+        </div>
+
         {totalCount > 0 && (
           <Pagination
             currentPage={currentPage}
