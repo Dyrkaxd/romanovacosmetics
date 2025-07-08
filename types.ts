@@ -1,4 +1,5 @@
 
+
 import type { FC, SVGProps } from 'react';
 
 export interface Product {
@@ -119,4 +120,19 @@ export interface PaginatedResponse<T> {
   totalCount: number;
   currentPage: number;
   pageSize: number;
+}
+
+export interface RevenueByGroup {
+  group: string;
+  revenue: number;
+}
+
+export interface ReportData {
+  totalRevenue: number;
+  totalProfit: number;
+  totalOrders: number;
+  salesByDay: SalesDataPoint[];
+  topProducts: TopProduct[];
+  topCustomers: TopCustomer[];
+  revenueByGroup: RevenueByGroup[];
 }
