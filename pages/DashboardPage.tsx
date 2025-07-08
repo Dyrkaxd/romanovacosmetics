@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { DashboardStat, ManagerStats } from '../types';
 import { OrdersIcon, UsersIcon, CurrencyDollarIcon, LightBulbIcon, ArrowPathIcon } from '../components/Icons'; 
@@ -124,7 +125,7 @@ const ProfitReportChart: React.FC<{ report: ManagerStats[]; isLoading: boolean }
     <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
       <h3 className="text-lg font-semibold text-slate-800 mb-4">Розподіл прибутку по менеджерах</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-        <div className="relative h-64 md:h-72">
+        <div className="relative h-56 md:h-64">
           <svg viewBox="-0.5 -0.5 1 1" style={{ transform: 'rotate(-90deg)' }}>
             {segments.map((segment, index) => {
               const [startX, startY] = getCoordinatesForAngle(segment.startAngle);
@@ -155,7 +156,7 @@ const ProfitReportChart: React.FC<{ report: ManagerStats[]; isLoading: boolean }
             })}
           </svg>
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none flex-col">
-              <span className="text-3xl font-bold text-slate-800">
+              <span className="text-2xl font-bold text-slate-800">
                 {hoveredIndex !== undefined 
                   ? `${((pieData[hoveredIndex].value / totalProfitForChart) * 100).toFixed(1)}%`
                   : 'Всього'

@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { authenticatedFetch } from '../utils/api';
 import { Order, SalesDataPoint, TopProduct, TopCustomer, PaginatedResponse } from '../types';
@@ -42,11 +43,11 @@ const SalesChart: React.FC<{ data: SalesDataPoint[] }> = ({ data }) => {
     }
 
     return (
-        <div className="h-72 flex items-end justify-around p-4 bg-slate-50/75 rounded-lg border border-slate-200/80 space-x-2">
+        <div className="h-72 flex items-end justify-around p-4 bg-slate-50/75 rounded-lg border border-slate-200/80 space-x-2 overflow-x-auto">
             {data.map((point, index) => {
                 const barHeight = maxValue > 0 ? (point.totalSales / maxValue) * 100 : 0;
                 return (
-                    <div key={index} className="flex-1 flex flex-col justify-end items-center group min-w-[10px]">
+                    <div key={index} className="flex-1 flex flex-col justify-end items-center group min-w-[32px]">
                         <div className="relative w-full h-full flex items-end justify-center">
                              <div className="absolute -top-6 bg-slate-700 text-white text-xs px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
                                 ₴{point.totalSales.toFixed(2)}
@@ -56,13 +57,14 @@ const SalesChart: React.FC<{ data: SalesDataPoint[] }> = ({ data }) => {
                                 style={{ height: `${barHeight}%` }}
                             />
                         </div>
-                        <span className="text-xs text-slate-500 mt-2 text-center w-full">{data.length <= 15 ? new Date(point.date + 'T00:00:00Z').toLocaleDateString('uk-UA', { month: 'short', day: 'numeric', timeZone: 'UTC' }) : ''}</span>
+                        <span className="text-xs text-slate-500 mt-2 text-center w-full">{data.length <= 31 ? new Date(point.date + 'T00:00:00Z').toLocaleDateString('uk-UA', { month: 'short', day: 'numeric', timeZone: 'UTC' }) : ''}</span>
                     </div>
                 );
             })}
         </div>
     );
 };
+
 
 const TopList: React.FC<{ items: (TopProduct | TopCustomer)[]; type: 'product' | 'customer' }> = ({ items, type }) => {
     if (items.length === 0) {
