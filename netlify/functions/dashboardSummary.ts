@@ -1,4 +1,5 @@
 
+
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import { supabase } from '../../services/supabaseClient';
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
@@ -30,22 +31,24 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       return { statusCode: 500, headers: commonHeaders, body: JSON.stringify({ message: 'AI service configuration error. API_KEY missing.' })};
     }
 
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
     const { data: ordersData, error: ordersError } = await supabase
       .from('orders')
       .select('id, date, status, total_amount, items:order_items(product_name, quantity, price)')
-      .order('date', { ascending: false })
-      .limit(20);
+      .gte('date', thirtyDaysAgo.toISOString())
+      .order('date', { ascending: false });
 
     if (ordersError) {
         console.error("Supabase error fetching orders for AI summary:", ordersError);
         throw ordersError;
     }
     if (!ordersData || ordersData.length === 0) {
-      return { statusCode: 200, headers: commonHeaders, body: JSON.stringify({ summary: 'Недостатньо даних про замовлення для аналізу.' }) };
+      return { statusCode: 200, headers: commonHeaders, body: JSON.stringify({ summary: 'Недостатньо даних про замовлення за останні 30 днів для аналізу.' }) };
     }
     
     const summarizedOrders = ordersData.map((order: any) => ({
-        id: order.id,
         total_amount: order.total_amount,
         date: order.date,
         status: order.status,
@@ -54,7 +57,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
 
     const ai = new GoogleGenAI({ apiKey });
     
-    const prompt = `Ти досвідчений аналітик даних електронної комерції. Проаналізуй наступні дані про останні замовлення та надай короткий підсумок (2-3 речення, приблизно 50-75 слів) ефективності продажів. Зверни увагу на будь-які помітні тенденції, загальний настрій (зростання, спад, стабільність) та, можливо, натякни на популярні категорії товарів, якщо це очевидно. Будь ласка, відповідай українською мовою.
+    const prompt = `Ти досвідчений аналітик даних електронної комерції. Проаналізуй наступні дані про замовлення за останні 30 днів та надай короткий підсумок (2-3 речення, приблизно 50-75 слів) ефективності продажів. Зверни увагу на будь-які помітні тенденції, загальний настрій (зростання, спад, стабільність). Будь ласка, відповідай українською мовою.
 
 Дані про замовлення:
 ${JSON.stringify(summarizedOrders, null, 2)}

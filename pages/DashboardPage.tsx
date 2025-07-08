@@ -1,42 +1,198 @@
 
-
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { DashboardStat, ManagerStats } from '../types';
-import { OrdersIcon, UsersIcon, CurrencyDollarIcon, LightBulbIcon, ArrowPathIcon } from '../components/Icons'; 
+import React, { useState, useEffect, useCallback, useMemo, FC, SVGProps, useRef } from 'react';
+import { DashboardData, Order, TopProduct } from '../types';
+import { OrdersIcon, UsersIcon, CurrencyDollarIcon, LightBulbIcon, ArrowPathIcon, ArrowTrendingUpIcon, ArrowTrendingDownIcon } from '../components/Icons'; 
 import { authenticatedFetch } from '../utils/api';
 import { useAuth } from '../AuthContext';
 
-const API_BASE_URL = '/api';
-
-const DashboardCard: React.FC<DashboardStat & { isLoading?: boolean }> = ({ title, value, icon: Icon, color, isLoading }) => {
-  const colorVariants: { [key: string]: { text: string; bg: string; } } = {
-    'rose': { text: 'text-rose-600', bg: 'bg-rose-50' },
-    'green': { text: 'text-green-600', bg: 'bg-green-50' },
-    'amber': { text: 'text-amber-600', bg: 'bg-amber-50' },
-    'sky': { text: 'text-sky-600', bg: 'bg-sky-50' },
-    'indigo': { text: 'text-indigo-600', bg: 'bg-indigo-50' },
-  };
-
-  const selectedColor = colorVariants[color] || { text: 'text-slate-600', bg: 'bg-slate-100' };
-
-  return (
-    <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex items-center space-x-4">
-      <div className={`p-3 rounded-full ${selectedColor.bg}`}>
-        <Icon className={`w-7 h-7 ${selectedColor.text}`} />
-      </div>
-      <div>
-        <p className="text-sm text-slate-500 font-medium">{title}</p>
-        {isLoading ? (
-            <div className="h-8 w-32 bg-slate-200 rounded-md mt-1 animate-pulse"></div>
-        ) : (
-            <p className="text-3xl font-bold text-slate-800">{value}</p>
-        )}
-      </div>
-    </div>
-  );
+const StatCard: FC<{ title: string; value: string; change: number; icon: FC<SVGProps<SVGSVGElement>>; isLoading: boolean; }> = ({ title, value, change, icon: Icon, isLoading }) => {
+    const isPositive = change >= 0;
+    return (
+        <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 transition-all hover:shadow-md hover:border-rose-200">
+            <div className="flex justify-between items-center">
+                <p className="text-sm font-semibold text-slate-500">{title}</p>
+                <Icon className="w-7 h-7 text-slate-400" />
+            </div>
+            {isLoading ? (
+                <div className="mt-2 space-y-2">
+                    <div className="h-8 w-3/4 bg-slate-200 rounded-md animate-pulse"></div>
+                    <div className="h-4 w-1/2 bg-slate-200 rounded-md animate-pulse"></div>
+                </div>
+            ) : (
+                <div className="mt-2">
+                    <p className="text-3xl font-bold text-slate-800">{value}</p>
+                    <div className="flex items-center text-xs font-semibold mt-1">
+                        <span className={`flex items-center ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
+                            {isPositive ? <ArrowTrendingUpIcon className="w-4 h-4 mr-1"/> : <ArrowTrendingDownIcon className="w-4 h-4 mr-1"/>}
+                            {change.toFixed(1)}%
+                        </span>
+                        <span className="text-slate-500 ml-1">vs минулий період</span>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
 };
 
-const AISummaryCard: React.FC<{ summary: string; isLoading: boolean; error: string | null; onRegenerate: () => void; }> = ({ summary, isLoading, error, onRegenerate }) => {
+
+const SalesProfitChart: FC<{ data: DashboardData['chartData']; isLoading: boolean }> = ({ data, isLoading }) => {
+    const chartRef = useRef<SVGSVGElement>(null);
+    const [tooltip, setTooltip] = useState<{ x: number; y: number; content: string } | null>(null);
+
+    const chartMetrics = useMemo(() => {
+        const maxSales = Math.max(...data.map(d => d.sales), 0);
+        const maxProfit = Math.max(...data.map(d => d.profit), 0);
+        const overallMax = Math.max(maxSales, maxProfit);
+        
+        if (data.length < 2) return { salesPath: '', profitPath: '', points: [], overallMax };
+        
+        const points = data.map((point, index) => ({
+            x: (index / (data.length - 1)) * 100,
+            salesY: 100 - (overallMax > 0 ? (point.sales / overallMax) * 95 : 0),
+            profitY: 100 - (overallMax > 0 ? (point.profit / overallMax) * 95 : 0),
+            date: new Date(point.date).toLocaleDateString('uk-UA', { day: 'numeric', month: 'short' }),
+            sales: point.sales,
+            profit: point.profit,
+        }));
+
+        const salesPath = points.map((p, i) => (i === 0 ? 'M' : 'L') + ` ${p.x},${p.salesY}`).join(' ');
+        const profitPath = points.map((p, i) => (i === 0 ? 'M' : 'L') + ` ${p.x},${p.profitY}`).join(' ');
+
+        return { salesPath, profitPath, points, overallMax };
+    }, [data]);
+
+    const handleMouseMove = (event: React.MouseEvent<SVGSVGElement>) => {
+        if (!chartRef.current || chartMetrics.points.length === 0) return;
+        
+        const svgRect = chartRef.current.getBoundingClientRect();
+        const x = event.clientX - svgRect.left;
+        const relativeX = (x / svgRect.width) * 100;
+        
+        const closestPoint = chartMetrics.points.reduce((prev, curr) => 
+            Math.abs(curr.x - relativeX) < Math.abs(prev.x - relativeX) ? curr : prev
+        );
+        
+        const tooltipX = (closestPoint.x / 100) * svgRect.width;
+        const tooltipY = (Math.min(closestPoint.salesY, closestPoint.profitY) / 100) * svgRect.height;
+
+        setTooltip({
+            x: tooltipX,
+            y: tooltipY,
+            content: `${closestPoint.date}: ₴${closestPoint.sales.toFixed(0)} (Дохід) / ₴${closestPoint.profit.toFixed(0)} (Прибуток)`
+        });
+    };
+    
+    if (isLoading) return <div className="h-80 w-full bg-slate-200 rounded-lg animate-pulse"></div>;
+    
+    return (
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 h-full">
+            <h3 className="text-lg font-semibold text-slate-800 mb-4">Огляд продажів і прибутку</h3>
+            <div className="relative h-80" onMouseLeave={() => setTooltip(null)}>
+                <svg ref={chartRef} viewBox="0 0 100 105" className="w-full h-full" preserveAspectRatio="none" onMouseMove={handleMouseMove}>
+                    {/* Grid lines */}
+                    {[0, 25, 50, 75, 100].map(y => (
+                       <line key={y} x1="0" x2="100" y1={y} y2={y} stroke="#f1f5f9" strokeWidth="0.2"/>
+                    ))}
+                    <path d={chartMetrics.salesPath} fill="none" stroke="#f43f5e" strokeWidth="0.7" strokeLinejoin="round" strokeLinecap="round" />
+                    <path d={chartMetrics.profitPath} fill="none" stroke="#16a34a" strokeWidth="0.7" strokeLinejoin="round" strokeLinecap="round" />
+                    {tooltip && <line x1={tooltip.x / chartRef.current!.getBoundingClientRect().width * 100} y1="0" x2={tooltip.x / chartRef.current!.getBoundingClientRect().width * 100} y2="100" stroke="#94a3b8" strokeWidth="0.3" strokeDasharray="2"/>}
+                </svg>
+                {tooltip && (
+                    <div className="absolute p-2 bg-slate-800 text-white text-xs rounded-md shadow-lg pointer-events-none" style={{ left: tooltip.x, top: tooltip.y, transform: `translate(-50%, -120%)` }}>
+                        {tooltip.content}
+                    </div>
+                )}
+            </div>
+             <div className="flex justify-center space-x-4 mt-4 text-sm font-medium">
+                <span className="flex items-center"><span className="w-3 h-3 bg-rose-500 rounded-full mr-2"></span>Дохід</span>
+                <span className="flex items-center"><span className="w-3 h-3 bg-green-500 rounded-full mr-2"></span>Прибуток</span>
+            </div>
+        </div>
+    );
+};
+
+const RecentOrders: FC<{ orders: DashboardData['recentOrders']; isLoading: boolean }> = ({ orders, isLoading }) => {
+    const orderStatusTranslations: Record<Order['status'], string> = { Ordered: 'Замовлено', Shipped: 'Відправлено', Received: 'Отримано', Calculation: 'Прорахунок', AwaitingApproval: 'На погодженні', PaidByClient: 'Сплачено клієнтом', WrittenOff: 'Списано', ReadyForPickup: 'Готово для видачі'};
+    return (
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 h-full">
+            <h3 className="text-lg font-semibold text-slate-800 mb-4">Останні замовлення</h3>
+            <div className="space-y-4">
+                {isLoading ? (
+                     [...Array(5)].map((_, i) => <div key={i} className="h-10 bg-slate-200 rounded-md animate-pulse"></div>)
+                ) : orders.length === 0 ? (
+                    <p className="text-sm text-slate-500 text-center py-8">Замовлень за цей період немає.</p>
+                ) : (
+                    orders.map(order => (
+                        <div key={order.id} className="flex justify-between items-center text-sm">
+                            <div>
+                                <p className="font-semibold text-slate-800">{order.customerName}</p>
+                                <p className="text-xs text-slate-500">{new Date(order.date).toLocaleDateString('uk-UA')}</p>
+                            </div>
+                            <div className="text-right">
+                                <p className="font-bold text-slate-800">₴{order.totalAmount.toFixed(2)}</p>
+                                <p className="text-xs text-slate-500">{orderStatusTranslations[order.status]}</p>
+                            </div>
+                        </div>
+                    ))
+                )}
+            </div>
+        </div>
+    );
+};
+
+const TopProducts: FC<{ products: DashboardData['topProducts']; isLoading: boolean }> = ({ products, isLoading }) => {
+    return (
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 h-full">
+            <h3 className="text-lg font-semibold text-slate-800 mb-4">Топ товари</h3>
+             <div className="space-y-4">
+                {isLoading ? (
+                     [...Array(5)].map((_, i) => <div key={i} className="h-10 bg-slate-200 rounded-md animate-pulse"></div>)
+                ) : products.length === 0 ? (
+                    <p className="text-sm text-slate-500 text-center py-8">Товарів за цей період немає.</p>
+                ) : (
+                    products.map(product => (
+                        <div key={product.productName} className="text-sm">
+                            <div className="flex justify-between items-center">
+                                <p className="font-semibold text-slate-800 truncate pr-4">{product.productName}</p>
+                                <p className="font-bold text-slate-800 flex-shrink-0">₴{product.totalRevenue.toFixed(0)}</p>
+                            </div>
+                        </div>
+                    ))
+                )}
+            </div>
+        </div>
+    );
+};
+
+
+const AISummaryCard: React.FC<{ onRegenerate: () => void; }> = ({ onRegenerate }) => {
+  const [summary, setSummary] = useState<string>('');
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchSummary = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await authenticatedFetch(`/api/dashboardSummary`);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Failed to fetch AI summary.' }));
+        throw new Error(errorData.message);
+      }
+      const data = await response.json();
+      setSummary(data.summary);
+    } catch (err: any) {
+      setError(err.message || 'Could not load AI summary.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSummary();
+  }, [fetchSummary]);
+
+
   return (
     <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex space-x-4">
       <div className="p-3 rounded-full bg-amber-50 h-fit">
@@ -46,7 +202,7 @@ const AISummaryCard: React.FC<{ summary: string; isLoading: boolean; error: stri
         <div className="flex justify-between items-center mb-1">
             <p className="text-sm text-slate-500 font-medium">AI-аналітика продажів</p>
             <button
-              onClick={onRegenerate}
+              onClick={fetchSummary}
               disabled={isLoading}
               className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors disabled:opacity-50 disabled:cursor-wait"
               aria-label="Оновити AI-аналітику"
@@ -69,229 +225,97 @@ const AISummaryCard: React.FC<{ summary: string; isLoading: boolean; error: stri
   );
 };
 
-const ProfitReportChart: React.FC<{ report: ManagerStats[]; isLoading: boolean }> = ({ report, isLoading }) => {
-  const [hoveredIndex, setHoveredIndex] = useState<number | undefined>(undefined);
-
-  const COLORS = ['#e11d48', '#3b82f6', '#16a34a', '#f97316', '#8b5cf6', '#db2777', '#0891b2', '#ca8a04'];
-  
-  if (isLoading) {
-    return (
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-        <div className="h-8 w-1/2 bg-slate-200 rounded-md animate-pulse mb-6"></div>
-        <div className="flex items-center justify-center h-72">
-          <div className="w-48 h-48 border-8 border-slate-100 border-t-slate-300 rounded-full animate-spin"></div>
-        </div>
-      </div>
-    );
-  }
-
-  if (report.length === 0) {
-    return (
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-        <h3 className="text-lg font-semibold text-slate-800 mb-4">Розподіл прибутку по менеджерах</h3>
-        <div className="text-center py-16 text-slate-500 bg-slate-50 rounded-lg">
-          <p className="font-semibold">Дані для звіту відсутні</p>
-          <p className="text-sm mt-1">Створіть замовлення, щоб побачити статистику.</p>
-        </div>
-      </div>
-    );
-  }
-
-  const totalProfitForChart = report.reduce((sum, manager) => sum + manager.totalProfit, 0);
-
-  const pieData = report.map((manager, index) => ({
-    title: manager.name,
-    value: manager.totalProfit > 0 ? manager.totalProfit : 0, // Ensure value is not negative for chart
-    color: COLORS[index % COLORS.length],
-  }));
-
-  let accumulated = 0;
-  const segments = pieData.map(segment => {
-      const percentage = totalProfitForChart > 0 ? segment.value / totalProfitForChart : 0;
-      const startAngle = accumulated * 360;
-      accumulated += percentage;
-      const endAngle = accumulated * 360;
-      return { ...segment, startAngle, endAngle };
-  });
-
-  const getCoordinatesForAngle = (angle: number, radius = 0.5) => {
-    return [
-      Math.cos((angle * Math.PI) / 180) * radius,
-      Math.sin((angle * Math.PI) / 180) * radius,
-    ];
-  }
-
-  return (
-    <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-      <h3 className="text-lg font-semibold text-slate-800 mb-4">Розподіл прибутку по менеджерах</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-        <div className="relative h-56 md:h-64">
-          <svg viewBox="-0.5 -0.5 1 1" style={{ transform: 'rotate(-90deg)' }}>
-            {segments.map((segment, index) => {
-              const [startX, startY] = getCoordinatesForAngle(segment.startAngle);
-              const [endX, endY] = getCoordinatesForAngle(segment.endAngle);
-              const largeArcFlag = segment.endAngle - segment.startAngle > 180 ? 1 : 0;
-              const pathData = `M ${startX} ${startY} A 0.5 0.5 0 ${largeArcFlag} 1 ${endX} ${endY} L 0 0`;
-              
-              const isHovered = hoveredIndex === index;
-
-              return (
-                  <path
-                      key={segment.title}
-                      d={pathData}
-                      fill={segment.color}
-                      onMouseOver={() => setHoveredIndex(index)}
-                      onMouseOut={() => setHoveredIndex(undefined)}
-                      style={{
-                          transition: 'transform 0.2s ease-in-out, opacity 0.2s',
-                          transform: isHovered ? 'scale(1.05)' : 'scale(1)',
-                          opacity: hoveredIndex !== undefined && !isHovered ? 0.6 : 1,
-                          cursor: 'pointer',
-                          stroke: 'white',
-                          strokeWidth: 0.01,
-                          strokeLinejoin: 'round',
-                      }}
-                  />
-              );
-            })}
-          </svg>
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none flex-col">
-              <span className="text-2xl font-bold text-slate-800">
-                {hoveredIndex !== undefined 
-                  ? `${((pieData[hoveredIndex].value / totalProfitForChart) * 100).toFixed(1)}%`
-                  : 'Всього'
-                }
-              </span>
-              {hoveredIndex !== undefined && (
-                 <span className="text-sm font-medium text-slate-500">{pieData[hoveredIndex].title}</span>
-              )}
-          </div>
-        </div>
-        
-        <ul className="space-y-3">
-          {report.map((manager, index) => {
-            const percentage = totalProfitForChart > 0 ? (manager.totalProfit / totalProfitForChart) * 100 : 0;
-            return (
-              <li
-                key={manager.email}
-                className={`p-3 rounded-lg flex items-center justify-between transition-all duration-200 cursor-pointer ${hoveredIndex === index ? 'bg-slate-100 shadow-sm' : 'hover:bg-slate-50'}`}
-                onMouseOver={() => setHoveredIndex(index)}
-                onMouseOut={() => setHoveredIndex(undefined)}
-              >
-                <div className="flex items-center truncate">
-                  <span
-                    className="w-3.5 h-3.5 rounded-full mr-3 flex-shrink-0"
-                    style={{ backgroundColor: COLORS[index % COLORS.length] }}
-                  />
-                  <span className="font-medium text-slate-700 truncate">{manager.name}</span>
-                </div>
-                <div className="text-right flex-shrink-0 ml-2">
-                  <p className="font-bold text-slate-800">₴{manager.totalProfit.toFixed(2)}</p>
-                  <p className="text-sm text-slate-500">{percentage.toFixed(1)}%</p>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      </div>
-    </div>
-  );
-};
-
-interface DashboardStatsData {
-    totalProfit: number;
-    totalOrders: number;
-    totalCustomers: number;
-    totalManagers: number;
-    managerReport: ManagerStats[];
-}
 
 const DashboardPage: React.FC = () => {
   const { user } = useAuth();
-  const [statsData, setStatsData] = useState<DashboardStatsData | null>(null);
+  const [data, setData] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [period, setPeriod] = useState<7 | 30 | 90>(30);
 
-  const [summary, setSummary] = useState<string>('');
-  const [isSummaryLoading, setIsSummaryLoading] = useState<boolean>(true);
-  const [summaryError, setSummaryError] = useState<string | null>(null);
-
-  const fetchSummary = useCallback(async () => {
-    setIsSummaryLoading(true);
-    setSummaryError(null);
-    try {
-      const response = await authenticatedFetch(`${API_BASE_URL}/dashboardSummary`);
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Failed to fetch AI summary.' }));
-        throw new Error(errorData.message);
-      }
-      const data = await response.json();
-      setSummary(data.summary);
-    } catch (err: any) {
-      setSummaryError(err.message || 'Could not load AI summary.');
-    } finally {
-      setIsSummaryLoading(false);
-    }
-  }, []);
-
-
-  const fetchDashboardData = useCallback(async () => {
+  const fetchDashboardData = useCallback(async (currentPeriod: number) => {
     if (user?.role !== 'admin') {
-        setIsLoading(false);
-        return; 
+      setIsLoading(false);
+      return;
     }
     setIsLoading(true);
     setError(null);
     try {
-      const response = await authenticatedFetch('/api/dashboardStats');
+      const response = await authenticatedFetch(`/api/dashboard?period=${currentPeriod}`);
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: `An error occurred: ${response.statusText}` }));
         throw new Error(errorData.message);
       }
-      const data: DashboardStatsData = await response.json();
-      setStatsData(data);
-      fetchSummary();
+      const dashboardData: DashboardData = await response.json();
+      setData(dashboardData);
     } catch (err: any) {
       console.error("Failed to fetch dashboard data:", err);
       setError(err.message || 'Could not load dashboard statistics.');
     } finally {
       setIsLoading(false);
     }
-  }, [user?.role, fetchSummary]);
+  }, [user?.role]);
 
   useEffect(() => {
-    fetchDashboardData();
-  }, [fetchDashboardData]);
+    fetchDashboardData(period);
+  }, [period, fetchDashboardData]);
 
-
-  const stats: DashboardStat[] = [
-    { title: 'Загальний прибуток', value: `₴${(statsData?.totalProfit || 0).toFixed(2)}`, icon: CurrencyDollarIcon, color: 'green', isLoading: isLoading },
-    { title: 'Всього замовлень', value: (statsData?.totalOrders || 0).toString(), icon: OrdersIcon, color: 'rose', isLoading: isLoading },
-    { title: 'Активні клієнти', value: (statsData?.totalCustomers || 0).toString(), icon: UsersIcon, color: 'sky', isLoading: isLoading },
-    { title: 'Кількість менеджерів', value: (statsData?.totalManagers || 0).toString(), icon: UsersIcon, color: 'indigo', isLoading: isLoading },
-  ];
+  const kpis = useMemo(() => {
+      const formatCurrency = (value: number) => `₴${(value || 0).toLocaleString('uk-UA', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+      return [
+        { title: 'Дохід', value: formatCurrency(data?.kpis.revenue.value ?? 0), change: data?.kpis.revenue.change ?? 0, icon: CurrencyDollarIcon },
+        { title: 'Прибуток', value: formatCurrency(data?.kpis.profit.value ?? 0), change: data?.kpis.profit.change ?? 0, icon: CurrencyDollarIcon },
+        { title: 'Замовлення', value: (data?.kpis.orders.value ?? 0).toString(), change: data?.kpis.orders.change ?? 0, icon: OrdersIcon },
+        { title: 'Нові клієнти', value: (data?.kpis.customers.value ?? 0).toString(), change: data?.kpis.customers.change ?? 0, icon: UsersIcon },
+    ];
+  }, [data]);
 
   return (
     <div className="space-y-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-800">Вітаємо, {user?.name || 'User'}!</h2>
+          <p className="text-slate-500">Ось огляд вашого бізнесу.</p>
+        </div>
+        <div className="flex-shrink-0 bg-white p-1 rounded-lg shadow-sm border border-slate-200">
+          {[7, 30, 90].map(p => (
+            <button 
+              key={p} 
+              onClick={() => setPeriod(p as 7 | 30 | 90)}
+              className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${period === p ? 'bg-rose-50 text-rose-600' : 'text-slate-600 hover:bg-slate-100'}`}
+            >
+              {p} днів
+            </button>
+          ))}
+        </div>
+      </div>
+
       {error && <div role="alert" className="p-4 bg-red-50 text-red-700 border border-red-200 rounded-lg">{error}</div>}
       
-      {user?.role === 'admin' && (
-        <AISummaryCard 
-          summary={summary} 
-          isLoading={isSummaryLoading}
-          error={summaryError}
-          onRegenerate={fetchSummary}
-        />
-      )}
+      {user?.role === 'admin' ? (
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* KPIs */}
+          {kpis.map(kpi => <StatCard key={kpi.title} {...kpi} isLoading={isLoading} />)}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat) => (
-          (user?.role === 'admin' || stat.title !== 'Кількість менеджерів') && <DashboardCard key={stat.title} {...stat} isLoading={isLoading || !statsData} />
-        ))}
-      </div>
-      
-      {user?.role === 'admin' && (
-        <ProfitReportChart report={statsData?.managerReport || []} isLoading={isLoading || !statsData} />
+          {/* Main Chart */}
+          <div className="lg:col-span-4">
+            <SalesProfitChart data={data?.chartData || []} isLoading={isLoading}/>
+          </div>
+          
+          {/* AI Summary and Recent Orders */}
+          <div className="lg:col-span-2 space-y-6">
+             <AISummaryCard onRegenerate={() => {}}/>
+             <RecentOrders orders={data?.recentOrders || []} isLoading={isLoading}/>
+          </div>
+          
+          {/* Top Products */}
+          <div className="lg:col-span-2">
+             <TopProducts products={data?.topProducts || []} isLoading={isLoading}/>
+          </div>
+
+        </div>
+      ) : (
+        <p className="text-slate-600">Панель керування доступна лише для адміністраторів.</p>
       )}
     </div>
   );

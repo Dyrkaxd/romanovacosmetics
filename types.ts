@@ -1,5 +1,6 @@
 
 
+
 import type { FC, SVGProps } from 'react';
 
 export interface Product {
@@ -135,4 +136,26 @@ export interface ReportData {
   topProducts: TopProduct[];
   topCustomers: TopCustomer[];
   revenueByGroup: RevenueByGroup[];
+}
+
+// Types for the new redesigned dashboard
+export interface KPI {
+  value: number;
+  change: number; // Percentage change from previous period
+}
+
+export interface DashboardData {
+  kpis: {
+    revenue: KPI;
+    profit: KPI;
+    orders: KPI;
+    customers: KPI;
+  };
+  chartData: {
+    date: string;
+    sales: number;
+    profit: number;
+  }[];
+  recentOrders: Pick<Order, 'id' | 'customerName' | 'totalAmount' | 'status' | 'date'>[];
+  topProducts: Pick<TopProduct, 'productName' | 'totalRevenue'>[];
 }

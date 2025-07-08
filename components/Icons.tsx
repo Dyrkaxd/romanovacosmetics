@@ -1,4 +1,5 @@
 
+
 import type { FC, SVGProps } from 'react';
 
 export const DashboardIcon: FC<SVGProps<SVGSVGElement>> = (props) => (
@@ -138,5 +139,17 @@ export const ArrowPathIcon: FC<SVGProps<SVGSVGElement>> = (props) => (
 export const ShareIcon: FC<SVGProps<SVGSVGElement>> = (props) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186a.225.225 0 01.586.05l4.307 2.293a2.25 2.25 0 010 3.84l-4.307 2.293a2.25 2.25 0 10-.586-.05m.586-.05a2.25 2.25 0 000-2.186m0 2.186c.195.025.39.042.586.05l4.307-2.293a2.25 2.25 0 010-3.84l-4.307-2.293a2.25 2.25 0 10-.586.05m.586-.05a2.25 2.25 0 000-2.186Z" />
+  </svg>
+);
+
+export const ArrowTrendingUpIcon: FC<SVGProps<SVGSVGElement>> = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18 9 11.25l4.306 4.307a11.95 11.95 0 0 1 5.814-5.519l2.74-1.22m0 0-3.75-.625m3.75.625-6.25 3.75" />
+  </svg>
+);
+
+export const ArrowTrendingDownIcon: FC<SVGProps<SVGSVGElement>> = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 6 9 6.75 4.286-4.286a11.948 11.948 0 0 1 4.306 6.43l.776 2.898m0 0 3.182-5.511m-3.182 5.511L-5.511-3.182" />
   </svg>
 );
