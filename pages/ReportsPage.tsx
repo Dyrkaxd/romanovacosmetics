@@ -2,15 +2,21 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { authenticatedFetch } from '../utils/api';
 import { Order, SalesDataPoint, TopProduct, TopCustomer, PaginatedResponse } from '../types';
-import { ChartBarIcon, CurrencyDollarIcon, UsersIcon } from '../components/Icons';
+import { ChartBarIcon, CurrencyDollarIcon, UsersIcon, DownloadIcon } from '../components/Icons';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
-// Helper to get the last N days
-const getLastNDates = (n: number) => {
+// Helper to format date as YYYY-MM-DD
+const toYYYYMMDD = (date: Date) => date.toISOString().split('T')[0];
+
+// Helper to create a date range for the chart
+const getDateRange = (start: string, end: string): string[] => {
     const dates = [];
-    for (let i = n - 1; i >= 0; i--) {
-        const d = new Date();
-        d.setDate(d.getDate() - i);
-        dates.push(d.toISOString().split('T')[0]); // YYYY-MM-DD
+    let currentDate = new Date(start + 'T00:00:00'); // Ensure we start at the beginning of the day in local time
+    const endDate = new Date(end + 'T00:00:00');
+    while (currentDate <= endDate) {
+        dates.push(toYYYYMMDD(currentDate));
+        currentDate.setDate(currentDate.getDate() + 1);
     }
     return dates;
 };
@@ -37,15 +43,17 @@ const SalesChart: React.FC<{ data: SalesDataPoint[] }> = ({ data }) => {
             {data.map((point, index) => {
                 const barHeight = maxValue > 0 ? (point.totalSales / maxValue) * 100 : 0;
                 return (
-                    <div key={index} className="flex-1 flex flex-col justify-end items-center group">
+                    <div key={index} className="flex-1 flex flex-col justify-end items-center group min-w-[10px]">
                         <div className="relative w-full h-full flex items-end justify-center">
+                             <div className="absolute -top-6 bg-slate-700 text-white text-xs px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+                                ₴{point.totalSales.toFixed(2)}
+                            </div>
                             <div
                                 className="w-3/4 bg-rose-400 hover:bg-rose-500 rounded-t-md transition-all duration-200 ease-in-out"
                                 style={{ height: `${barHeight}%` }}
-                                title={`₴${point.totalSales.toFixed(2)}`}
                             />
                         </div>
-                        <span className="text-xs text-slate-500 mt-2 transform -rotate-45 sm:rotate-0 truncate">{new Date(point.date).toLocaleDateString('uk-UA', { month: 'short', day: 'numeric' })}</span>
+                        <span className="text-xs text-slate-500 mt-2 text-center w-full">{data.length <= 15 ? new Date(point.date + 'T00:00:00').toLocaleDateString('uk-UA', { month: 'short', day: 'numeric' }) : ''}</span>
                     </div>
                 );
             })}
@@ -90,14 +98,40 @@ const TopList: React.FC<{ items: (TopProduct | TopCustomer)[]; type: 'product' |
 const ReportsPage: React.FC = () => {
     const [orders, setOrders] = useState<Order[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [isPdfLoading, setIsPdfLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [timeframe, setTimeframe] = useState<number>(30); // 7, 30, 90 days
 
+    const [activePreset, setActivePreset] = useState<number | null>(30);
+    const [startDate, setStartDate] = useState<string>(() => {
+        const date = new Date();
+        date.setDate(date.getDate() - 29);
+        return toYYYYMMDD(date);
+    });
+    const [endDate, setEndDate] = useState<string>(toYYYYMMDD(new Date()));
+
+    const handleSetPreset = (days: number) => {
+        setActivePreset(days);
+        const end = new Date();
+        const start = new Date();
+        start.setDate(end.getDate() - (days - 1));
+        setStartDate(toYYYYMMDD(start));
+        setEndDate(toYYYYMMDD(end));
+    };
+
+    const handleDateChange = (type: 'start' | 'end', value: string) => {
+        setActivePreset(null);
+        if (type === 'start') {
+            setStartDate(value);
+        } else {
+            setEndDate(value);
+        }
+    };
+    
     const fetchData = useCallback(async () => {
         setIsLoading(true);
         setError(null);
         try {
-            // Fetch all orders for the report
+            // Fetch all orders for the report. In a larger app, you'd filter by date on the backend.
             const ordersRes = await authenticatedFetch('/api/orders?pageSize=10000');
             if (!ordersRes.ok) throw new Error('Failed to fetch orders.');
 
@@ -115,14 +149,18 @@ const ReportsPage: React.FC = () => {
     }, [fetchData]);
 
     const filteredOrders = useMemo(() => {
-        const now = new Date();
-        const cutoffDate = new Date();
-        cutoffDate.setDate(now.getDate() - timeframe);
-        return orders.filter(order => new Date(order.date) >= cutoffDate);
-    }, [orders, timeframe]);
+        if (!startDate || !endDate) return [];
+        const start = new Date(startDate + 'T00:00:00');
+        const end = new Date(endDate + 'T23:59:59');
+        return orders.filter(order => {
+            const orderDate = new Date(order.date);
+            return orderDate >= start && orderDate <= end;
+        });
+    }, [orders, startDate, endDate]);
 
     const salesByDay = useMemo<SalesDataPoint[]>(() => {
-        const dates = getLastNDates(timeframe);
+        if (!startDate || !endDate) return [];
+        const dates = getDateRange(startDate, endDate);
         const salesMap = new Map<string, number>();
 
         filteredOrders.forEach(order => {
@@ -134,7 +172,7 @@ const ReportsPage: React.FC = () => {
             date: date,
             totalSales: salesMap.get(date) || 0,
         }));
-    }, [filteredOrders, timeframe]);
+    }, [filteredOrders, startDate, endDate]);
 
     const topProducts = useMemo<TopProduct[]>(() => {
         const productsMap = new Map<string, TopProduct>();
@@ -176,9 +214,61 @@ const ReportsPage: React.FC = () => {
         });
         return Array.from(customersMap.values()).sort((a, b) => b.totalSpent - a.totalSpent).slice(0, 10);
     }, [filteredOrders]);
+
+    const handleDownloadPdf = async () => {
+        const reportContentElement = document.getElementById('report-content');
+        if (!reportContentElement) {
+            setError('Не вдалося знайти вміст звіту для завантаження.');
+            return;
+        }
+        setIsPdfLoading(true);
+        setError(null);
+        try {
+            const canvas = await html2canvas(reportContentElement, {
+                scale: 2,
+                useCORS: true,
+                backgroundColor: '#ffffff',
+                windowWidth: reportContentElement.scrollWidth,
+                windowHeight: reportContentElement.scrollHeight,
+            });
+            const imgData = canvas.toDataURL('image/png');
+            
+            const pdf = new jsPDF({
+                orientation: 'p',
+                unit: 'pt',
+                format: 'a4',
+            });
+    
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = pdf.internal.pageSize.getHeight();
+            const canvasWidth = canvas.width;
+            const canvasHeight = canvas.height;
+            const ratio = canvasWidth / canvasHeight;
+    
+            let imgWidth = pdfWidth - 40; // margin
+            let imgHeight = imgWidth / ratio;
+            
+            if (imgHeight > pdfHeight - 40) {
+                imgHeight = pdfHeight - 40;
+                imgWidth = imgHeight * ratio;
+            }
+    
+            const x = (pdfWidth - imgWidth) / 2;
+            const y = 20;
+    
+            pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
+            pdf.save(`Romanova_Cosmetics_Report_${startDate}_to_${endDate}.pdf`);
+    
+        } catch (err) {
+            console.error("Failed to generate PDF:", err);
+            setError("Сталася помилка під час створення PDF. Спробуйте ще раз.");
+        } finally {
+            setIsPdfLoading(false);
+        }
+    };
     
     if (isLoading) {
-        return <div className="text-center p-8">Завантаження звітів...</div>;
+        return <div className="flex items-center justify-center p-8"><div className="w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full animate-spin"></div><p className="ml-4 text-slate-600">Завантаження звітів...</p></div>;
     }
     
     if (error) {
@@ -187,30 +277,45 @@ const ReportsPage: React.FC = () => {
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
-                <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Звіти</h2>
-                <div className="bg-slate-100 p-1 rounded-lg flex space-x-1 mt-3 sm:mt-0">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <h2 className="text-2xl font-bold text-slate-800 tracking-tight flex-shrink-0">Звіти</h2>
+                <div className="w-full flex flex-col sm:flex-row items-center justify-end gap-2 flex-wrap">
                     {[7, 30, 90].map(days => (
-                        <button key={days} onClick={() => setTimeframe(days)}
-                            className={`px-3 py-1.5 text-sm font-semibold rounded-md transition-colors ${timeframe === days ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-600 hover:bg-white/50'}`}
+                        <button key={days} onClick={() => handleSetPreset(days)}
+                            className={`px-3 py-1.5 text-sm font-semibold rounded-md transition-colors ${activePreset === days ? 'bg-white text-rose-600 shadow-sm ring-1 ring-inset ring-slate-200' : 'text-slate-600 hover:bg-slate-100'}`}
                         >
-                            Останні {days} днів
+                            Ост. {days} днів
                         </button>
                     ))}
+                    <div className="flex items-center gap-2">
+                        <input type="date" value={startDate} onChange={e => handleDateChange('start', e.target.value)} className="p-1.5 border border-slate-300 rounded-md text-sm"/>
+                        <span className="text-slate-500">-</span>
+                        <input type="date" value={endDate} onChange={e => handleDateChange('end', e.target.value)} max={toYYYYMMDD(new Date())} className="p-1.5 border border-slate-300 rounded-md text-sm"/>
+                    </div>
+                    <button
+                        onClick={handleDownloadPdf}
+                        disabled={isPdfLoading}
+                        className="flex items-center bg-rose-500 hover:bg-rose-600 text-white font-semibold py-2 px-4 rounded-lg shadow-sm transition-colors disabled:opacity-70 disabled:cursor-wait"
+                    >
+                        <DownloadIcon className="w-5 h-5 mr-2" />
+                        {isPdfLoading ? 'Створення PDF...' : 'Завантажити PDF'}
+                    </button>
                 </div>
             </div>
             
-            <ReportCard title={`Динаміка продажів за останні ${timeframe} днів`} icon={ChartBarIcon}>
-                <SalesChart data={salesByDay} />
-            </ReportCard>
+            <div id="report-content" className="space-y-6">
+                <ReportCard title={`Динаміка продажів (${new Date(startDate).toLocaleDateString()} - ${new Date(endDate).toLocaleDateString()})`} icon={ChartBarIcon}>
+                    <SalesChart data={salesByDay} />
+                </ReportCard>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                 <ReportCard title="Топ-10 товарів за виручкою" icon={CurrencyDollarIcon}>
-                    <TopList items={topProducts} type="product" />
-                </ReportCard>
-                 <ReportCard title="Топ-10 клієнтів за сумою замовлень" icon={UsersIcon}>
-                    <TopList items={topCustomers} type="customer" />
-                </ReportCard>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <ReportCard title="Топ-10 товарів за виручкою" icon={CurrencyDollarIcon}>
+                        <TopList items={topProducts} type="product" />
+                    </ReportCard>
+                    <ReportCard title="Топ-10 клієнтів за сумою замовлень" icon={UsersIcon}>
+                        <TopList items={topCustomers} type="customer" />
+                    </ReportCard>
+                </div>
             </div>
         </div>
     );
