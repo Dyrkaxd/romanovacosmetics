@@ -436,7 +436,7 @@ const OrdersPage: React.FC = () => {
         <input
             type="search"
             aria-label="Пошук замовлень"
-            placeholder="Пошук за ID, ім'ям клієнта..."
+            placeholder="Пошук за номером замовлення, ім'ям клієнта..."
             className="w-full sm:flex-grow p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
@@ -499,7 +499,6 @@ const OrdersPage: React.FC = () => {
           <table className="min-w-full divide-y divide-slate-200">
             <thead className="bg-slate-50">
               <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">ID</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Клієнт</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider hidden sm:table-cell">Дата</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Статус</th>
@@ -510,11 +509,10 @@ const OrdersPage: React.FC = () => {
             </thead>
              <tbody className="bg-white divide-y divide-slate-200">
               {isLoading ? (
-                 <tr><td colSpan={isAdmin ? 7 : 6} className="px-6 py-10 text-center text-sm text-slate-500">Завантаження...</td></tr>
+                 <tr><td colSpan={isAdmin ? 6 : 5} className="px-6 py-10 text-center text-sm text-slate-500">Завантаження...</td></tr>
               ) : orders.length > 0 ? (
                 orders.map((order) => (
                   <tr key={order.id} className="hover:bg-rose-50/50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-rose-600">#{order.id.substring(0, 6)}...</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-800">{order.customerName}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 hidden sm:table-cell">{new Date(order.date).toLocaleDateString()}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600"><StatusPill status={order.status} /></td>
@@ -529,7 +527,7 @@ const OrdersPage: React.FC = () => {
                   </tr>
                 ))
               ) : (
-                <tr><td colSpan={isAdmin ? 7 : 6} className="px-6 py-10 text-center text-sm text-slate-500">
+                <tr><td colSpan={isAdmin ? 6 : 5} className="px-6 py-10 text-center text-sm text-slate-500">
                   {!pageError && (totalCount === 0 && searchTerm === '' ? "Замовлень ще немає. Натисніть 'Створити замовлення', щоб почати." : "Замовлень, що відповідають вашому пошуку, не знайдено.")}
                 </td></tr>
               )}
