@@ -911,31 +911,35 @@ const OrdersPage: React.FC = () => {
               <div className="relative">
                   <label htmlFor="city" className="block text-sm font-medium text-slate-700">Місто <span className="text-red-500">*</span></label>
                   <input type="text" id="city" 
-                    value={novaPoshtaFormData.city?.name ?? citySearchTerm}
+                    value={citySearchTerm}
                     onChange={e => {
-                        if (novaPoshtaFormData.city) {
+                        const newSearchTerm = e.target.value;
+                        setCitySearchTerm(newSearchTerm);
+                        setIsCityDropdownOpen(true);
+                        if (novaPoshtaFormData.city && novaPoshtaFormData.city.name !== newSearchTerm) {
                             setNovaPoshtaFormData(prev => ({ ...prev, city: null, warehouse: null }));
                             setWarehouseSearchTerm('');
                             setWarehouseResults([]);
                         }
-                        setCitySearchTerm(e.target.value);
-                        setIsCityDropdownOpen(true);
                     }}
+                    onFocus={() => setIsCityDropdownOpen(true)}
                     onBlur={() => setTimeout(() => setIsCityDropdownOpen(false), 150)}
                     placeholder="Почніть вводити назву міста..." required 
                     className="mt-1 block w-full p-2.5 border-slate-300 rounded-lg" 
                     autoComplete="off"
                   />
-                  {isCityDropdownOpen && debouncedCitySearch.length > 1 && (
+                  {isCityDropdownOpen && citySearchTerm.length > 1 && (
                       <div className="absolute z-20 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                         {isSearching ? <div className="p-3 text-sm text-slate-500">Пошук...</div> : 
                           cityResults.length > 0 ? cityResults.map(city => (
                             <div key={city.Ref} 
                                 className="p-3 hover:bg-rose-50 cursor-pointer"
                                 onClick={() => {
-                                    setNovaPoshtaFormData(prev => ({...prev, city: { id: city.Ref, name: city.Description }}));
-                                    setCitySearchTerm('');
+                                    setNovaPoshtaFormData(prev => ({...prev, city: { id: city.Ref, name: city.Description }, warehouse: null}));
+                                    setCitySearchTerm(city.Description);
                                     setIsCityDropdownOpen(false);
+                                    setWarehouseSearchTerm('');
+                                    setWarehouseResults([]);
                                 }}>
                                 {city.Description}
                             </div>
@@ -947,13 +951,14 @@ const OrdersPage: React.FC = () => {
               <div className="relative">
                   <label htmlFor="warehouse" className="block text-sm font-medium text-slate-700">Відділення/поштомат <span className="text-red-500">*</span></label>
                   <input type="text" id="warehouse" 
-                    value={novaPoshtaFormData.warehouse?.name ?? warehouseSearchTerm}
+                    value={warehouseSearchTerm}
                     onChange={e => {
-                        if (novaPoshtaFormData.warehouse) {
-                           setNovaPoshtaFormData(prev => ({ ...prev, warehouse: null }));
-                        }
-                        setWarehouseSearchTerm(e.target.value);
+                        const newSearchTerm = e.target.value;
+                        setWarehouseSearchTerm(newSearchTerm);
                         setIsWarehouseDropdownOpen(true);
+                        if (novaPoshtaFormData.warehouse && novaPoshtaFormData.warehouse.name !== newSearchTerm) {
+                            setNovaPoshtaFormData(prev => ({ ...prev, warehouse: null }));
+                        }
                     }}
                     onFocus={() => setIsWarehouseDropdownOpen(true)}
                     onBlur={() => setTimeout(() => setIsWarehouseDropdownOpen(false), 150)}
@@ -970,7 +975,7 @@ const OrdersPage: React.FC = () => {
                                 className="p-3 hover:bg-rose-50 cursor-pointer text-sm"
                                 onClick={() => {
                                     setNovaPoshtaFormData(prev => ({...prev, warehouse: { id: wh.Ref, name: wh.Description }}));
-                                    setWarehouseSearchTerm('');
+                                    setWarehouseSearchTerm(wh.Description);
                                     setIsWarehouseDropdownOpen(false);
                                 }}>
                                 {wh.Description}
