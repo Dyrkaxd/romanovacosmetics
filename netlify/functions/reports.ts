@@ -1,5 +1,6 @@
 
 
+
 import { Handler } from '@netlify/functions';
 import { supabase } from '../../services/supabaseClient';
 import { requireAuth } from '../utils/auth';
@@ -54,16 +55,25 @@ const handler: Handler = async (event) => {
     if (!startDate || !endDate) {
       return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: 'Start and end dates are required.' }) };
     }
+    
+    const startDateTime = `${startDate}T00:00:00.000Z`;
+    const endDateTime = `${endDate}T23:59:59.999Z`;
 
     const [
         { data: fetchedOrders, error: fetchError },
+        { data: expenses, error: expensesError },
         productGroupLookups
     ] = await Promise.all([
         supabase
             .from('orders')
             .select('*, items:order_items(*), customers(name)')
-            .gte('date', `${startDate}T00:00:00.000Z`)
-            .lte('date', `${endDate}T23:59:59.999Z`),
+            .gte('date', startDateTime)
+            .lte('date', endDateTime),
+        supabase
+            .from('expenses')
+            .select('amount')
+            .gte('date', startDate)
+            .lte('date', endDate),
         Promise.all(Object.entries(productGroupsMap).map(async ([group, tableName]) => {
             const { data, error } = await supabase.from(tableName).select('id');
             if (error) {
@@ -75,28 +85,38 @@ const handler: Handler = async (event) => {
     ]);
       
     if (fetchError) throw fetchError;
+    if (expensesError) throw expensesError;
+
+    const totalExpenses = (expenses || []).reduce((sum, exp) => sum + exp.amount, 0);
+
+    // --- Calculations are now based on 'Received' orders ---
+    const receivedOrders = (fetchedOrders || []).filter(o => o.status === 'Received');
 
     const productToGroupMap = new Map<string, string>();
     (productGroupLookups || []).flat().forEach(p => productToGroupMap.set(p.id, p.group));
     
-    const orders: OrderWithItemsAndCustomer[] = fetchedOrders || [];
-    let totalRevenue = 0, totalProfit = 0;
+    let totalRevenue = 0, grossProfit = 0;
     const dailyStatsMap = new Map<string, { sales: number, profit: number }>();
     const productsMap = new Map<string, TopProduct>();
     const customersMap = new Map<string, TopCustomer>();
     const revenueByGroupMap = new Map<string, number>();
 
-    orders.forEach(order => {
+    // The sales/profit chart will show gross profit from ALL orders to show overall business activity
+    (fetchedOrders || []).forEach(order => {
+        const orderProfit = calculateOrderProfit(order);
+        const orderDate = new Date(order.date).toISOString().split('T')[0];
+        const dailyStats = dailyStatsMap.get(orderDate) || { sales: 0, profit: 0 };
+        dailyStats.sales += order.total_amount;
+        dailyStats.profit += orderProfit;
+        dailyStatsMap.set(orderDate, dailyStats);
+    });
+
+    // All other KPIs and lists are based on received orders
+    receivedOrders.forEach(order => {
       const orderProfit = calculateOrderProfit(order);
       totalRevenue += order.total_amount;
-      totalProfit += orderProfit;
+      grossProfit += orderProfit;
       
-      const orderDate = new Date(order.date).toISOString().split('T')[0];
-      const dailyStats = dailyStatsMap.get(orderDate) || { sales: 0, profit: 0 };
-      dailyStats.sales += order.total_amount;
-      dailyStats.profit += orderProfit;
-      dailyStatsMap.set(orderDate, dailyStats);
-
       const customer = customersMap.get(order.customer_id);
       if (customer) {
         customer.totalSpent += order.total_amount;
@@ -121,6 +141,8 @@ const handler: Handler = async (event) => {
         }
       });
     });
+    
+    const netProfit = grossProfit - totalExpenses;
 
     const getDateRange = (start: string, end: string): string[] => {
       const dates = [];
@@ -143,7 +165,17 @@ const handler: Handler = async (event) => {
     const topCustomers: TopCustomer[] = Array.from(customersMap.values()).sort((a, b) => b.totalSpent - a.totalSpent).slice(0, 10);
     const revenueByGroup: RevenueByGroup[] = Array.from(revenueByGroupMap.entries()).map(([group, revenue]) => ({ group, revenue })).sort((a, b) => b.revenue - a.revenue);
 
-    const reportData: ReportData = { totalRevenue, totalProfit, totalOrders: orders.length, salesByDay, topProducts, topCustomers, revenueByGroup };
+    const reportData: ReportData = { 
+        totalRevenue, 
+        totalProfit: netProfit, 
+        grossProfit, 
+        totalExpenses, 
+        totalOrders: receivedOrders.length, 
+        salesByDay, 
+        topProducts, 
+        topCustomers, 
+        revenueByGroup 
+    };
     
     return { statusCode: 200, headers: commonHeaders, body: JSON.stringify(reportData) };
 

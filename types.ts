@@ -129,9 +129,21 @@ export interface RevenueByGroup {
   revenue: number;
 }
 
+export interface Expense {
+  id: string;
+  name: string;
+  amount: number;
+  date: string;
+  notes?: string;
+  created_at?: string;
+  created_by_user_email?: string;
+}
+
 export interface ReportData {
   totalRevenue: number;
-  totalProfit: number;
+  totalProfit: number; // This will now be NET profit
+  grossProfit: number;
+  totalExpenses: number;
   totalOrders: number;
   salesByDay: SalesDataPoint[];
   topProducts: TopProduct[];

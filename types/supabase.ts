@@ -302,6 +302,34 @@ export interface Database {
         }
         Relationships: [] 
       }
+      expenses: {
+        Row: {
+          id: string
+          name: string
+          amount: number
+          date: string
+          notes: string | null
+          created_at: string
+          created_by_user_email: string | null
+        }
+        Insert: {
+          id?: string
+          name: string
+          amount: number
+          date: string
+          notes?: string | null
+          created_at?: string
+          created_by_user_email?: string | null
+        }
+        Update: {
+          id?: string
+          name?: string
+          amount?: number
+          date?: string
+          notes?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: { [_ in never]: never }
     Functions: { [_ in never]: never }

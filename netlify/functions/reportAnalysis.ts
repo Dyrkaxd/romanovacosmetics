@@ -1,4 +1,5 @@
 
+
 import { Handler } from '@netlify/functions';
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 import { requireAuth } from '../utils/auth';
@@ -37,13 +38,15 @@ const handler: Handler = async (event) => {
         // Prune data for a more effective and efficient prompt
         const compactData = {
             totalRevenue: reportData.totalRevenue,
-            totalProfit: reportData.totalProfit,
+            grossProfit: reportData.grossProfit,
+            totalExpenses: reportData.totalExpenses,
+            netProfit: reportData.totalProfit,
             totalOrders: reportData.totalOrders,
             top_3_products_by_revenue: reportData.topProducts.slice(0, 3).map(p => p.productName),
             top_revenue_group: reportData.revenueByGroup.length > 0 ? reportData.revenueByGroup[0].group : 'N/A'
         };
 
-        const prompt = `Ти досвідчений бізнес-аналітик для компанії косметики. Проаналізуй наступні зведені дані звіту про продажі. Надай короткий, але глибокий аналіз (2-3 речення, українською мовою). Твій аналіз повинен оцінити загальну ефективність, виділити ключові моменти (наприклад, найприбутковіші групи товарів або важливість топ-клієнтів) і запропонувати одну дієву пораду для подальшого зростання.
+        const prompt = `Ти досвідчений бізнес-аналітик для компанії косметики. Проаналізуй наступні зведені дані звіту про продажі. Надай короткий, але глибокий аналіз (2-3 речення, українською мовою). Твій аналіз повинен оцінити чисту прибутковість, враховуючи доходи та витрати. Виділи ключові моменти та запропонуй одну дієву пораду для збільшення чистого прибутку.
 
 Зведені дані звіту:
 ${JSON.stringify(compactData, null, 2)}
@@ -53,7 +56,7 @@ ${JSON.stringify(compactData, null, 2)}
         const ai = new GoogleGenAI({ apiKey });
 
         const response: GenerateContentResponse = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-preview-04-17',
+            model: 'gemini-2.5-flash',
             contents: prompt
         });
 

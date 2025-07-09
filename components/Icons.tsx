@@ -1,5 +1,6 @@
 
 
+
 import type { FC, SVGProps } from 'react';
 
 export const DashboardIcon: FC<SVGProps<SVGSVGElement>> = (props) => (
@@ -151,5 +152,11 @@ export const ArrowTrendingUpIcon: FC<SVGProps<SVGSVGElement>> = (props) => (
 export const ArrowTrendingDownIcon: FC<SVGProps<SVGSVGElement>> = (props) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
     <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 6 9 6.75 4.286-4.286a11.948 11.948 0 0 1 4.306 6.43l.776 2.898m0 0 3.182-5.511m-3.182 5.511L-5.511-3.182" />
+  </svg>
+);
+
+export const CreditCardIcon: FC<SVGProps<SVGSVGElement>> = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3.75m-3.75 2.25h13.5m0-16.5h-13.5a2.25 2.25 0 00-2.25 2.25v13.5a2.25 2.25 0 002.25 2.25h13.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25z" />
   </svg>
 );

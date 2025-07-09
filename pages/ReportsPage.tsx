@@ -1,6 +1,7 @@
 
 
 
+
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { authenticatedFetch } from '../utils/api';
 import { ReportData, SalesDataPoint, TopProduct, TopCustomer, RevenueByGroup } from '../types';
@@ -79,7 +80,7 @@ const ReportSalesProfitChart: React.FC<{ data: SalesDataPoint[], isLoading: bool
     
     return (
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 h-full">
-            <h3 className="text-lg font-semibold text-slate-800 mb-4">Динаміка продажів і прибутку</h3>
+            <h3 className="text-lg font-semibold text-slate-800 mb-4">Динаміка продажів і валового прибутку</h3>
             <div className="relative h-80" onMouseLeave={() => setTooltip(null)}>
                 <svg ref={chartRef} viewBox="0 0 100 105" className="w-full h-full" preserveAspectRatio="none" onMouseMove={handleMouseMove}>
                     {/* Grid lines */}
@@ -99,7 +100,7 @@ const ReportSalesProfitChart: React.FC<{ data: SalesDataPoint[], isLoading: bool
             </div>
              <div className="flex justify-center space-x-4 mt-4 text-sm font-medium">
                 <span className="flex items-center"><span className="w-3 h-3 bg-rose-500 rounded-full mr-2"></span>Дохід</span>
-                <span className="flex items-center"><span className="w-3 h-3 bg-green-500 rounded-full mr-2"></span>Прибуток</span>
+                <span className="flex items-center"><span className="w-3 h-3 bg-green-500 rounded-full mr-2"></span>Валовий прибуток</span>
             </div>
         </div>
     );
@@ -385,10 +386,11 @@ const ReportsPage: React.FC = () => {
             
             <div id="report-content-wrapper" ref={reportContentRef} className="bg-slate-50 p-4 sm:p-6 rounded-2xl">
                 <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <StatCard title="Загальний дохід" value={`₴${(reportData?.totalRevenue ?? 0).toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} isLoading={isLoading} />
-                        <StatCard title="Загальний прибуток" value={`₴${(reportData?.totalProfit ?? 0).toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} isLoading={isLoading} colorClass="text-green-600" />
-                        <StatCard title="Кількість замовлень" value={(reportData?.totalOrders ?? 0).toString()} isLoading={isLoading} />
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <StatCard title="Дохід (отримано)" value={`₴${(reportData?.totalRevenue ?? 0).toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} isLoading={isLoading} subValue={`${(reportData?.totalOrders ?? 0)} замовлень`} />
+                        <StatCard title="Валовий прибуток" value={`₴${(reportData?.grossProfit ?? 0).toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} isLoading={isLoading} colorClass="text-indigo-600" />
+                        <StatCard title="Витрати" value={`₴${(reportData?.totalExpenses ?? 0).toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} isLoading={isLoading} colorClass="text-red-600" />
+                        <StatCard title="Чистий прибуток" value={`₴${(reportData?.totalProfit ?? 0).toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} isLoading={isLoading} colorClass="text-green-600" />
                     </div>
 
                     <AIAnalysisCard analysis={aiAnalysis} isLoading={isAiLoading} error={aiError} onRegenerate={() => reportData && fetchAiAnalysis(reportData)} />
@@ -397,7 +399,7 @@ const ReportsPage: React.FC = () => {
 
                     <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
                         <div className="lg:col-span-3 bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                             <h3 className="text-lg font-semibold text-slate-800 mb-4">Топ-10 товарів за виручкою</h3>
+                             <h3 className="text-lg font-semibold text-slate-800 mb-4">Топ-10 товарів (з отриманих замовлень)</h3>
                              <TopList items={reportData?.topProducts || []} type="product" isLoading={isLoading} />
                         </div>
                         <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-slate-200">
@@ -406,7 +408,7 @@ const ReportsPage: React.FC = () => {
                         </div>
                     </div>
                      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                        <h3 className="text-lg font-semibold text-slate-800 mb-4">Топ-10 клієнтів за сумою замовлень</h3>
+                        <h3 className="text-lg font-semibold text-slate-800 mb-4">Топ-10 клієнтів (з отриманих замовлень)</h3>
                         <TopList items={reportData?.topCustomers || []} type="customer" isLoading={isLoading} />
                     </div>
                 </div>
