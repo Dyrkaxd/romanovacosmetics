@@ -183,7 +183,13 @@ const OrdersPage: React.FC = () => {
         const res = await authenticatedFetch(`/api/novaPoshtaApiProxy?action=searchSettlements&findByString=${debouncedCitySearch}`);
         if (!res.ok) throw new Error('Failed to fetch cities');
         const data = await res.json();
-        setCityResults(data.data[0]?.Addresses || []);
+        const addresses = data.data[0]?.Addresses || [];
+        // Normalize the city data to match the NovaPoshtaRef interface
+        const transformedCities: NovaPoshtaRef[] = addresses.map((addr: any) => ({
+          Ref: addr.Ref,
+          Description: addr.Present, // 'Present' contains the full description like "м. Київ, Київська обл."
+        }));
+        setCityResults(transformedCities);
       } catch (error) {
         console.error("City fetch error:", error);
         setCityResults([]);
