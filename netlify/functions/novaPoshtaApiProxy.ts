@@ -52,7 +52,6 @@ const handler: Handler = async (event) => {
         requestBody.calledMethod = 'getWarehouses';
         requestBody.methodProperties = {
           CityRef: cityRef,
-          Limit: 500, // Limit number of results
           ...(findByString && { FindByString: findByString }),
         };
         break;
