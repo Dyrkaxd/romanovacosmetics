@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Order, OrderItem, Customer, Product, ManagedUser, PaginatedResponse, NovaPoshtaFormData, NovaPoshtaRef } from '../types';
+import { Order, OrderItem, Customer, Product, ManagedUser, PaginatedResponse, NovaPoshtaFormData, NovaPoshtaRef, NovaPoshtaTrackingInfo } from '../types';
 import { EyeIcon, XMarkIcon, PlusIcon, TrashIcon, PencilIcon, DocumentTextIcon, FilterIcon, DownloadIcon, ChevronDownIcon, ShareIcon, EllipsisVerticalIcon, TruckIcon, PrinterIcon } from '../components/Icons';
 import { authenticatedFetch } from '../utils/api';
 import { Database } from '../types/supabase';
@@ -35,6 +35,30 @@ const StatusPill: React.FC<{ status: Order['status'] }> = ({ status }) => {
     <span className={`px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ring-1 ring-inset ${styles[status]}`}>
       {orderStatusTranslations[status] || status}
     </span>
+  );
+};
+
+const TrackingStatusPill: React.FC<{ trackingInfo: NovaPoshtaTrackingInfo }> = ({ trackingInfo }) => {
+  const statusCode = trackingInfo?.StatusCode;
+  const statusText = trackingInfo?.Status || 'Оновлення...';
+  
+  const styles: Record<string, string> = {
+    '3': 'bg-red-50 text-red-600 ring-red-600/20', // "Відмова від отримання"
+    '5': 'bg-blue-50 text-blue-700 ring-blue-700/20', // "На шляху до одержувача"
+    '6': 'bg-blue-50 text-blue-700 ring-blue-700/20', // "На шляху до одержувача"
+    '7': 'bg-lime-50 text-lime-700 ring-lime-700/20', // "Прибув у відділення"
+    '9': 'bg-green-50 text-green-700 ring-green-700/20', // "Отримано"
+    '10': 'bg-green-50 text-green-700 ring-green-700/20', // "Отримано"
+    '103': 'bg-red-50 text-red-600 ring-red-600/20', // "Відмова"
+    'default': 'bg-slate-50 text-slate-600 ring-slate-600/20' // Other statuses
+  };
+
+  const styleClass = styles[statusCode] || styles['default'];
+
+  return (
+    <div className={`px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ring-1 ring-inset ${styleClass}`}>
+      {statusText}
+    </div>
   );
 };
 
@@ -80,6 +104,11 @@ const OrdersPage: React.FC = () => {
   const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false);
   const [isWarehouseDropdownOpen, setIsWarehouseDropdownOpen] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+
+  // Tracking state
+  const [trackingData, setTrackingData] = useState<Record<string, NovaPoshtaTrackingInfo>>({});
+  const [isTrackingLoading, setIsTrackingLoading] = useState(false);
+  const [trackingDetailsOrder, setTrackingDetailsOrder] = useState<Order | null>(null);
   
   // Filtering and Pagination state
   const [searchTerm, setSearchTerm] = useState('');
@@ -272,6 +301,43 @@ const OrdersPage: React.FC = () => {
   useEffect(() => {
     fetchOrders(1); // Fetch first page when filters change
   }, [fetchOrders]);
+
+  useEffect(() => {
+    const fetchTrackingData = async () => {
+        const ttnsToTrack = orders
+            .filter(o => o.status === 'Shipped' && o.novaPoshtaTtn)
+            .map(o => o.novaPoshtaTtn!);
+
+        if (ttnsToTrack.length === 0) {
+            setTrackingData({});
+            return;
+        }
+
+        setIsTrackingLoading(true);
+        try {
+            const response = await authenticatedFetch('/api/novaPoshtaTracking', {
+                method: 'POST',
+                body: JSON.stringify({ ttns: ttnsToTrack }),
+            });
+            if (!response.ok) {
+                console.error('Failed to fetch tracking data. Status:', response.status);
+                setTrackingData({});
+                return;
+            }
+            const data: Record<string, NovaPoshtaTrackingInfo> = await response.json();
+            setTrackingData(data);
+        } catch (error) {
+            console.error('Error fetching tracking data:', error);
+            setTrackingData({});
+        } finally {
+            setIsTrackingLoading(false);
+        }
+    };
+
+    if (orders.length > 0) {
+        fetchTrackingData();
+    }
+  }, [orders]);
 
 
   const resetFilters = () => {
@@ -668,7 +734,15 @@ const OrdersPage: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-800 font-medium hidden sm:table-cell">{order.customerName}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 hidden lg:table-cell">{new Date(order.date).toLocaleDateString()}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-900">₴{order.totalAmount.toFixed(2)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap"><StatusPill status={order.status}/></td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {order.status === 'Shipped' && order.novaPoshtaTtn && trackingData[order.novaPoshtaTtn] ? (
+                        <button onClick={() => setTrackingDetailsOrder(order)} className="w-full text-left cursor-pointer">
+                          <TrackingStatusPill trackingInfo={trackingData[order.novaPoshtaTtn]} />
+                        </button>
+                      ) : (
+                        <StatusPill status={order.status} />
+                      )}
+                    </td>
                     {isAdmin && <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 hidden xl:table-cell">{allOrderManagers.find(m => m.email === order.managedByUserEmail)?.name || order.managedByUserEmail || 'N/A'}</td>}
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-right">
                         <div className="relative inline-block text-left" ref={el => { actionMenuRefs.current[order.id] = el; }}>
@@ -937,7 +1011,32 @@ const OrdersPage: React.FC = () => {
         </div>
       )}
 
-      {viewOrder && !isNovaPoshtaModalOpen && (
+      {trackingDetailsOrder && trackingData[trackingDetailsOrder.novaPoshtaTtn!] && (
+          <div role="dialog" aria-modal="true" className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+              <div className="bg-white p-6 rounded-xl shadow-xl w-full max-w-lg">
+                  <div className="flex justify-between items-center pb-4 mb-6 border-b">
+                      <h3 className="text-xl font-semibold">Відстеження: {trackingDetailsOrder.novaPoshtaTtn}</h3>
+                      <button onClick={() => setTrackingDetailsOrder(null)}><XMarkIcon className="w-6 h-6"/></button>
+                  </div>
+                  <div className="space-y-3 text-sm">
+                      <p><strong className="text-slate-500 w-48 inline-block">Статус:</strong> <span className="font-semibold text-rose-600">{trackingData[trackingDetailsOrder.novaPoshtaTtn!].Status}</span></p>
+                      <p><strong className="text-slate-500 w-48 inline-block">Орієнтовна дата доставки:</strong> {new Date(trackingData[trackingDetailsOrder.novaPoshtaTtn!].ScheduledDeliveryDate).toLocaleDateString()}</p>
+                      {trackingData[trackingDetailsOrder.novaPoshtaTtn!].RecipientDateTime &&
+                        <p><strong className="text-slate-500 w-48 inline-block">Дата отримання:</strong> {new Date(trackingData[trackingDetailsOrder.novaPoshtaTtn!].RecipientDateTime).toLocaleString()}</p>
+                      }
+                       <p><strong className="text-slate-500 w-48 inline-block">Відправник:</strong> {trackingData[trackingDetailsOrder.novaPoshtaTtn!].WarehouseSender}</p>
+                       <p><strong className="text-slate-500 w-48 inline-block">Одержувач:</strong> {trackingData[trackingDetailsOrder.novaPoshtaTtn!].WarehouseRecipient}</p>
+                       <p><strong className="text-slate-500 w-48 inline-block">Платник:</strong> {trackingData[trackingDetailsOrder.novaPoshtaTtn!].PayerType}</p>
+                       <p><strong className="text-slate-500 w-48 inline-block">Сума до сплати:</strong> {trackingData[trackingDetailsOrder.novaPoshtaTtn!].AmountToPay} грн</p>
+                  </div>
+                   <div className="mt-6 pt-6 text-right border-t">
+                      <button onClick={() => setTrackingDetailsOrder(null)} className="bg-slate-600 hover:bg-slate-700 text-white py-2 px-4 rounded-lg">Закрити</button>
+                   </div>
+              </div>
+          </div>
+      )}
+
+      {viewOrder && !isNovaPoshtaModalOpen && !trackingDetailsOrder &&(
          <div role="dialog" aria-modal="true" aria-labelledby="view-order-modal-title" className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
           <div className="bg-white p-6 rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
             <div className="flex justify-between items-center pb-4 mb-4 border-b">

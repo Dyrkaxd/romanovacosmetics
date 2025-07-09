@@ -1,6 +1,7 @@
 
 
 
+
 import type { FC, SVGProps } from 'react';
 
 export interface Product {
@@ -73,6 +74,17 @@ export interface NovaPoshtaFormData {
 export interface NovaPoshtaRef {
   Ref: string;
   Description: string;
+}
+
+export interface NovaPoshtaTrackingInfo {
+  StatusCode: string;
+  Status: string;
+  WarehouseSender: string;
+  WarehouseRecipient: string;
+  ScheduledDeliveryDate: string;
+  RecipientDateTime: string;
+  PayerType: string;
+  AmountToPay: number;
 }
 
 export interface NavItem {
