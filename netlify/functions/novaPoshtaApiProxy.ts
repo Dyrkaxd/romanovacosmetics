@@ -8,73 +8,90 @@ const commonHeaders = {
   'Content-Type': 'application/json',
 };
 
-// Simulated Nova Poshta API data
-const mockCities = [
-  { Ref: "db5c6883-391c-11dd-90d9-001a92567626", Description: "Київ" },
-  { Ref: "3b7b8f60-391c-11dd-90d9-001a92567626", Description: "Львів" },
-  { Ref: "db5c6892-391c-11dd-90d9-001a92567626", Description: "Одеса" },
-  { Ref: "db5c689a-391c-11dd-90d9-001a92567626", Description: "Харків" },
-  { Ref: "db5c689d-391c-11dd-90d9-001a92567626", Description: "Дніпро" },
-  { Ref: "db5c6887-391c-11dd-90d9-001a92567626", Description: "Вінниця" },
-  { Ref: "db5c68b0-391c-11dd-90d9-001a92567626", Description: "Запоріжжя" },
-];
-
-const mockWarehouses: Record<string, { Ref: string; Description: string }[]> = {
-  "db5c6883-391c-11dd-90d9-001a92567626": [ // Kyiv
-    { Ref: "w-kyiv-1", Description: "Відділення №1: вул. Пирогівський шлях, 135" },
-    { Ref: "w-kyiv-2", Description: "Відділення №2: вул. Бережанська, 9" },
-    { Ref: "w-kyiv-150", Description: "Поштомат №150: вул. Хрещатик, 22" },
-    { Ref: "w-kyiv-212", Description: "Відділення №212: просп. Відрадний, 24/93" },
-  ],
-  "3b7b8f60-391c-11dd-90d9-001a92567626": [ // Lviv
-    { Ref: "w-lviv-1", Description: "Відділення №1: вул. Городоцька, 359" },
-    { Ref: "w-lviv-3", Description: "Відділення №3: вул. Угорська, 22" },
-    { Ref: "w-lviv-101", Description: "Поштомат №101: пл. Ринок, 1" },
-  ],
-   "db5c6892-391c-11dd-90d9-001a92567626": [ // Odesa
-    { Ref: "w-odesa-1", Description: "Відділення №1: вул. Балківська, 199" },
-    { Ref: "w-odesa-5", Description: "Відділення №5: вул. Академіка Корольова, 65а" },
-  ],
-};
+const NP_API_URL = 'https://api.novaposhta.ua/v2.0/json/';
+const NP_API_KEY = process.env.NOVA_POSHTA_API_KEY;
 
 const handler: Handler = async (event) => {
-    if (event.httpMethod === 'OPTIONS') {
-        return { statusCode: 204, headers: commonHeaders, body: '' };
-    }
-    
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 204, headers: commonHeaders, body: '' };
+  }
+  
+  if (!NP_API_KEY) {
+      console.error('Nova Poshta API key is not configured.');
+      return {
+          statusCode: 500,
+          headers: commonHeaders,
+          body: JSON.stringify({ message: 'Помилка конфігурації сервера: відсутній ключ API Нової Пошти.' }),
+      };
+  }
+  
+  try {
     const { action, findByString, cityRef } = event.queryStringParameters || {};
 
-    // Simulate network delay
-    await new Promise(res => setTimeout(res, 300 + Math.random() * 400));
+    let requestBody: any = {
+      apiKey: NP_API_KEY,
+      modelName: '',
+      calledMethod: '',
+      methodProperties: {},
+    };
 
-    if (action === 'searchSettlements') {
-        const results = findByString ? mockCities.filter(c => c.Description.toLowerCase().includes(findByString.toLowerCase())) : [];
-        return {
-            statusCode: 200,
-            headers: commonHeaders,
-            body: JSON.stringify({ data: [{ Addresses: results.slice(0, 10) }] }),
+    switch (action) {
+      case 'searchSettlements':
+        requestBody.modelName = 'Address';
+        requestBody.calledMethod = 'searchSettlements';
+        requestBody.methodProperties = {
+          CityName: findByString,
+          Limit: 20,
         };
+        break;
+      case 'getWarehouses':
+        if (!cityRef) {
+          return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: 'CityRef is required for getWarehouses action.' }) };
+        }
+        requestBody.modelName = 'Address';
+        requestBody.calledMethod = 'getWarehouses';
+        requestBody.methodProperties = {
+          CityRef: cityRef,
+          // Postomats, cargo branches, and regular branches
+          TypeOfWarehouseRef: "841339c7-591a-42e2-8233-7a0a00f0ed6f,9a68865b-5c3b-4529-88d3-7d71d42a8a23,f9316480-5f2d-425d-bc2c-ac73a0a6f71a", 
+          Limit: 500, // Limit number of results
+          ...(findByString && { FindByString: findByString }),
+        };
+        break;
+      default:
+        return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: 'Invalid action provided.' }) };
     }
 
-    if (action === 'getWarehouses') {
-        if (!cityRef) {
-            return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: "CityRef is required to get warehouses." })};
-        }
-        const cityWarehouses = mockWarehouses[cityRef] || [];
-        const results = findByString ? cityWarehouses.filter(w => w.Description.toLowerCase().includes(findByString.toLowerCase())) : cityWarehouses;
-        
-        return {
-            statusCode: 200,
-            headers: commonHeaders,
-            body: JSON.stringify({ data: results.slice(0, 15) }),
-        };
+    const npResponse = await fetch(NP_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!npResponse.ok) {
+      throw new Error(`Nova Poshta API error: ${npResponse.statusText}`);
+    }
+
+    const data = await npResponse.json();
+    
+    if (data.success === false) {
+        console.error("Nova Poshta API returned an error:", data.errors);
+        return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: `Помилка від API Нової Пошти: ${data.errors.join(', ')}`})};
     }
 
     return {
-        statusCode: 400,
-        headers: commonHeaders,
-        body: JSON.stringify({ message: 'Invalid action specified.' }),
+      statusCode: 200,
+      headers: commonHeaders,
+      body: JSON.stringify(data),
     };
+  } catch (error: any) {
+    console.error('Error in novaPoshtaApiProxy function:', error);
+    return {
+      statusCode: 500,
+      headers: commonHeaders,
+      body: JSON.stringify({ message: 'An internal server error occurred.', details: error.message }),
+    };
+  }
 };
 
 export { handler };
