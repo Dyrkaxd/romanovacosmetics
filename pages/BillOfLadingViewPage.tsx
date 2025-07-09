@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import type { Order, Customer } from '../types';
@@ -97,7 +98,7 @@ const BillOfLadingViewPage: React.FC = () => {
     return (
         <div className="bg-slate-100 min-h-screen py-12 px-4 sm:px-6 lg:px-8 printable-area">
             <div className="max-w-3xl mx-auto bg-white shadow-lg rounded-lg">
-                <div className="p-8 sm:p-12">
+                <div className="p-8 sm:p-12 break-words">
                     <header className="flex justify-between items-start pb-8 border-b border-slate-200">
                         <div>
                             <img src={logoBase64} alt="Romanova Cosmetics Logo" className="h-16 w-16 mb-4" />

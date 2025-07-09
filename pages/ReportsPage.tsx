@@ -205,18 +205,20 @@ const TopList: React.FC<{ items: (TopProduct | TopCustomer)[], type: 'product' |
     }
 
     return (
-        <ul className="space-y-3">
+        <ul className="space-y-4">
             {items.map(item => {
                 const value = 'totalRevenue' in item ? item.totalRevenue : item.totalSpent;
                 const barWidth = maxValue > 0 ? (value / maxValue) * 100 : 0;
                 return (
-                    <li key={'productId' in item ? item.productId : item.customerId} className="space-y-1">
-                        <div className="flex justify-between items-baseline text-sm">
-                           <p className="font-medium text-slate-700 truncate pr-4">{'productName' in item ? item.productName : item.customerName}</p>
-                           <p className="font-semibold text-slate-800 flex-shrink-0">₴{value.toFixed(2)}</p>
-                        </div>
-                        <div className="bg-slate-100 rounded-full h-2.5">
-                            <div className="bg-rose-400 h-2.5 rounded-full" style={{ width: `${barWidth}%` }}></div>
+                    <li key={'productId' in item ? item.productId : item.customerId}>
+                        <p className="text-sm font-medium text-slate-700 truncate pr-4 mb-1.5">
+                            {'productName' in item ? item.productName : item.customerName}
+                        </p>
+                        <div className="flex items-center gap-x-3">
+                            <div className="flex-1 bg-slate-100 rounded-full h-2.5">
+                                <div className="bg-rose-400 h-2.5 rounded-full" style={{ width: `${barWidth}%` }}></div>
+                            </div>
+                            <p className="font-semibold text-slate-800 flex-shrink-0 text-sm">₴{value.toFixed(2)}</p>
                         </div>
                     </li>
                 );

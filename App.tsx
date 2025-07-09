@@ -1,21 +1,23 @@
 
-
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider, useAuth } from './AuthContext'; 
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
-import DashboardPage from './pages/DashboardPage';
-import ProductsPage from './pages/ProductsPage';
-import OrdersPage from './pages/OrdersPage';
-import CustomersPage from './pages/CustomersPage';
-import SettingsPage from './pages/SettingsPage';
-import LoginPage from './pages/LoginPage'; // Import LoginPage
-import ReportsPage from './pages/ReportsPage'; // Import ReportsPage
-import ExpensesPage from './pages/ExpensesPage'; // Import ExpensesPage
-import InvoiceViewPage from './pages/InvoiceViewPage'; // Import InvoiceViewPage
-import BillOfLadingViewPage from './pages/BillOfLadingViewPage'; // Import BillOfLadingViewPage
+
+// Lazy load all pages for code splitting
+const DashboardPage = React.lazy(() => import('./pages/DashboardPage'));
+const ProductsPage = React.lazy(() => import('./pages/ProductsPage'));
+const OrdersPage = React.lazy(() => import('./pages/OrdersPage'));
+const CustomersPage = React.lazy(() => import('./pages/CustomersPage'));
+const SettingsPage = React.lazy(() => import('./pages/SettingsPage'));
+const LoginPage = React.lazy(() => import('./pages/LoginPage'));
+const ReportsPage = React.lazy(() => import('./pages/ReportsPage'));
+const ExpensesPage = React.lazy(() => import('./pages/ExpensesPage'));
+const InvoiceViewPage = React.lazy(() => import('./pages/InvoiceViewPage'));
+const BillOfLadingViewPage = React.lazy(() => import('./pages/BillOfLadingViewPage'));
+
 
 const getPageTitle = (pathname: string): string => {
   const normalizedPathname = pathname.endsWith('/') && pathname.length > 1 ? pathname.slice(0, -1) : pathname;
@@ -46,6 +48,12 @@ const getPageTitle = (pathname: string): string => {
   }
 };
 
+const PageLoader: React.FC = () => (
+    <div className="flex items-center justify-center py-20">
+        <div className="w-10 h-10 border-4 border-rose-500 border-t-transparent rounded-full animate-spin"></div>
+    </div>
+);
+
 const MainAppLayout: React.FC = () => {
   const location = useLocation();
   const pageTitle = getPageTitle(location.pathname);
@@ -62,22 +70,24 @@ const MainAppLayout: React.FC = () => {
       <div className={`flex-1 flex flex-col md:ml-64 transition-all duration-300 ease-in-out`}>
         <Header title={pageTitle} onToggleMobileSidebar={toggleMobileSidebar} />
         <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
-          <Routes>
-            {user?.role === 'admin' ? (
-              <Route path="/" element={<DashboardPage />} />
-            ) : (
-              // For managers, redirect root to the default page which is orders
-              <Route path="/" element={<Navigate to="/orders" replace />} />
-            )}
-            {user?.role === 'admin' && <Route path="/reports" element={<ReportsPage />} />}
-            {user?.role === 'admin' && <Route path="/expenses" element={<ExpensesPage />} />}
-            {user?.role === 'admin' && <Route path="/products" element={<ProductsPage />} />}
-            <Route path="/orders" element={<OrdersPage />} />
-            <Route path="/customers" element={<CustomersPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
-            {/* Redirect any unknown paths to the user's appropriate home page */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              {user?.role === 'admin' ? (
+                <Route path="/" element={<DashboardPage />} />
+              ) : (
+                // For managers, redirect root to the default page which is orders
+                <Route path="/" element={<Navigate to="/orders" replace />} />
+              )}
+              {user?.role === 'admin' && <Route path="/reports" element={<ReportsPage />} />}
+              {user?.role === 'admin' && <Route path="/expenses" element={<ExpensesPage />} />}
+              {user?.role === 'admin' && <Route path="/products" element={<ProductsPage />} />}
+              <Route path="/orders" element={<OrdersPage />} />
+              <Route path="/customers" element={<CustomersPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
+              {/* Redirect any unknown paths to the user's appropriate home page */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Suspense>
         </main>
       </div>
        {isMobileSidebarOpen && (
@@ -103,21 +113,30 @@ const AppContent: React.FC = () => {
     );
   }
 
+  const CenteredPageLoader = () => (
+    <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50">
+        <div className="w-12 h-12 border-4 border-rose-500 border-t-transparent rounded-full animate-spin"></div>
+         <p className="text-slate-600 text-lg mt-4 font-medium">Завантаження...</p>
+    </div>
+  );
+
   return (
-    <Routes>
-      <Route path="/invoice/:orderId" element={<InvoiceViewPage />} />
-      <Route path="/bill-of-lading/:orderId" element={<BillOfLadingViewPage />} />
-      {user ? (
-        // User is authenticated, show main app layout
-        <Route path="/*" element={<MainAppLayout />} />
-      ) : (
-        // User is not authenticated, show login page and redirect all other paths to login
-        <>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="*" element={<Navigate to="/login" replace />} />
-        </>
-      )}
-    </Routes>
+    <Suspense fallback={<CenteredPageLoader />}>
+      <Routes>
+        <Route path="/invoice/:orderId" element={<InvoiceViewPage />} />
+        <Route path="/bill-of-lading/:orderId" element={<BillOfLadingViewPage />} />
+        {user ? (
+          // User is authenticated, show main app layout
+          <Route path="/*" element={<MainAppLayout />} />
+        ) : (
+          // User is not authenticated, show login page and redirect all other paths to login
+          <>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="*" element={<Navigate to="/login" replace />} />
+          </>
+        )}
+      </Routes>
+    </Suspense>
   );
 };
 

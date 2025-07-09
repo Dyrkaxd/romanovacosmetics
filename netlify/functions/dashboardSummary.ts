@@ -65,7 +65,7 @@ ${JSON.stringify(summarizedOrders, null, 2)}
 Твій підсумок:`;
 
     const response: GenerateContentResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-preview-04-17',
+        model: 'gemini-2.5-flash',
         contents: prompt,
     });
 
