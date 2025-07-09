@@ -52,8 +52,6 @@ const handler: Handler = async (event) => {
         requestBody.calledMethod = 'getWarehouses';
         requestBody.methodProperties = {
           CityRef: cityRef,
-          // Postomats, cargo branches, and regular branches
-          TypeOfWarehouseRef: "841339c7-591a-42e2-8233-7a0a00f0ed6f,9a68865b-5c3b-4529-88d3-7d71d42a8a23,f9316480-5f2d-425d-bc2c-ac73a0a6f71a", 
           Limit: 500, // Limit number of results
           ...(findByString && { FindByString: findByString }),
         };
