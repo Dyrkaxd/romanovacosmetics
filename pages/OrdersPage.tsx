@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Order, OrderItem, Customer, Product, ManagedUser, PaginatedResponse } from '../types';
-import { EyeIcon, XMarkIcon, PlusIcon, TrashIcon, PencilIcon, DocumentTextIcon, FilterIcon, DownloadIcon, ChevronDownIcon, ShareIcon } from '../components/Icons';
+import { EyeIcon, XMarkIcon, PlusIcon, TrashIcon, PencilIcon, DocumentTextIcon, FilterIcon, DownloadIcon, ChevronDownIcon, ShareIcon, EllipsisVerticalIcon } from '../components/Icons';
 import { authenticatedFetch } from '../utils/api';
 import { Database } from '../types/supabase';
 import Pagination from '../components/Pagination';
@@ -75,23 +75,32 @@ const OrdersPage: React.FC = () => {
   const [pageSize, setPageSize] = useState(20);
   const [totalCount, setTotalCount] = useState(0);
 
-
   // State for searchable product dropdown
   const [openProductDropdown, setOpenProductDropdown] = useState<number | null>(null);
   const [productSearchTerm, setProductSearchTerm] = useState<string>('');
   const productDropdownRefs = useRef<(HTMLDivElement | null)[]>([]);
 
+  // State for actions dropdown
+  const [openActionMenu, setOpenActionMenu] = useState<string | null>(null);
+  const actionMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
+      // Close product dropdown
       if (openProductDropdown !== null && productDropdownRefs.current[openProductDropdown] && !productDropdownRefs.current[openProductDropdown]!.contains(event.target as Node)) {
         setOpenProductDropdown(null);
+      }
+      // Close action menu
+      if (openActionMenu && actionMenuRefs.current[openActionMenu] && !actionMenuRefs.current[openActionMenu]!.contains(event.target as Node)) {
+        setOpenActionMenu(null);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [openProductDropdown]);
+  }, [openProductDropdown, openActionMenu]);
+
 
   useEffect(() => {
     if (successMessage) {
@@ -503,9 +512,9 @@ const OrdersPage: React.FC = () => {
                 <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Клієнт</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Дата</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Статус</th>
-                {isAdmin && <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Менеджер</th>}
+                {isAdmin && <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider hidden lg:table-cell">Менеджер</th>}
                 <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Сума</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Дії</th>
+                <th scope="col" className="px-6 py-3 text-center text-xs font-semibold text-slate-500 tracking-wider">Дії</th>
               </tr>
             </thead>
              <tbody className="bg-white divide-y divide-slate-200">
@@ -517,13 +526,38 @@ const OrdersPage: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-800">{order.customerName}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{new Date(order.date).toLocaleDateString()}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600"><StatusPill status={order.status} /></td>
-                    {isAdmin && <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{order.managedByUserEmail || 'N/A'}</td>}
+                    {isAdmin && <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 hidden lg:table-cell">{order.managedByUserEmail || 'N/A'}</td>}
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 font-medium">₴{order.totalAmount.toFixed(2)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-1">
-                      <button onClick={() => handleViewOrder(order)} className="p-2 rounded-md hover:bg-sky-50 text-slate-500 hover:text-sky-600" title="Переглянути"><EyeIcon className="w-5 h-5"/></button>
-                      <button onClick={() => openOrderModal('edit', order)} className="p-2 rounded-md hover:bg-rose-50 text-slate-500 hover:text-rose-600" title="Редагувати"><PencilIcon className="w-5 h-5"/></button>
-                      <button onClick={() => handleShareInvoice(order.id)} className="p-2 rounded-md hover:bg-green-50 text-slate-500 hover:text-green-600" title="Поділитися рахунком"><ShareIcon className="w-5 h-5"/></button>
-                      {(isAdmin || user?.role === 'manager') && <button onClick={() => handleDeleteOrder(order.id)} className="p-2 rounded-md hover:bg-red-50 text-slate-500 hover:text-red-600" title="Видалити"><TrashIcon className="w-5 h-5"/></button>}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-center">
+                       <div className="relative inline-block text-left">
+                          <button onClick={() => setOpenActionMenu(openActionMenu === order.id ? null : order.id)} className="p-2 rounded-full hover:bg-slate-200 text-slate-500 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-1" aria-haspopup="true" aria-expanded={openActionMenu === order.id} id={`action-menu-button-${order.id}`}>
+                              <span className="sr-only">Опції</span>
+                              <EllipsisVerticalIcon className="w-5 h-5" />
+                          </button>
+                          {openActionMenu === order.id && (
+                              <div ref={el => { actionMenuRefs.current[order.id] = el; }} className="absolute right-0 mt-2 w-48 origin-top-right bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-10" role="menu" aria-orientation="vertical" aria-labelledby={`action-menu-button-${order.id}`}>
+                                  <div className="py-1">
+                                      <a href="#" onClick={e => { e.preventDefault(); handleViewOrder(order); setOpenActionMenu(null); }} className="group flex items-center w-full px-4 py-2 text-sm text-slate-700 hover:bg-slate-100" role="menuitem">
+                                        <EyeIcon className="mr-3 h-5 w-5 text-slate-400 group-hover:text-sky-500"/> Переглянути
+                                      </a>
+                                      <a href="#" onClick={e => { e.preventDefault(); openOrderModal('edit', order); setOpenActionMenu(null); }} className="group flex items-center w-full px-4 py-2 text-sm text-slate-700 hover:bg-slate-100" role="menuitem">
+                                        <PencilIcon className="mr-3 h-5 w-5 text-slate-400 group-hover:text-rose-500"/> Редагувати
+                                      </a>
+                                      <a href="#" onClick={e => { e.preventDefault(); handleShareInvoice(order.id); setOpenActionMenu(null); }} className="group flex items-center w-full px-4 py-2 text-sm text-slate-700 hover:bg-slate-100" role="menuitem">
+                                        <ShareIcon className="mr-3 h-5 w-5 text-slate-400 group-hover:text-green-500"/> Копіювати
+                                      </a>
+                                       {(isAdmin || user?.role === 'manager') && (
+                                        <>
+                                        <div className="border-t border-slate-100 my-1"></div>
+                                        <a href="#" onClick={e => { e.preventDefault(); handleDeleteOrder(order.id); setOpenActionMenu(null); }} className="group flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50" role="menuitem">
+                                          <TrashIcon className="mr-3 h-5 w-5 text-red-400 group-hover:text-red-500"/> Видалити
+                                        </a>
+                                        </>
+                                      )}
+                                  </div>
+                              </div>
+                          )}
+                       </div>
                     </td>
                   </tr>
                 ))
@@ -647,7 +681,7 @@ const OrdersPage: React.FC = () => {
 
       {modalMode && (
         <div role="dialog" aria-modal="true" aria-labelledby="order-modal-title" className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
-            <div className="bg-white p-6 rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+            <div className="bg-white p-6 rounded-xl shadow-xl w-full max-w-lg lg:max-w-4xl max-h-[90vh] flex flex-col">
                 <div className="flex justify-between items-center pb-4 mb-6 border-b border-slate-200">
                     <h3 id="order-modal-title" className="text-xl font-semibold text-slate-800">{modalMode === 'edit' ? 'Редагувати замовлення' : 'Створити нове замовлення'}</h3>
                     <button onClick={closeOrderModal} aria-label="Закрити" disabled={isLoading}><XMarkIcon className="w-6 h-6 text-slate-400 hover:text-slate-600"/></button>
@@ -672,16 +706,16 @@ const OrdersPage: React.FC = () => {
                   
                   <div className="space-y-3">
                     <h4 className="text-md font-semibold text-slate-700 pt-4 border-t">Товари в замовленні</h4>
-                    <div className="hidden md:grid grid-cols-12 gap-2 px-2 pb-1">
-                      <div className="col-span-5"><label className="text-xs font-semibold text-slate-500">Товар</label></div>
-                      <div className="col-span-2"><label className="text-xs font-semibold text-slate-500">Кількість</label></div>
-                      <div className="col-span-2"><label className="text-xs font-semibold text-slate-500">Ціна</label></div>
-                      <div className="col-span-2"><label className="text-xs font-semibold text-slate-500">Знижка, %</label></div>
-                      <div className="col-span-1 flex justify-end"><label className="text-xs font-semibold text-slate-500">Дія</label></div>
+                    <div className="hidden md:grid grid-cols-12 gap-x-2 px-2 pb-1">
+                      <div className="md:col-span-12 lg:col-span-5"><label className="text-xs font-semibold text-slate-500">Товар</label></div>
+                      <div className="md:col-span-4 lg:col-span-2"><label className="text-xs font-semibold text-slate-500">Кількість</label></div>
+                      <div className="md:col-span-4 lg:col-span-2"><label className="text-xs font-semibold text-slate-500">Ціна</label></div>
+                      <div className="md:col-span-4 lg:col-span-2"><label className="text-xs font-semibold text-slate-500">Знижка, %</label></div>
+                      <div className="hidden lg:flex justify-end lg:col-span-1"><label className="text-xs font-semibold text-slate-500">Дія</label></div>
                     </div>
                     {(activeOrderData?.items || []).map((item, index) => (
-                      <div key={index} className="grid grid-cols-12 gap-2 items-center p-2 rounded-lg bg-slate-50 border">
-                        <div className="col-span-12 md:col-span-5 relative" ref={el => { productDropdownRefs.current[index] = el; }}>
+                      <div key={index} className="grid grid-cols-12 gap-x-2 gap-y-3 items-center p-2 rounded-lg bg-slate-50 border">
+                        <div className="col-span-12 lg:col-span-5 relative" ref={el => { productDropdownRefs.current[index] = el; }}>
                            <input type="text" placeholder="Почніть вводити назву товару"
                                 value={openProductDropdown === index ? productSearchTerm : item.productName}
                                 onFocus={() => { setOpenProductDropdown(index); setProductSearchTerm(''); }}
@@ -707,10 +741,10 @@ const OrdersPage: React.FC = () => {
                                 </div>
                             )}
                         </div>
-                        <div className="col-span-4 md:col-span-2"><input type="number" value={item.quantity} onChange={e => handleItemChange(index, 'quantity', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" placeholder="К-сть"/></div>
-                        <div className="col-span-4 md:col-span-2"><input type="number" step="0.01" value={item.price} readOnly className="w-full p-2 border border-slate-300 rounded-md bg-slate-100 text-slate-500 cursor-not-allowed" placeholder="Ціна"/></div>
-                        <div className="col-span-4 md:col-span-2"><input type="number" step="0.01" value={item.discount || ''} onChange={e => handleItemChange(index, 'discount', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" placeholder="Знижка %"/></div>
-                        <div className="col-span-12 md:col-span-1 flex justify-end"><button type="button" onClick={() => removeItem(index)}><TrashIcon className="w-5 h-5 text-red-500 hover:text-red-700"/></button></div>
+                        <div className="col-span-12 md:col-span-4 lg:col-span-2"><label className="text-xs font-medium text-slate-600 md:hidden">К-сть</label><input type="number" value={item.quantity} onChange={e => handleItemChange(index, 'quantity', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" placeholder="К-сть"/></div>
+                        <div className="col-span-12 md:col-span-4 lg:col-span-2"><label className="text-xs font-medium text-slate-600 md:hidden">Ціна</label><input type="number" step="0.01" value={item.price} readOnly className="w-full p-2 border border-slate-300 rounded-md bg-slate-100 text-slate-500 cursor-not-allowed" placeholder="Ціна"/></div>
+                        <div className="col-span-12 md:col-span-4 lg:col-span-2"><label className="text-xs font-medium text-slate-600 md:hidden">Знижка, %</label><input type="number" step="0.01" value={item.discount || ''} onChange={e => handleItemChange(index, 'discount', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" placeholder="Знижка %"/></div>
+                        <div className="col-span-12 lg:col-span-1 flex justify-end"><button type="button" onClick={() => removeItem(index)}><TrashIcon className="w-5 h-5 text-red-500 hover:text-red-700"/></button></div>
                       </div>
                     ))}
                      <button type="button" onClick={addItem} className="text-sm font-semibold text-rose-600 hover:underline">+ Додати товар</button>
