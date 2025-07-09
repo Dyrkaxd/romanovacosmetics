@@ -131,6 +131,10 @@ const OrdersPage: React.FC = () => {
   const [openActionMenu, setOpenActionMenu] = useState<string | null>(null);
   const actionMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
+  // Derived values for Nova Poshta inputs for more robust state management
+  const cityInputValue = novaPoshtaFormData.city?.name || citySearchTerm;
+  const warehouseInputValue = novaPoshtaFormData.warehouse?.name || warehouseSearchTerm;
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       // Close product dropdown
@@ -357,6 +361,7 @@ const OrdersPage: React.FC = () => {
   const handlePageSizeChange = (size: number) => {
       setPageSize(size);
       setCurrentPage(1); // Reset to first page
+      fetchOrders(1);
   };
 
 
@@ -502,7 +507,7 @@ const OrdersPage: React.FC = () => {
     setModalError(null);
     try {
       const payload: Partial<Order> = { ...viewOrder };
-      if (statusChanged) payload.status = editableOrderStatus;
+      if (statusChanged && editableOrderStatus) payload.status = editableOrderStatus;
       if (notesChanged) payload.notes = editableOrderNotes;
       
       const response = await authenticatedFetch(`${API_BASE_URL}/orders/${viewOrder.id}`, {
@@ -911,19 +916,20 @@ const OrdersPage: React.FC = () => {
               <div className="relative">
                   <label htmlFor="city" className="block text-sm font-medium text-slate-700">Місто <span className="text-red-500">*</span></label>
                   <input type="text" id="city" 
-                    value={citySearchTerm}
+                    value={cityInputValue}
                     onChange={e => {
-                        const newSearchTerm = e.target.value;
-                        setCitySearchTerm(newSearchTerm);
-                        setIsCityDropdownOpen(true);
-                        if (novaPoshtaFormData.city && novaPoshtaFormData.city.name !== newSearchTerm) {
-                            setNovaPoshtaFormData(prev => ({ ...prev, city: null, warehouse: null }));
-                            setWarehouseSearchTerm('');
-                            setWarehouseResults([]);
-                        }
+                      const newSearchTerm = e.target.value;
+                      setCitySearchTerm(newSearchTerm);
+                      setIsCityDropdownOpen(true);
+                      // If user starts typing, clear the existing selection
+                      if (novaPoshtaFormData.city) {
+                          setNovaPoshtaFormData(prev => ({ ...prev, city: null, warehouse: null }));
+                          setWarehouseSearchTerm('');
+                          setWarehouseResults([]);
+                      }
                     }}
                     onFocus={() => setIsCityDropdownOpen(true)}
-                    onBlur={() => setTimeout(() => setIsCityDropdownOpen(false), 150)}
+                    onBlur={() => setTimeout(() => setIsCityDropdownOpen(false), 200)}
                     placeholder="Почніть вводити назву міста..." required 
                     className="mt-1 block w-full p-2.5 border-slate-300 rounded-lg" 
                     autoComplete="off"
@@ -934,9 +940,9 @@ const OrdersPage: React.FC = () => {
                           cityResults.length > 0 ? cityResults.map(city => (
                             <div key={city.Ref} 
                                 className="p-3 hover:bg-rose-50 cursor-pointer"
-                                onClick={() => {
+                                onMouseDown={() => { // use onMouseDown to fire before blur
                                     setNovaPoshtaFormData(prev => ({...prev, city: { id: city.Ref, name: city.Description }, warehouse: null}));
-                                    setCitySearchTerm(city.Description);
+                                    setCitySearchTerm('');
                                     setIsCityDropdownOpen(false);
                                     setWarehouseSearchTerm('');
                                     setWarehouseResults([]);
@@ -951,17 +957,18 @@ const OrdersPage: React.FC = () => {
               <div className="relative">
                   <label htmlFor="warehouse" className="block text-sm font-medium text-slate-700">Відділення/поштомат <span className="text-red-500">*</span></label>
                   <input type="text" id="warehouse" 
-                    value={warehouseSearchTerm}
+                    value={warehouseInputValue}
                     onChange={e => {
-                        const newSearchTerm = e.target.value;
-                        setWarehouseSearchTerm(newSearchTerm);
-                        setIsWarehouseDropdownOpen(true);
-                        if (novaPoshtaFormData.warehouse && novaPoshtaFormData.warehouse.name !== newSearchTerm) {
-                            setNovaPoshtaFormData(prev => ({ ...prev, warehouse: null }));
-                        }
+                      const newSearchTerm = e.target.value;
+                      setWarehouseSearchTerm(newSearchTerm);
+                      setIsWarehouseDropdownOpen(true);
+                      // If user starts typing, clear the existing selection
+                      if (novaPoshtaFormData.warehouse) {
+                          setNovaPoshtaFormData(prev => ({ ...prev, warehouse: null }));
+                      }
                     }}
                     onFocus={() => setIsWarehouseDropdownOpen(true)}
-                    onBlur={() => setTimeout(() => setIsWarehouseDropdownOpen(false), 150)}
+                    onBlur={() => setTimeout(() => setIsWarehouseDropdownOpen(false), 200)}
                     placeholder="Почніть вводити відділення..." required 
                     disabled={!novaPoshtaFormData.city}
                     className="mt-1 block w-full p-2.5 border-slate-300 rounded-lg disabled:bg-slate-100 disabled:cursor-not-allowed" 
@@ -973,9 +980,9 @@ const OrdersPage: React.FC = () => {
                           warehouseResults.length > 0 ? warehouseResults.map(wh => (
                             <div key={wh.Ref} 
                                 className="p-3 hover:bg-rose-50 cursor-pointer text-sm"
-                                onClick={() => {
+                                onMouseDown={() => { // use onMouseDown to fire before blur
                                     setNovaPoshtaFormData(prev => ({...prev, warehouse: { id: wh.Ref, name: wh.Description }}));
-                                    setWarehouseSearchTerm(wh.Description);
+                                    setWarehouseSearchTerm('');
                                     setIsWarehouseDropdownOpen(false);
                                 }}>
                                 {wh.Description}
