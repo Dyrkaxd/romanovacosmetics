@@ -1,8 +1,9 @@
 
+
 import { Handler } from '@netlify/functions';
 import { supabase } from '../../services/supabaseClient';
 import { requireAuth } from '../utils/auth';
-import type { SalesDataPoint, TopProduct, TopCustomer, RevenueByGroup, ReportData } from '../../types';
+import type { SalesDataPoint, TopProduct, TopCustomer, RevenueByGroup, ReportData, Expense } from '../../types';
 import type { Database } from '../../types/supabase';
 
 const commonHeaders = {
@@ -59,7 +60,7 @@ const handler: Handler = async (event) => {
 
     const [
         { data: fetchedOrders, error: fetchError },
-        { data: expenses, error: expensesError },
+        { data: expensesDb, error: expensesError },
         productGroupLookups
     ] = await Promise.all([
         supabase
@@ -69,9 +70,10 @@ const handler: Handler = async (event) => {
             .lte('date', endDateTime),
         supabase
             .from('expenses')
-            .select('amount')
+            .select('*')
             .gte('date', startDate)
-            .lte('date', endDate),
+            .lte('date', endDate)
+            .order('date', { ascending: false }),
         Promise.all(Object.entries(productGroupsMap).map(async ([group, tableName]) => {
             const { data, error } = await supabase.from(tableName).select('id');
             if (error) {
@@ -85,7 +87,17 @@ const handler: Handler = async (event) => {
     if (fetchError) throw fetchError;
     if (expensesError) throw expensesError;
 
-    const totalExpenses = (expenses || []).reduce((sum, exp) => sum + exp.amount, 0);
+    const totalExpenses = (expensesDb || []).reduce((sum, exp) => sum + exp.amount, 0);
+
+    const expenses: Expense[] = (expensesDb || []).map(exp => ({
+      id: exp.id,
+      name: exp.name,
+      amount: exp.amount,
+      date: exp.date,
+      notes: exp.notes || undefined,
+      created_at: exp.created_at,
+      created_by_user_email: exp.created_by_user_email || undefined,
+    }));
 
     // --- Calculations are now based on 'Received' orders ---
     const receivedOrders = (fetchedOrders || []).filter(o => o.status === 'Received');
@@ -172,7 +184,8 @@ const handler: Handler = async (event) => {
         salesByDay, 
         topProducts, 
         topCustomers, 
-        revenueByGroup 
+        revenueByGroup,
+        expenses,
     };
     
     return { statusCode: 200, headers: commonHeaders, body: JSON.stringify(reportData) };

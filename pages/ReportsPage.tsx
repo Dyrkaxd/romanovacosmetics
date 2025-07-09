@@ -1,7 +1,8 @@
 
+
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { authenticatedFetch } from '../utils/api';
-import { ReportData, SalesDataPoint, TopProduct, TopCustomer, RevenueByGroup } from '../types';
+import { ReportData, SalesDataPoint, TopProduct, TopCustomer, RevenueByGroup, Expense } from '../types';
 import { ChartBarIcon, CurrencyDollarIcon, UsersIcon, DownloadIcon, LightBulbIcon } from '../components/Icons';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -253,6 +254,58 @@ const AIAnalysisCard: React.FC<{ analysis: string | null; isLoading: boolean; er
     );
 };
 
+const ExpensesTable: React.FC<{ expenses: Expense[], isLoading: boolean }> = ({ expenses, isLoading }) => {
+    if (isLoading) {
+        return (
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                <div className="h-8 w-1/3 bg-slate-200 rounded-md mb-4 animate-pulse"></div>
+                <div className="space-y-2">
+                    <div className="h-10 bg-slate-50 rounded-lg animate-pulse"></div>
+                    <div className="h-10 bg-slate-50 rounded-lg animate-pulse"></div>
+                    <div className="h-10 bg-slate-50 rounded-lg animate-pulse"></div>
+                </div>
+            </div>
+        );
+    }
+
+    if (expenses.length === 0) {
+        return (
+             <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                <h3 className="text-lg font-semibold text-slate-800 mb-4">Витрати за період</h3>
+                <div className="h-full flex items-center justify-center text-center py-10 text-slate-500 bg-slate-50 rounded-lg">Витрат за цей період не знайдено.</div>
+            </div>
+        );
+    }
+    
+    return (
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+            <h3 className="text-lg font-semibold text-slate-800 mb-4">Витрати за період</h3>
+            <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-slate-200">
+                    <thead className="bg-slate-50">
+                        <tr>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Дата</th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Назва</th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider hidden md:table-cell">Нотатки</th>
+                            <th scope="col" className="px-6 py-3 text-right text-xs font-semibold text-slate-500 tracking-wider">Сума</th>
+                        </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-slate-200">
+                        {expenses.map((expense) => (
+                            <tr key={expense.id}>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{new Date(expense.date).toLocaleDateString()}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-800">{expense.name}</td>
+                                <td className="px-6 py-4 text-sm text-slate-600 hidden md:table-cell truncate max-w-sm">{expense.notes || '-'}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-red-600">₴{expense.amount.toFixed(2)}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+};
+
 
 const ReportsPage: React.FC = () => {
     const [reportData, setReportData] = useState<ReportData | null>(null);
@@ -423,6 +476,8 @@ const ReportsPage: React.FC = () => {
                         <h3 className="text-lg font-semibold text-slate-800 mb-4">Топ-10 клієнтів (з отриманих замовлень)</h3>
                         <TopList items={reportData?.topCustomers || []} type="customer" isLoading={isLoading} />
                     </div>
+                    
+                    <ExpensesTable expenses={reportData?.expenses || []} isLoading={isLoading} />
                 </div>
             </div>
         </div>

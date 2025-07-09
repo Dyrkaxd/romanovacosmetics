@@ -149,6 +149,7 @@ export interface ReportData {
   topProducts: TopProduct[];
   topCustomers: TopCustomer[];
   revenueByGroup: RevenueByGroup[];
+  expenses: Expense[];
 }
 
 // Types for the new redesigned dashboard
