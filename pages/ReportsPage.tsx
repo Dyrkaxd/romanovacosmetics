@@ -1,7 +1,4 @@
 
-
-
-
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { authenticatedFetch } from '../utils/api';
 import { ReportData, SalesDataPoint, TopProduct, TopCustomer, RevenueByGroup } from '../types';
@@ -110,63 +107,71 @@ const RevenueDonutChart: React.FC<{ data: RevenueByGroup[], isLoading: boolean }
     const COLORS = ['#e11d48', '#3b82f6', '#16a34a', '#f97316', '#8b5cf6', '#db2777', '#0891b2', '#ca8a04'];
     const [hoveredIndex, setHoveredIndex] = useState<number | undefined>(undefined);
 
-    const chartData = useMemo(() => {
-        const totalRevenue = data.reduce((sum, item) => sum + item.revenue, 0);
-        let accumulated = 0;
-        return data.map((segment, index) => {
-            const percentage = totalRevenue > 0 ? segment.revenue / totalRevenue : 0;
-            const angle = percentage * 360;
-            const startAngle = accumulated;
-            accumulated += angle;
-            return { ...segment, percentage, angle, startAngle, color: COLORS[index % COLORS.length] };
-        }).sort((a,b) => b.revenue - a.revenue);
+    const { chartData, gradientStyle } = useMemo(() => {
+        const sortedData = [...data].sort((a, b) => b.revenue - a.revenue);
+        const totalRevenue = sortedData.reduce((sum, item) => sum + item.revenue, 0);
+        
+        if (totalRevenue === 0) {
+            return { chartData: [], gradientStyle: { background: '#f1f5f9' } };
+        }
+
+        let accumulatedPercentage = 0;
+        const gradientParts: string[] = [];
+        const chartSegments = sortedData.map((segment, index) => {
+            const percentage = (segment.revenue / totalRevenue);
+            const startPercentage = accumulatedPercentage;
+            accumulatedPercentage += percentage;
+            const endPercentage = accumulatedPercentage;
+            
+            const color = COLORS[index % COLORS.length];
+            gradientParts.push(`${color} ${startPercentage * 100}% ${endPercentage * 100}%`);
+            
+            return { ...segment, percentage, color, index };
+        });
+
+        const gradientStyle = { background: `conic-gradient(${gradientParts.join(', ')})` };
+
+        return { chartData: chartSegments, gradientStyle };
     }, [data]);
 
     if (isLoading) {
-        return <div className="h-80 bg-slate-50 rounded-lg animate-pulse"></div>;
+        return <div className="h-80 bg-white rounded-lg animate-pulse"></div>;
     }
-    if (data.length === 0) {
-        return <div className="h-80 flex items-center justify-center text-center py-10 text-slate-500 bg-slate-50 rounded-lg">Дані по групах товарів відсутні.</div>;
+    if (data.length === 0 || chartData.length === 0) {
+        return <div className="h-80 flex items-center justify-center text-center py-10 text-slate-500 bg-white rounded-lg">Дані по групах товарів відсутні.</div>;
     }
-
-    const radius = 40;
-    const circumference = 2 * Math.PI * radius;
+    
+    const activeSegment = hoveredIndex !== undefined ? chartData.find(d => d.index === hoveredIndex) : null;
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center h-80">
-            <div className="relative w-full h-full">
-                <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90">
-                    {chartData.map((segment, index) => (
-                        <circle
-                            key={index}
-                            cx="50" cy="50" r={radius}
-                            fill="transparent"
-                            stroke={segment.color}
-                            strokeWidth="12"
-                            strokeDasharray={`${segment.percentage * circumference} ${circumference}`}
-                            strokeDashoffset={-segment.startAngle / 360 * circumference}
-                            className="transition-all duration-300 ease-in-out"
-                            style={{ opacity: hoveredIndex === undefined || hoveredIndex === index ? 1 : 0.3 }}
-                            onMouseOver={() => setHoveredIndex(index)}
-                            onMouseOut={() => setHoveredIndex(undefined)}
-                        />
-                    ))}
-                    <text x="50" y="52" textAnchor="middle" dominantBaseline="middle" className="transform rotate-90 origin-center fill-slate-800 font-bold text-[8px]">
-                        {hoveredIndex !== undefined ? `${(chartData[hoveredIndex].percentage * 100).toFixed(1)}%` : 'Дохід'}
-                    </text>
-                     {hoveredIndex !== undefined &&
-                        <text x="50" y="60" textAnchor="middle" dominantBaseline="middle" className="transform rotate-90 origin-center fill-slate-500 text-[5px] truncate">
-                            {chartData[hoveredIndex].group}
-                        </text>
-                    }
-                </svg>
+            <div className="relative w-full h-full flex items-center justify-center" onMouseLeave={() => setHoveredIndex(undefined)}>
+                <div 
+                    className="w-48 h-48 rounded-full transition-all duration-300"
+                    style={gradientStyle}
+                >
+                </div>
+                {/* Center text overlay */}
+                <div className="absolute w-32 h-32 bg-white rounded-full flex flex-col items-center justify-center text-center p-2 shadow-inner">
+                     <span className="font-bold text-slate-800 text-lg">
+                        {activeSegment ? `${(activeSegment.percentage * 100).toFixed(1)}%` : 'Дохід'}
+                     </span>
+                     {activeSegment && (
+                        <span className="text-slate-500 text-sm truncate">
+                            {activeSegment.group}
+                        </span>
+                     )}
+                </div>
             </div>
             <ul className="space-y-2 pr-2 overflow-y-auto max-h-[280px]">
-                {chartData.map((segment, index) => (
-                     <li key={index}
+                {chartData.map((segment) => (
+                     <li key={segment.index}
                         className="flex items-center justify-between text-sm p-2 rounded-md transition-colors"
-                        style={{ backgroundColor: hoveredIndex === index ? `${segment.color}20` : 'transparent' }}
-                        onMouseOver={() => setHoveredIndex(index)}
+                        style={{ 
+                            backgroundColor: hoveredIndex === segment.index ? `${segment.color}20` : 'transparent',
+                            opacity: hoveredIndex === undefined || hoveredIndex === segment.index ? 1 : 0.5
+                        }}
+                        onMouseOver={() => setHoveredIndex(segment.index)}
                         onMouseOut={() => setHoveredIndex(undefined)}
                     >
                         <div className="flex items-center truncate">
@@ -385,6 +390,13 @@ const ReportsPage: React.FC = () => {
             </div>
             
             <div id="report-content-wrapper" ref={reportContentRef} className="bg-slate-50 p-4 sm:p-6 rounded-2xl">
+                <div className="text-center mb-6">
+                    <h2 className="text-2xl font-bold text-slate-800">Звіт про прибутки та збитки</h2>
+                    <p className="text-slate-500">
+                        за період з {new Date(startDate).toLocaleDateString('uk-UA')} по {new Date(endDate).toLocaleDateString('uk-UA')}
+                    </p>
+                </div>
+
                 <div className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         <StatCard title="Дохід (отримано)" value={`₴${(reportData?.totalRevenue ?? 0).toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} isLoading={isLoading} subValue={`${(reportData?.totalOrders ?? 0)} замовлень`} />

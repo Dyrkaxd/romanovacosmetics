@@ -1,6 +1,4 @@
 
-
-
 import { Handler } from '@netlify/functions';
 import { supabase } from '../../services/supabaseClient';
 import { requireAuth } from '../utils/auth';
@@ -142,7 +140,7 @@ const handler: Handler = async (event) => {
       });
     });
     
-    const netProfit = grossProfit - totalExpenses;
+    const netProfit = totalRevenue - totalExpenses;
 
     const getDateRange = (start: string, end: string): string[] => {
       const dates = [];
