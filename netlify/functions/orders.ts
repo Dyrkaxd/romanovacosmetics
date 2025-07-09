@@ -81,6 +81,8 @@ const dbOrderToClientOrder = (dbOrder: OrderDbRow & { customers?: { name: string
     notes: dbOrder.notes || undefined,
     created_at: dbOrder.created_at || undefined,
     managedByUserEmail: dbOrder.managed_by_user_email || undefined,
+    novaPoshtaTtn: dbOrder.nova_poshta_ttn || undefined,
+    novaPoshtaPrintUrl: dbOrder.nova_poshta_print_url || undefined,
     items: items.map(item => ({
         id: item.id,
         order_id: item.order_id,

@@ -1,6 +1,7 @@
 
 
 
+
 import type { FC, SVGProps } from 'react';
 
 export const DashboardIcon: FC<SVGProps<SVGSVGElement>> = (props) => (
@@ -163,6 +164,13 @@ export const CreditCardIcon: FC<SVGProps<SVGSVGElement>> = (props) => (
 
 export const EllipsisVerticalIcon: FC<SVGProps<SVGSVGElement>> = (props) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5Zm12 6a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5Zm0 6a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5Z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5Zm0 6a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5Zm0 6a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5Z" />
   </svg>
+);
+
+export const TruckIcon: FC<SVGProps<SVGSVGElement>> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path d="M5.52 6.467A2.25 2.25 0 017.683 5.25h5.634a2.25 2.25 0 012.163 1.217l2.128 4.256A2.25 2.25 0 0119.77 12h-1.02a2.25 2.25 0 00-2.25 2.25v2.25H6.75v-2.25a2.25 2.25 0 00-2.25-2.25H3.47a2.25 2.25 0 01-2.148-1.281L.61 6.533a2.25 2.25 0 012.148-3.217H4.5" strokeLinecap="round" strokeLinejoin="round" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 16.5a2.25 2.25 0 100 4.5 2.25 2.25 0 000-4.5zM6.75 16.5a2.25 2.25 0 100 4.5 2.25 2.25 0 000-4.5z" />
+    </svg>
 );

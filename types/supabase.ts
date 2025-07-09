@@ -199,6 +199,8 @@ export interface Database {
           notes: string | null
           created_at: string | null
           managed_by_user_email: string | null
+          nova_poshta_ttn: string | null
+          nova_poshta_print_url: string | null
         }
         Insert: {
           id?: string
@@ -209,6 +211,8 @@ export interface Database {
           notes?: string | null
           created_at?: string | null
           managed_by_user_email?: string | null
+          nova_poshta_ttn?: string | null
+          nova_poshta_print_url?: string | null
         }
         Update: {
           id?: string
@@ -219,6 +223,8 @@ export interface Database {
           notes?: string | null
           created_at?: string | null
           managed_by_user_email?: string | null
+          nova_poshta_ttn?: string | null
+          nova_poshta_print_url?: string | null
         }
         Relationships: [
           {

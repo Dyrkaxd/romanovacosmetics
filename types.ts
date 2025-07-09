@@ -56,6 +56,17 @@ export interface Order {
   notes?: string;
   managedByUserEmail?: string;
   created_at?: string;
+  novaPoshtaTtn?: string;
+  novaPoshtaPrintUrl?: string;
+}
+
+export interface NovaPoshtaFormData {
+  warehouse: string;
+  weight: number;
+  length: number;
+  width: number;
+  height: number;
+  description: string;
 }
 
 export interface NavItem {
