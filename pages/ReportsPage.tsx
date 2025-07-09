@@ -195,11 +195,17 @@ const TopList: React.FC<{ items: (TopProduct | TopCustomer)[], type: 'product' |
 
     if (isLoading) {
         return (
-            <div className="space-y-3">
-                {[...Array(5)].map((_, i) => <div key={i} className="h-12 bg-slate-50 rounded-lg animate-pulse"></div>)}
+            <div className="space-y-4">
+                {[...Array(5)].map((_, i) => (
+                    <div key={i}>
+                        <div className="h-4 bg-slate-200 rounded-md w-3/4 mb-2 animate-pulse"></div>
+                        <div className="h-2 bg-slate-200 rounded-full animate-pulse"></div>
+                    </div>
+                ))}
             </div>
         );
     }
+    
     if (items.length === 0) {
         return <div className="h-full flex items-center justify-center text-center py-10 text-slate-500 bg-slate-50 rounded-lg">Дані відсутні.</div>;
     }
@@ -209,16 +215,17 @@ const TopList: React.FC<{ items: (TopProduct | TopCustomer)[], type: 'product' |
             {items.map(item => {
                 const value = 'totalRevenue' in item ? item.totalRevenue : item.totalSpent;
                 const barWidth = maxValue > 0 ? (value / maxValue) * 100 : 0;
+                const name = 'productName' in item ? item.productName : item.customerName;
+                const key = 'productId' in item ? item.productId : item.customerId;
+
                 return (
-                    <li key={'productId' in item ? item.productId : item.customerId}>
-                        <p className="text-sm font-medium text-slate-700 truncate pr-4 mb-1.5">
-                            {'productName' in item ? item.productName : item.customerName}
-                        </p>
-                        <div className="flex items-center gap-x-3">
-                            <div className="flex-1 bg-slate-100 rounded-full h-2.5">
-                                <div className="bg-rose-400 h-2.5 rounded-full" style={{ width: `${barWidth}%` }}></div>
-                            </div>
+                    <li key={key}>
+                        <div className="flex justify-between items-center mb-1.5">
+                            <p className="text-sm font-medium text-slate-700 truncate pr-4">{name}</p>
                             <p className="font-semibold text-slate-800 flex-shrink-0 text-sm">₴{value.toFixed(2)}</p>
+                        </div>
+                        <div className="w-full bg-slate-100 rounded-full h-2">
+                            <div className="bg-rose-400 h-2 rounded-full" style={{ width: `${barWidth}%` }}></div>
                         </div>
                     </li>
                 );
