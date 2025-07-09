@@ -4,8 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { authenticatedFetch } from '../utils/api';
 import { ReportData, SalesDataPoint, TopProduct, TopCustomer, RevenueByGroup, Expense } from '../types';
 import { ChartBarIcon, CurrencyDollarIcon, UsersIcon, DownloadIcon, LightBulbIcon } from '../components/Icons';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+
 
 // Helper to format date as YYYY-MM-DD
 const toYYYYMMDD = (date: Date) => date.toISOString().split('T')[0];
@@ -404,6 +403,9 @@ const ReportsPage: React.FC = () => {
         setIsPdfLoading(true);
         setError(null);
         try {
+            const { default: jsPDF } = await import('jspdf');
+            const { default: html2canvas } = await import('html2canvas');
+            
             const canvas = await html2canvas(reportContentRef.current, { scale: 2, useCORS: true, backgroundColor: '#f8fafc' });
             const imgData = canvas.toDataURL('image/png');
             const pdf = new jsPDF({ orientation: 'p', unit: 'pt', format: 'a4' });
