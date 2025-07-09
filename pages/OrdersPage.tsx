@@ -594,7 +594,7 @@ const OrdersPage: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap"><StatusPill status={order.status}/></td>
                     {isAdmin && <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 hidden xl:table-cell">{allOrderManagers.find(m => m.email === order.managedByUserEmail)?.name || order.managedByUserEmail || 'N/A'}</td>}
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-right">
-                        <div className="relative inline-block text-left" ref={el => actionMenuRefs.current[order.id] = el}>
+                        <div className="relative inline-block text-left" ref={el => { actionMenuRefs.current[order.id] = el; }}>
                             <button onClick={() => setOpenActionMenu(openActionMenu === order.id ? null : order.id)} className="p-2 rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-700">
                                 <EllipsisVerticalIcon className="w-5 h-5"/>
                             </button>
