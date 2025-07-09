@@ -52,8 +52,11 @@ const handler: Handler = async (event) => {
         requestBody.calledMethod = 'getWarehouses';
         requestBody.methodProperties = {
           CityRef: cityRef,
-          ...(findByString && { FindByString: findByString }),
+          Limit: 500 // Get a good number of warehouses
         };
+        if (findByString) {
+          requestBody.methodProperties.FindByString = findByString;
+        }
         break;
       default:
         return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: 'Invalid action provided.' }) };
@@ -64,16 +67,18 @@ const handler: Handler = async (event) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(requestBody),
     });
-
-    if (!npResponse.ok) {
-      throw new Error(`Nova Poshta API error: ${npResponse.statusText}`);
-    }
-
+    
     const data = await npResponse.json();
     
-    if (data.success === false) {
-        console.error("Nova Poshta API returned an error:", data.errors);
-        return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: `Помилка від API Нової Пошти: ${data.errors.join(', ')}`})};
+    if (npResponse.status !== 200 || data.success === false) {
+        console.error("Nova Poshta API returned an error:", data.errors, "for request:", requestBody);
+        return { 
+          statusCode: npResponse.status, 
+          headers: commonHeaders, 
+          body: JSON.stringify({ 
+            message: `Помилка від API Нової Пошти: ${data.errors?.join(', ') || npResponse.statusText}`
+          })
+        };
     }
 
     return {

@@ -133,8 +133,8 @@ const OrdersPage: React.FC = () => {
   const actionMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   // Derived values for Nova Poshta inputs for more robust state management
-  const cityInputValue = novaPoshtaFormData.city?.name || citySearchTerm;
-  const warehouseInputValue = novaPoshtaFormData.warehouse?.name || warehouseSearchTerm;
+  const cityInputValue = isCityDropdownOpen ? citySearchTerm : novaPoshtaFormData.city?.name || '';
+  const warehouseInputValue = isWarehouseDropdownOpen ? warehouseSearchTerm : novaPoshtaFormData.warehouse?.name || '';
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -174,7 +174,7 @@ const OrdersPage: React.FC = () => {
 
   // Fetch cities
   useEffect(() => {
-    if (debouncedCitySearch.length < 2) {
+    if (!isCityDropdownOpen || debouncedCitySearch.length < 2) {
       setCityResults([]);
       return;
     }
@@ -185,10 +185,9 @@ const OrdersPage: React.FC = () => {
         if (!res.ok) throw new Error('Failed to fetch cities');
         const data = await res.json();
         const addresses = data.data[0]?.Addresses || [];
-        // Normalize the city data to match the NovaPoshtaRef interface
         const transformedCities: NovaPoshtaRef[] = addresses.map((addr: any) => ({
           Ref: addr.Ref,
-          Description: addr.Present, // 'Present' contains the full description like "м. Київ, Київська обл."
+          Description: addr.Present,
         }));
         setCityResults(transformedCities);
       } catch (error) {
@@ -199,7 +198,7 @@ const OrdersPage: React.FC = () => {
       }
     };
     fetchCities();
-  }, [debouncedCitySearch]);
+  }, [debouncedCitySearch, isCityDropdownOpen]);
 
   // Fetch warehouses
   useEffect(() => {
@@ -929,14 +928,10 @@ const OrdersPage: React.FC = () => {
                   <input type="text" id="city" 
                     value={cityInputValue}
                     onChange={e => {
-                      const newSearchTerm = e.target.value;
-                      setCitySearchTerm(newSearchTerm);
-                      setIsCityDropdownOpen(true);
-                      // If user starts typing, clear the existing selection
+                      setCitySearchTerm(e.target.value);
                       if (novaPoshtaFormData.city) {
                           setNovaPoshtaFormData(prev => ({ ...prev, city: null, warehouse: null }));
                           setWarehouseSearchTerm('');
-                          setWarehouseResults([]);
                       }
                     }}
                     onFocus={() => setIsCityDropdownOpen(true)}
@@ -945,18 +940,16 @@ const OrdersPage: React.FC = () => {
                     className="mt-1 block w-full p-2.5 border-slate-300 rounded-lg" 
                     autoComplete="off"
                   />
-                  {isCityDropdownOpen && citySearchTerm.length > 1 && (
+                  {isCityDropdownOpen && (
                       <div className="absolute z-20 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                        {isSearching ? <div className="p-3 text-sm text-slate-500">Пошук...</div> : 
+                        {isSearching && !cityResults.length ? <div className="p-3 text-sm text-slate-500">Пошук...</div> : 
                           cityResults.length > 0 ? cityResults.map(city => (
                             <div key={city.Ref} 
                                 className="p-3 hover:bg-rose-50 cursor-pointer"
-                                onMouseDown={() => { // use onMouseDown to fire before blur
+                                onMouseDown={() => {
                                     setNovaPoshtaFormData(prev => ({...prev, city: { id: city.Ref, name: city.Description }, warehouse: null}));
                                     setCitySearchTerm('');
-                                    setIsCityDropdownOpen(false);
                                     setWarehouseSearchTerm('');
-                                    setWarehouseResults([]);
                                 }}>
                                 {city.Description}
                             </div>
@@ -970,10 +963,7 @@ const OrdersPage: React.FC = () => {
                   <input type="text" id="warehouse" 
                     value={warehouseInputValue}
                     onChange={e => {
-                      const newSearchTerm = e.target.value;
-                      setWarehouseSearchTerm(newSearchTerm);
-                      setIsWarehouseDropdownOpen(true);
-                      // If user starts typing, clear the existing selection
+                      setWarehouseSearchTerm(e.target.value);
                       if (novaPoshtaFormData.warehouse) {
                           setNovaPoshtaFormData(prev => ({ ...prev, warehouse: null }));
                       }
@@ -987,14 +977,13 @@ const OrdersPage: React.FC = () => {
                   />
                   {isWarehouseDropdownOpen && novaPoshtaFormData.city && (
                        <div className="absolute z-20 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                        {isSearching ? <div className="p-3 text-sm text-slate-500">Пошук...</div> : 
+                        {isSearching && !warehouseResults.length ? <div className="p-3 text-sm text-slate-500">Пошук...</div> : 
                           warehouseResults.length > 0 ? warehouseResults.map(wh => (
                             <div key={wh.Ref} 
                                 className="p-3 hover:bg-rose-50 cursor-pointer text-sm"
-                                onMouseDown={() => { // use onMouseDown to fire before blur
+                                onMouseDown={() => {
                                     setNovaPoshtaFormData(prev => ({...prev, warehouse: { id: wh.Ref, name: wh.Description }}));
                                     setWarehouseSearchTerm('');
-                                    setIsWarehouseDropdownOpen(false);
                                 }}>
                                 {wh.Description}
                             </div>

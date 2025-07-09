@@ -3,7 +3,7 @@
 import { Handler } from '@netlify/functions';
 import { supabase } from '../../services/supabaseClient';
 import { requireAuth } from '../utils/auth';
-import type { Order, Customer } from '../../types';
+import type { Order, Customer, OrderItem } from '../../types';
 import type { Database } from '../../types/supabase';
 
 const commonHeaders = {
@@ -17,9 +17,9 @@ type OrderDbRow = Database['public']['Tables']['orders']['Row'];
 type CustomerDbRow = Database['public']['Tables']['customers']['Row'];
 type OrderItemDbRow = Database['public']['Tables']['order_items']['Row'];
 
-// I'll copy this from orders.ts
-const dbOrderToClientOrder = (dbOrder: OrderDbRow & { customers?: { name: string } | null, customer?: { name: string } | null }, items: OrderItemDbRow[] = []): Order => {
-  const customerName = dbOrder.customers?.name || dbOrder.customer?.name || 'Unknown Customer';
+
+const dbOrderToClientOrder = (dbOrder: OrderDbRow & { customer?: { name: string } | null }, items: OrderItemDbRow[] = []): Order => {
+  const customerName = dbOrder.customer?.name || 'Unknown Customer';
   return {
     id: dbOrder.id,
     customerId: dbOrder.customer_id,
@@ -47,43 +47,110 @@ const dbOrderToClientOrder = (dbOrder: OrderDbRow & { customers?: { name: string
   };
 };
 
+const toNpDate = (date: Date) => {
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}.${month}.${year}`;
+};
 
 const handler: Handler = async (event) => {
     if (event.httpMethod === 'OPTIONS') {
         return { statusCode: 204, headers: commonHeaders, body: '' };
     }
 
+    const NP_API_KEY = process.env.NOVA_POSHTA_API_KEY;
+    const SENDER_REF = process.env.NOVA_POSHTA_SENDER_REF;
+    const SENDER_CONTACT_REF = process.env.NOVA_POSHTA_SENDER_CONTACT_REF;
+    const SENDER_ADDRESS_REF = process.env.NOVA_POSHTA_SENDER_ADDRESS_REF;
+    const SENDER_PHONE = process.env.NOVA_POSHTA_SENDER_PHONE;
+
+    if (!NP_API_KEY || !SENDER_REF || !SENDER_CONTACT_REF || !SENDER_ADDRESS_REF || !SENDER_PHONE) {
+        console.error('One or more Nova Poshta sender environment variables are not set.');
+        return { statusCode: 500, body: JSON.stringify({ message: 'Помилка конфігурації сервера: відсутні дані відправника.' }), headers: commonHeaders };
+    }
+
     try {
-        const user = await requireAuth(event);
+        await requireAuth(event);
 
         if (event.httpMethod !== 'POST') {
             return { statusCode: 405, headers: commonHeaders, body: JSON.stringify({ message: 'Method Not Allowed.' }) };
         }
 
-        const { orderId, city, warehouse, weight, length, width, height, description } = JSON.parse(event.body || '{}');
-
-        if (!orderId || !city || !warehouse) {
-            return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: 'Order ID, City, and Warehouse are required.' }) };
+        const { orderId, city, warehouse, weight, description } = JSON.parse(event.body || '{}');
+        if (!orderId || !city || !warehouse || !weight || !description) {
+            return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: 'Необхідно надати повну інформацію для створення ТТН.' }) };
         }
 
-        // Simulate Nova Poshta API call
-        // 1. Fetch order details to ensure it exists
-        const { data: orderData, error: orderError } = await supabase.from('orders').select('*').eq('id', orderId).single();
-        if (orderError || !orderData) {
-            return { statusCode: 404, headers: commonHeaders, body: JSON.stringify({ message: 'Order not found.' }) };
-        }
-
-        // 2. Generate fake TTN and print URL
-        const fakeTtn = `204500${Math.floor(10000000 + Math.random() * 90000000)}`;
-        const printUrl = `${process.env.URL || 'http://localhost:8888'}/#/bill-of-lading/${orderId}`;
+        const { data: orderData, error: orderError } = await supabase
+            .from('orders')
+            .select('*, customer:customers(*)')
+            .eq('id', orderId)
+            .single();
         
-        // 3. Update the order in Supabase
+        if (orderError || !orderData) {
+            return { statusCode: 404, headers: commonHeaders, body: JSON.stringify({ message: `Замовлення з ID ${orderId} не знайдено.` }) };
+        }
+        
+        const customer = orderData.customer as CustomerDbRow;
+        if (!customer) {
+            return { statusCode: 404, headers: commonHeaders, body: JSON.stringify({ message: 'Дані клієнта для цього замовлення не знайдено.' }) };
+        }
+
+        const apiPayload = {
+            apiKey: NP_API_KEY,
+            modelName: "InternetDocument",
+            calledMethod: "save",
+            methodProperties: {
+                NewAddress: "1",
+                PayerType: "Recipient",
+                PaymentMethod: "Cash",
+                CargoType: "Parcel",
+                VolumeGeneral: "0.1", // This can be calculated from dimensions if needed
+                Weight: weight,
+                ServiceType: "WarehouseWarehouse",
+                SeatsAmount: "1",
+                Description: description,
+                Cost: orderData.total_amount,
+                CitySender: SENDER_REF,
+                Sender: SENDER_REF,
+                SenderAddress: SENDER_ADDRESS_REF,
+                ContactSender: SENDER_CONTACT_REF,
+                SendersPhone: SENDER_PHONE,
+                CityRecipient: city.id,
+                Recipient: customer.id, // Assuming customer Ref is stored or can be created on the fly
+                RecipientAddress: warehouse.id,
+                ContactRecipient: customer.id,
+                RecipientsPhone: customer.phone,
+                RecipientName: customer.name,
+                DateTime: toNpDate(new Date()),
+            },
+        };
+
+        const npResponse = await fetch('https://api.novaposhta.ua/v2.0/json/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(apiPayload),
+        });
+        
+        const npData = await npResponse.json();
+
+        if (npResponse.status !== 200 || !npData.success) {
+            console.error("Nova Poshta TTN creation failed:", npData.errors, "for request:", apiPayload);
+            throw new Error(`Помилка API Нової Пошти: ${npData.errors.join(', ')}`);
+        }
+        
+        const ttnResult = npData.data[0];
+        const ttnNumber = ttnResult.IntDocNumber;
+        const ttnRef = ttnResult.Ref;
+        const printUrl = `https://my.novaposhta.ua/orders/printDocument/orders[]/${ttnRef}/type/pdf/apiKey/${NP_API_KEY}`;
+        
         const { data: updatedOrder, error: updateError } = await supabase
             .from('orders')
             .update({
-                nova_poshta_ttn: fakeTtn,
+                nova_poshta_ttn: ttnNumber,
                 nova_poshta_print_url: printUrl,
-                status: 'Shipped' // Automatically update status to Shipped
+                status: 'Shipped'
             })
             .eq('id', orderId)
             .select('*, customer:customers(name), items:order_items(*)')
@@ -91,7 +158,6 @@ const handler: Handler = async (event) => {
 
         if (updateError) throw updateError;
 
-        // 4. Return the fully updated order object
         const clientOrder = dbOrderToClientOrder(updatedOrder as any, updatedOrder.items || []);
         
         return { statusCode: 200, headers: commonHeaders, body: JSON.stringify(clientOrder) };
