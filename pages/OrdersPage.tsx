@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Order, OrderItem, Customer, Product, ManagedUser, PaginatedResponse, NovaPoshtaFormData, NovaPoshtaRef, NovaPoshtaTrackingInfo } from '../types';
 import { EyeIcon, XMarkIcon, PlusIcon, TrashIcon, PencilIcon, DocumentTextIcon, FilterIcon, DownloadIcon, ChevronDownIcon, ShareIcon, EllipsisVerticalIcon, TruckIcon, PrinterIcon } from '../components/Icons';
@@ -209,7 +210,11 @@ const OrdersPage: React.FC = () => {
     const fetchWarehouses = async () => {
       setIsSearching(true);
       try {
-        const res = await authenticatedFetch(`/api/novaPoshtaApiProxy?action=getWarehouses&cityRef=${novaPoshtaFormData.city?.id}&findByString=${debouncedWarehouseSearch}`);
+        let url = `/api/novaPoshtaApiProxy?action=getWarehouses&cityRef=${novaPoshtaFormData.city?.id}`;
+        if (debouncedWarehouseSearch) {
+          url += `&findByString=${encodeURIComponent(debouncedWarehouseSearch)}`;
+        }
+        const res = await authenticatedFetch(url);
         if (!res.ok) throw new Error('Failed to fetch warehouses');
         const data = await res.json();
         setWarehouseResults(data.data || []);
