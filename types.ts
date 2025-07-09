@@ -61,12 +61,18 @@ export interface Order {
 }
 
 export interface NovaPoshtaFormData {
-  warehouse: string;
+  city: { id: string; name: string; } | null;
+  warehouse: { id: string; name: string; } | null;
   weight: number;
   length: number;
   width: number;
   height: number;
   description: string;
+}
+
+export interface NovaPoshtaRef {
+  Ref: string;
+  Description: string;
 }
 
 export interface NavItem {

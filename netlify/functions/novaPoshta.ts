@@ -1,4 +1,5 @@
 
+
 import { Handler } from '@netlify/functions';
 import { supabase } from '../../services/supabaseClient';
 import { requireAuth } from '../utils/auth';
@@ -59,10 +60,10 @@ const handler: Handler = async (event) => {
             return { statusCode: 405, headers: commonHeaders, body: JSON.stringify({ message: 'Method Not Allowed.' }) };
         }
 
-        const { orderId, warehouse, weight, length, width, height, description } = JSON.parse(event.body || '{}');
+        const { orderId, city, warehouse, weight, length, width, height, description } = JSON.parse(event.body || '{}');
 
-        if (!orderId || !warehouse) {
-            return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: 'Order ID and Warehouse are required.' }) };
+        if (!orderId || !city || !warehouse) {
+            return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: 'Order ID, City, and Warehouse are required.' }) };
         }
 
         // Simulate Nova Poshta API call
