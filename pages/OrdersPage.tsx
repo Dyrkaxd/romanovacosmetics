@@ -4,6 +4,7 @@
 
 
 
+
 import React, { useState, useEffect, useCallback, useMemo, useRef, FC, SVGProps } from 'react';
 import { Order, OrderItem, Customer, Product, ManagedUser, PaginatedResponse, NovaPoshtaDepartment } from '../types';
 import { EyeIcon, XMarkIcon, PlusIcon, TrashIcon, PencilIcon, DocumentTextIcon, FilterIcon, DownloadIcon, ChevronDownIcon, ShareIcon, EllipsisVerticalIcon, TruckIcon } from '../components/Icons';
@@ -723,19 +724,19 @@ const OrdersPage: React.FC = () => {
                         <div className="grid grid-cols-4 gap-4">
                             <div className="col-span-2 sm:col-span-1">
                                 <label className="block text-sm font-medium text-slate-700">Вага, кг</label>
-                                <input type="text" value={packageDetails.weight} onChange={e => setPackageDetails(p => ({...p, weight: e.target.value}))} required className="mt-1 block w-full p-2 border-slate-300 rounded-lg"/>
+                                <input type="number" value={packageDetails.weight} onChange={e => setPackageDetails(p => ({...p, weight: e.target.value}))} required className="mt-1 block w-full p-2 border-slate-300 rounded-lg" step="0.01" min="0.01"/>
                             </div>
                             <div className="col-span-2 sm:col-span-1">
                                 <label className="block text-sm font-medium text-slate-700">Довжина, см</label>
-                                <input type="text" value={packageDetails.length} onChange={e => setPackageDetails(p => ({...p, length: e.target.value}))} required className="mt-1 block w-full p-2 border-slate-300 rounded-lg"/>
+                                <input type="number" value={packageDetails.length} onChange={e => setPackageDetails(p => ({...p, length: e.target.value}))} required className="mt-1 block w-full p-2 border-slate-300 rounded-lg" min="1"/>
                             </div>
                             <div className="col-span-2 sm:col-span-1">
                                 <label className="block text-sm font-medium text-slate-700">Ширина, см</label>
-                                <input type="text" value={packageDetails.width} onChange={e => setPackageDetails(p => ({...p, width: e.target.value}))} required className="mt-1 block w-full p-2 border-slate-300 rounded-lg"/>
+                                <input type="number" value={packageDetails.width} onChange={e => setPackageDetails(p => ({...p, width: e.target.value}))} required className="mt-1 block w-full p-2 border-slate-300 rounded-lg" min="1"/>
                             </div>
                             <div className="col-span-2 sm:col-span-1">
                                 <label className="block text-sm font-medium text-slate-700">Висота, см</label>
-                                <input type="text" value={packageDetails.height} onChange={e => setPackageDetails(p => ({...p, height: e.target.value}))} required className="mt-1 block w-full p-2 border-slate-300 rounded-lg"/>
+                                <input type="number" value={packageDetails.height} onChange={e => setPackageDetails(p => ({...p, height: e.target.value}))} required className="mt-1 block w-full p-2 border-slate-300 rounded-lg" min="1"/>
                             </div>
                         </div>
                         <div>
