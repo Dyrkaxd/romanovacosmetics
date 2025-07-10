@@ -1,4 +1,5 @@
 
+
 import { Handler } from '@netlify/functions';
 
 const commonHeaders = {
@@ -52,11 +53,17 @@ const handler: Handler = async (event) => {
         requestBody.calledMethod = 'getWarehouses';
         requestBody.methodProperties = {
           CityRef: cityRef,
-          Limit: 500 // Get a good number of warehouses
+          Limit: 500, // Get a good number of warehouses
         };
-        if (findByString) {
-          requestBody.methodProperties.FindByString = findByString;
+        
+        // Intelligently use WarehouseId for numeric searches and FindByString for text searches
+        const isNumeric = findByString && /^\d+$/.test(findByString);
+        if (isNumeric) {
+            requestBody.methodProperties.WarehouseId = findByString;
+        } else if (findByString) {
+            requestBody.methodProperties.FindByString = findByString;
         }
+
         break;
       default:
         return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: 'Invalid action provided.' }) };
