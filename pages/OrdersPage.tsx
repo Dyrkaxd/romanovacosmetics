@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Order, OrderItem, Customer, Product, ManagedUser, PaginatedResponse, NovaPoshtaFormData, NovaPoshtaRef, NovaPoshtaTrackingInfo } from '../types';
 import { EyeIcon, XMarkIcon, PlusIcon, TrashIcon, PencilIcon, DocumentTextIcon, FilterIcon, DownloadIcon, ChevronDownIcon, ShareIcon, EllipsisVerticalIcon, TruckIcon, PrinterIcon } from '../components/Icons';
@@ -210,9 +211,14 @@ const OrdersPage: React.FC = () => {
       setIsSearching(true);
       try {
         let url = `/api/novaPoshtaApiProxy?action=getWarehouses&cityRef=${novaPoshtaFormData.city?.id}`;
-        if (debouncedWarehouseSearch) {
-          url += `&findByString=${encodeURIComponent(debouncedWarehouseSearch)}`;
+        
+        // Sanitize the search term by removing '№' and trimming whitespace.
+        const sanitizedSearch = debouncedWarehouseSearch.replace(/№/g, '').trim();
+
+        if (sanitizedSearch) {
+          url += `&findByString=${encodeURIComponent(sanitizedSearch)}`;
         }
+
         const res = await authenticatedFetch(url);
         if (!res.ok) throw new Error('Failed to fetch warehouses');
         const data = await res.json();
