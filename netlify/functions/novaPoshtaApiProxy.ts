@@ -1,6 +1,5 @@
 
 
-
 import { Handler } from '@netlify/functions';
 
 const commonHeaders = {
@@ -45,53 +44,76 @@ const handler: Handler = async (event) => {
           CityName: findByString,
           Limit: 20,
         };
-        break;
+        const settlementsResponse = await fetch(NP_API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody),
+        });
+        const settlementsData = await settlementsResponse.json();
+        if (!settlementsResponse.ok || !settlementsData.success) {
+            console.error("Nova Poshta API returned an error:", settlementsData.errors, "for request:", requestBody);
+            throw new Error(`Помилка API Нової Пошти: ${settlementsData.errors?.join(', ') || 'Unknown error'}`);
+        }
+        return { statusCode: 200, headers: commonHeaders, body: JSON.stringify(settlementsData) };
+
       case 'getWarehouses':
         if (!cityRef) {
-          return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: 'CityRef is required for getWarehouses action.' }) };
+          return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: 'CityRef is required.' }) };
         }
-        requestBody.modelName = 'Address';
-        requestBody.calledMethod = 'getWarehouses';
-        requestBody.methodProperties = {
-          CityRef: cityRef,
-          Limit: 500, // Get a good number of warehouses
-        };
         
-        // Use FindByString for all user-initiated searches for flexibility.
-        // It can handle both numbers and text strings.
-        if (findByString) {
-            requestBody.methodProperties.FindByString = findByString;
-        }
+        let allWarehouses: any[] = [];
+        let currentPage = 1;
+        const limit = 200; // A safe limit per page
 
-        break;
+        while (true) {
+            const pageRequestBody = {
+              apiKey: NP_API_KEY,
+              modelName: 'Address',
+              calledMethod: 'getWarehouses',
+              methodProperties: {
+                CityRef: cityRef,
+                Page: currentPage,
+                Limit: limit,
+                Language: "UA"
+              },
+            };
+            
+            const npResponse = await fetch(NP_API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(pageRequestBody),
+            });
+            const data = await npResponse.json();
+
+            if (!data.success) {
+                 console.error("Nova Poshta API returned an error:", data.errors, "for request:", pageRequestBody);
+                 throw new Error(`Помилка API Нової Пошти: ${data.errors?.join(', ') || 'Unknown error'}`);
+            }
+
+            const warehousesOnPage = data.data || [];
+            allWarehouses = allWarehouses.concat(warehousesOnPage);
+
+            if (warehousesOnPage.length < limit) {
+                // We've fetched the last page, or there were no results.
+                break;
+            }
+            currentPage++;
+             if (currentPage > 10) { // Safety break to prevent infinite loops
+                console.warn(`Stopped fetching warehouses for CityRef ${cityRef} after 10 pages.`);
+                break;
+            }
+        }
+        
+        return {
+          statusCode: 200,
+          headers: commonHeaders,
+          body: JSON.stringify({ success: true, data: allWarehouses }),
+        };
+
       default:
         return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: 'Invalid action provided.' }) };
     }
 
-    const npResponse = await fetch(NP_API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestBody),
-    });
-    
-    const data = await npResponse.json();
-    
-    if (npResponse.status !== 200 || data.success === false) {
-        console.error("Nova Poshta API returned an error:", data.errors, "for request:", requestBody);
-        return { 
-          statusCode: npResponse.status, 
-          headers: commonHeaders, 
-          body: JSON.stringify({ 
-            message: `Помилка від API Нової Пошти: ${data.errors?.join(', ') || npResponse.statusText}`
-          })
-        };
-    }
-
-    return {
-      statusCode: 200,
-      headers: commonHeaders,
-      body: JSON.stringify(data),
-    };
   } catch (error: any) {
     console.error('Error in novaPoshtaApiProxy function:', error);
     return {
