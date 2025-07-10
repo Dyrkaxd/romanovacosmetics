@@ -6,6 +6,8 @@
 
 
 
+
+
 import React, { useState, useEffect, useCallback, useMemo, useRef, FC, SVGProps } from 'react';
 import { Order, OrderItem, Customer, Product, ManagedUser, PaginatedResponse, NovaPoshtaDepartment } from '../types';
 import { EyeIcon, XMarkIcon, PlusIcon, TrashIcon, PencilIcon, DocumentTextIcon, FilterIcon, DownloadIcon, ChevronDownIcon, ShareIcon, EllipsisVerticalIcon, TruckIcon } from '../components/Icons';
@@ -350,8 +352,14 @@ const OrdersPage: React.FC = () => {
 
     const handleNpWidgetMessage = useCallback((event: MessageEvent) => {
         if (event.origin !== 'https://widget.novapost.com') return;
-        if (event.data && typeof event.data === 'object' && event.data.id) {
-            setNpDepartment(event.data);
+        const data = event.data;
+        if (data && typeof data === 'object' && data.externId) {
+            const departmentData: NovaPoshtaDepartment = {
+                id: data.externId,
+                name: data.name,
+                settlementName: data.settlementName,
+            };
+            setNpDepartment(departmentData);
             closeNpWidget();
         } else if (event.data === 'close') {
             closeNpWidget();
@@ -409,9 +417,8 @@ const OrdersPage: React.FC = () => {
             return;
         }
 
-        // Add a more specific check for cityRef, which is the likely cause of the issue.
-        if (!npDepartment.cityRef) {
-            setModalError('Помилка даних відділення: відсутній ідентифікатор міста (cityRef). Будь ласка, спробуйте обрати відділення ще раз.');
+        if (!npDepartment.id || !npDepartment.settlementName) {
+            setModalError('Неповні дані від віджета "Нової Пошти". Спробуйте обрати відділення ще раз.');
             return;
         }
 
@@ -429,7 +436,7 @@ const OrdersPage: React.FC = () => {
                     name: customer.name,
                     phone: customer.phone.replace(/[^0-9]/g, ''),
                 },
-                recipientCityRef: npDepartment.cityRef,
+                recipientSettlementName: npDepartment.settlementName,
                 recipientAddressRef: npDepartment.id,
                 weight: packageDetails.weight,
                 volumeGeneral: (parseFloat(packageDetails.length) * parseFloat(packageDetails.width) * parseFloat(packageDetails.height)) / 1000000,
@@ -724,8 +731,14 @@ const OrdersPage: React.FC = () => {
                           </div>
                           <div className="angle"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" clipRule="evenodd" d="M5.49399 1.44891L10.0835 5.68541L10.1057 5.70593C10.4185 5.99458 10.6869 6.24237 10.8896 6.4638C11.1026 6.69642 11.293 6.95179 11.4023 7.27063C11.5643 7.74341 11.5643 8.25668 11.4023 8.72946C11.293 9.0483 11.1026 9.30367 10.8896 9.53629C10.6869 9.75771 10.4184 10.0055 10.1057 10.2942L10.0835 10.3147L5.49398 14.5511L4.47657 13.4489L9.06607 9.21246C9.40722 8.89756 9.62836 8.69258 9.78328 8.52338C9.93272 8.36015 9.96962 8.28306 9.98329 8.24318C10.0373 8.08559 10.0373 7.9145 9.98329 7.7569C9.96963 7.71702 9.93272 7.63993 9.78328 7.4767C9.62837 7.3075 9.40722 7.10252 9.06608 6.78761L4.47656 2.55112L5.49399 1.44891Z" fill="#475569"/></svg></div>
                           <div className="wrapper">
-                            <span className="text" style={{ marginBottom: npDepartment ? '5px' : '0' }}>{npDepartment?.shortName || ''}</span>
-                            <span className="text-description">{npDepartment ? `${npDepartment.addressParts?.city || ''} вул. ${npDepartment.addressParts?.street || ''}, ${npDepartment.addressParts?.building || ''}` : 'Обрати відділення або поштомат'}</span>
+                            {npDepartment ? (
+                                <>
+                                    <span className="text" style={{ marginBottom: '5px' }}>{npDepartment.name}</span>
+                                    <span className="text-description">{npDepartment.settlementName}</span>
+                                </>
+                            ) : (
+                                <span className="text-description">Обрати відділення або поштомат</span>
+                            )}
                           </div>
                         </div>
 

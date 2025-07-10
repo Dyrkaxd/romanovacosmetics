@@ -1,4 +1,5 @@
 
+
 import { Handler } from '@netlify/functions';
 import { supabase } from '../../services/supabaseClient';
 import { requireAuth } from '../utils/auth';
@@ -26,7 +27,7 @@ const handler: Handler = async (event) => {
     const {
       orderId,
       recipient,
-      recipientCityRef,
+      recipientSettlementName,
       recipientAddressRef,
       weight,
       volumeGeneral,
@@ -37,7 +38,7 @@ const handler: Handler = async (event) => {
     const missingFields = [];
     if (!orderId) missingFields.push('orderId');
     if (!recipient) missingFields.push('recipient');
-    if (!recipientCityRef) missingFields.push('recipientCityRef');
+    if (!recipientSettlementName) missingFields.push('recipientSettlementName');
     if (!recipientAddressRef) missingFields.push('recipientAddressRef');
     if (!weight) missingFields.push('weight');
     if (volumeGeneral === undefined || volumeGeneral === null) missingFields.push('volumeGeneral');
@@ -59,6 +60,25 @@ const handler: Handler = async (event) => {
     if (!NOVA_POSHTA_API_KEY || !NOVA_POSHTA_SENDER_REF || !NOVA_POSHTA_SENDER_CONTACT_REF || !NOVA_POSHTA_SENDER_ADDRESS_REF || !NOVA_POSHTA_SENDER_PHONE) {
         return { statusCode: 500, headers: commonHeaders, body: JSON.stringify({ message: "Server configuration error: Nova Poshta credentials are not set."})};
     }
+
+    // Resolve settlement name to city Ref
+    const citySearchRes = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            apiKey: NOVA_POSHTA_API_KEY,
+            modelName: "Address",
+            calledMethod: "getCities",
+            methodProperties: { FindByString: recipientSettlementName, Limit: 1 }
+        })
+    });
+    const citySearchData = await citySearchRes.json();
+    if (!citySearchData.success || !citySearchData.data || citySearchData.data.length === 0) {
+        console.error('NP City Search Error:', citySearchData.errors);
+        throw new Error(`Не вдалося знайти місто "${recipientSettlementName}" у базі "Нової Пошти".`);
+    }
+    const recipientCityRef = citySearchData.data[0].Ref;
+
 
     // We need to get the sender's city Ref from the sender's address Ref
     const npAddressRes = await fetch(API_URL, {
