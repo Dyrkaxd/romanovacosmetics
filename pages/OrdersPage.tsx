@@ -367,40 +367,70 @@ const OrdersPage: React.FC = () => {
     };
 
     useEffect(() => {
-      if (isNpWidgetOpen && npIframeRef.current && activeTtnOrder) {
-          const iframe = npIframeRef.current;
-          window.addEventListener('message', handleNpWidgetMessage);
+        const initializeNpWidget = async () => {
+            if (isNpWidgetOpen && npIframeRef.current && activeTtnOrder) {
+                const iframe = npIframeRef.current;
+                
+                const customer = customers.find(c => c.id === activeTtnOrder.customerId);
+                const city = customer?.address?.city;
+                let settlementRef: string | null = null;
+    
+                if (city) {
+                    try {
+                        const res = await authenticatedFetch(`/api/novaPoshtaCityResolver?cityName=${encodeURIComponent(city)}`);
+                        if (res.ok) {
+                            const data = await res.json();
+                            settlementRef = data.ref;
+                        } else {
+                           console.warn(`Could not resolve city "${city}" to a settlement Ref. Widget will open without filter.`);
+                        }
+                    } catch (e) {
+                        console.error("Error fetching settlement Ref:", e);
+                    }
+                }
+    
+                const handleLoad = () => {
+                    setTimeout(() => {
+                        const widgetPayload: {
+                            apiKey: string;
+                            theme: string;
+                            language: string;
+                            settlementId?: string;
+                            city?: string;
+                        } = {
+                            apiKey: '',
+                            theme: 'light',
+                            language: 'uk',
+                        };
 
-          const handleLoad = () => {
-              const customer = customers.find(c => c.id === activeTtnOrder?.customerId);
-              const city = customer?.address?.city || '';
-              // Use a timeout to ensure the widget's internal scripts are ready for the message.
-              setTimeout(() => {
-                  const data = {
-                      apiKey: '',
-                      theme: 'light',
-                      language: 'uk',
-                      // Conditionally add city to pre-filter if it exists.
-                      // Otherwise, allow user to search freely.
-                      ...(city && { city: city })
-                  };
-                  iframe.contentWindow?.postMessage(data, '*');
-              }, 100);
-          };
+                        if (settlementRef) {
+                            widgetPayload.settlementId = settlementRef;
+                        } else if (city) {
+                            // Fallback to city name if ref resolution fails
+                            widgetPayload.city = city;
+                        }
 
-          iframe.addEventListener('load', handleLoad);
-          iframe.src = 'https://widget.novapost.com/division/index.html';
-
-          // Cleanup function
-          return () => {
-              window.removeEventListener('message', handleNpWidgetMessage);
-              iframe.removeEventListener('load', handleLoad);
-              if (iframe) {
-                iframe.src = 'about:blank';
-              }
-          };
-      }
-  }, [isNpWidgetOpen, activeTtnOrder, customers, handleNpWidgetMessage]);
+                        iframe.contentWindow?.postMessage(widgetPayload, '*');
+                    }, 200); // Increased timeout for stability
+                };
+    
+                window.addEventListener('message', handleNpWidgetMessage);
+                iframe.addEventListener('load', handleLoad, { once: true });
+                iframe.src = 'https://widget.novapost.com/division/index.html';
+    
+                // Cleanup
+                return () => {
+                    window.removeEventListener('message', handleNpWidgetMessage);
+                    iframe.removeEventListener('load', handleLoad);
+                    if (iframe) {
+                      iframe.src = 'about:blank';
+                    }
+                };
+            }
+        };
+    
+        initializeNpWidget();
+    }, [isNpWidgetOpen, activeTtnOrder, customers, handleNpWidgetMessage]);
   
     const handleCreateTtn = async (e: React.FormEvent) => {
         e.preventDefault();
