@@ -102,7 +102,6 @@ const OrdersPage: React.FC = () => {
   const [warehouseSearchTerm, setWarehouseSearchTerm] = useState('');
   const [debouncedWarehouseSearch, setDebouncedWarehouseSearch] = useState(warehouseSearchTerm);
   const [cityResults, setCityResults] = useState<NovaPoshtaRef[]>([]);
-  const [allWarehousesForCity, setAllWarehousesForCity] = useState<NovaPoshtaRef[]>([]);
   const [warehouseResults, setWarehouseResults] = useState<NovaPoshtaRef[]>([]);
   const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false);
   const [isWarehouseDropdownOpen, setIsWarehouseDropdownOpen] = useState(false);
@@ -202,53 +201,45 @@ const OrdersPage: React.FC = () => {
     fetchCities();
   }, [debouncedCitySearch, isCityDropdownOpen]);
 
-  // Fetch ALL warehouses when a city is selected
+
+  // API-driven search for warehouses. Fetches when dropdown is opened or search term changes.
   useEffect(() => {
-    if (!novaPoshtaFormData.city?.id) {
-        setAllWarehousesForCity([]);
-        setWarehouseResults([]);
-        return;
+    // Don't fetch if the dropdown isn't open or if no city is selected
+    if (!isWarehouseDropdownOpen || !novaPoshtaFormData.city?.id) {
+      setWarehouseResults([]);
+      return;
     }
 
-    const fetchAllWarehousesForCity = async () => {
-        setIsSearching(true);
-        try {
-            const url = `/api/novaPoshtaApiProxy?action=getWarehouses&cityRef=${novaPoshtaFormData.city?.id}`;
-            const res = await authenticatedFetch(url);
-            if (!res.ok) throw new Error('Failed to fetch warehouses');
-            const data = await res.json();
-            const warehouses = data.data || [];
-            setAllWarehousesForCity(warehouses);
-            setWarehouseResults(warehouses);
-        } catch (error) {
-            console.error("Warehouse fetch error:", error);
-            setAllWarehousesForCity([]);
-            setWarehouseResults([]);
-        } finally {
-            setIsSearching(false);
+    const fetchWarehouses = async () => {
+      setIsSearching(true);
+      setModalError(null); // Clear previous errors
+      try {
+        // Sanitize the search term before sending it to the API
+        const sanitizedSearch = debouncedWarehouseSearch.replace(/№/g, '').trim();
+        const searchTermParam = sanitizedSearch ? `&findByString=${encodeURIComponent(sanitizedSearch)}` : '';
+        const url = `/api/novaPoshtaApiProxy?action=getWarehouses&cityRef=${novaPoshtaFormData.city?.id}${searchTermParam}`;
+        
+        const res = await authenticatedFetch(url);
+        if (!res.ok) {
+            const errorData = await res.json().catch(() => ({ message: 'Не вдалося завантажити відділення.'}));
+            throw new Error(errorData.message);
         }
+        
+        const data = await res.json();
+        const warehouses = data.data || [];
+        setWarehouseResults(warehouses);
+
+      } catch (error: any) {
+        console.error("Warehouse fetch error:", error);
+        setWarehouseResults([]);
+        setModalError(error.message || 'Помилка завантаження відділень.');
+      } finally {
+        setIsSearching(false);
+      }
     };
 
-    fetchAllWarehousesForCity();
-  }, [novaPoshtaFormData.city]);
-
-
-  // Perform client-side filtering on warehouses
-  useEffect(() => {
-      if (!debouncedWarehouseSearch) {
-          setWarehouseResults(allWarehousesForCity);
-          return;
-      }
-
-      const sanitizedSearch = debouncedWarehouseSearch.replace(/№/g, '').trim().toLowerCase();
-      
-      const filtered = allWarehousesForCity.filter(wh => 
-          wh.Description.toLowerCase().replace(/№/g, '').includes(sanitizedSearch)
-      );
-      
-      setWarehouseResults(filtered);
-
-  }, [debouncedWarehouseSearch, allWarehousesForCity]);
+    fetchWarehouses();
+  }, [debouncedWarehouseSearch, novaPoshtaFormData.city?.id, isWarehouseDropdownOpen]);
 
 
   const fetchAuxiliaryData = useCallback(async () => {
