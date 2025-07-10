@@ -30,9 +30,10 @@ const handler: Handler = async (event) => {
       weight,
       volumeGeneral,
       description,
+      cost,
     } = JSON.parse(event.body || '{}');
 
-    if (!orderId || !recipient || !recipientCityRef || !recipientAddressRef || !weight || !volumeGeneral || !description) {
+    if (!orderId || !recipient || !recipientCityRef || !recipientAddressRef || !weight || !volumeGeneral || !description || !cost) {
       return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: 'Missing required fields for TTN creation.' }) };
     }
     
@@ -75,12 +76,12 @@ const handler: Handler = async (event) => {
         PayerType: "Sender",
         PaymentMethod: "Cash",
         CargoType: "Parcel",
-        VolumeGeneral: volumeGeneral,
-        Weight: weight,
+        VolumeGeneral: String(volumeGeneral),
+        Weight: String(weight),
         ServiceType: "WarehouseWarehouse",
         SeatsAmount: "1",
         Description: description,
-        Cost: "1", // Required field, set to a nominal value
+        Cost: String(cost),
         CitySender: senderCityRef,
         Sender: NOVA_POSHTA_SENDER_REF,
         SenderAddress: NOVA_POSHTA_SENDER_ADDRESS_REF,
