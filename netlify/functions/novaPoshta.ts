@@ -1,3 +1,4 @@
+
 import { Handler } from '@netlify/functions';
 import { supabase } from '../../services/supabaseClient';
 import { requireAuth } from '../utils/auth';
@@ -33,8 +34,18 @@ const handler: Handler = async (event) => {
       cost,
     } = JSON.parse(event.body || '{}');
 
-    if (!orderId || !recipient || !recipientCityRef || !recipientAddressRef || !weight || !volumeGeneral || !description || !cost) {
-      return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: 'Missing required fields for TTN creation.' }) };
+    const missingFields = [];
+    if (!orderId) missingFields.push('orderId');
+    if (!recipient) missingFields.push('recipient');
+    if (!recipientCityRef) missingFields.push('recipientCityRef');
+    if (!recipientAddressRef) missingFields.push('recipientAddressRef');
+    if (!weight) missingFields.push('weight');
+    if (volumeGeneral === undefined || volumeGeneral === null) missingFields.push('volumeGeneral');
+    if (!description) missingFields.push('description');
+    if (cost === undefined || cost === null) missingFields.push('cost');
+    
+    if (missingFields.length > 0) {
+        return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: `Missing required fields for TTN creation: ${missingFields.join(', ')}.` }) };
     }
     
     const {
