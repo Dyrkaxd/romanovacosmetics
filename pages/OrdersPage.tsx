@@ -5,6 +5,7 @@
 
 
 
+
 import React, { useState, useEffect, useCallback, useMemo, useRef, FC, SVGProps } from 'react';
 import { Order, OrderItem, Customer, Product, ManagedUser, PaginatedResponse, NovaPoshtaDepartment } from '../types';
 import { EyeIcon, XMarkIcon, PlusIcon, TrashIcon, PencilIcon, DocumentTextIcon, FilterIcon, DownloadIcon, ChevronDownIcon, ShareIcon, EllipsisVerticalIcon, TruckIcon } from '../components/Icons';
@@ -407,6 +408,13 @@ const OrdersPage: React.FC = () => {
             setModalError('Будь ласка, виберіть відділення "Нової Пошти".');
             return;
         }
+
+        // Add a more specific check for cityRef, which is the likely cause of the issue.
+        if (!npDepartment.cityRef) {
+            setModalError('Помилка даних відділення: відсутній ідентифікатор міста (cityRef). Будь ласка, спробуйте обрати відділення ще раз.');
+            return;
+        }
+
         const customer = customers.find(c => c.id === activeTtnOrder.customerId);
         if (!customer) {
             setModalError('Не вдалося знайти дані клієнта.');
