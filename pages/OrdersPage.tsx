@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Order, OrderItem, Customer, Product, ManagedUser, PaginatedResponse, NovaPoshtaFormData, NovaPoshtaRef, NovaPoshtaTrackingInfo } from '../types';
 import { EyeIcon, XMarkIcon, PlusIcon, TrashIcon, PencilIcon, DocumentTextIcon, FilterIcon, DownloadIcon, ChevronDownIcon, ShareIcon, EllipsisVerticalIcon, TruckIcon, PrinterIcon } from '../components/Icons';
@@ -100,13 +101,13 @@ const OrdersPage: React.FC = () => {
   const [citySearchTerm, setCitySearchTerm] = useState('');
   const [debouncedCitySearch, setDebouncedCitySearch] = useState(citySearchTerm);
   const [warehouseSearchTerm, setWarehouseSearchTerm] = useState('');
+  const [debouncedWarehouseSearch, setDebouncedWarehouseSearch] = useState(warehouseSearchTerm);
   const [cityResults, setCityResults] = useState<NovaPoshtaRef[]>([]);
   const [warehouseResults, setWarehouseResults] = useState<NovaPoshtaRef[]>([]);
-  const [allCityWarehouses, setAllCityWarehouses] = useState<NovaPoshtaRef[]>([]);
   const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false);
   const [isWarehouseDropdownOpen, setIsWarehouseDropdownOpen] = useState(false);
   const [isSearchingCities, setIsSearchingCities] = useState(false);
-  const [isWarehouseListLoading, setIsWarehouseListLoading] = useState(false);
+  const [isSearchingWarehouses, setIsSearchingWarehouses] = useState(false);
 
   // Tracking state
   const [trackingData, setTrackingData] = useState<Record<string, NovaPoshtaTrackingInfo>>({});
@@ -159,10 +160,17 @@ const OrdersPage: React.FC = () => {
     }
   }, [successMessage]);
 
+  // Debounce handlers
   useEffect(() => {
     const handler = setTimeout(() => setDebouncedCitySearch(citySearchTerm), 300);
     return () => clearTimeout(handler);
   }, [citySearchTerm]);
+
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedWarehouseSearch(warehouseSearchTerm), 300);
+    return () => clearTimeout(handler);
+  }, [warehouseSearchTerm]);
+
 
   // Fetch cities
   useEffect(() => {
@@ -192,50 +200,36 @@ const OrdersPage: React.FC = () => {
     fetchCities();
   }, [debouncedCitySearch, isCityDropdownOpen]);
 
-  // Fetch all warehouses when a city is selected
+  // Fetch warehouses based on search
   useEffect(() => {
-    if (!novaPoshtaFormData.city?.id) {
-        setAllCityWarehouses([]);
-        setWarehouseResults([]);
-        return;
+    if (!novaPoshtaFormData.city?.id || debouncedWarehouseSearch.length < 2) {
+      setWarehouseResults([]);
+      return;
     }
-    const fetchAllWarehousesForCity = async () => {
-        setIsWarehouseListLoading(true);
-        setModalError(null);
-        try {
-            const url = `/api/novaPoshtaApiProxy?action=getWarehouses&cityRef=${novaPoshtaFormData.city!.id}`;
-            const res = await authenticatedFetch(url);
-            if (!res.ok) {
-                const errorData = await res.json().catch(() => ({ message: 'Не вдалося завантажити відділення.' }));
-                throw new Error(errorData.message);
-            }
-            const data = await res.json();
-            setAllCityWarehouses(data.data || []);
-        } catch (error: any) {
-            console.error("Failed to fetch all warehouses:", error);
-            setModalError(error.message || 'Помилка завантаження списку відділень.');
-            setAllCityWarehouses([]);
-        } finally {
-            setIsWarehouseListLoading(false);
+
+    const fetchWarehouses = async () => {
+      setIsSearchingWarehouses(true);
+      setModalError(null);
+      try {
+        const url = `/api/novaPoshtaApiProxy?action=getWarehouses&cityRef=${novaPoshtaFormData.city!.id}&findByString=${encodeURIComponent(debouncedWarehouseSearch)}`;
+        const res = await authenticatedFetch(url);
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({ message: 'Не вдалося знайти відділення.' }));
+          throw new Error(errorData.message);
         }
-    };
-    fetchAllWarehousesForCity();
-  }, [novaPoshtaFormData.city?.id]);
-
-
-  // Perform client-side filtering on warehouses
-  useEffect(() => {
-      if (warehouseSearchTerm.trim() === '') {
-          // Show all results if search is empty, no need to slice, dropdown will be scrollable
-          setWarehouseResults(allCityWarehouses);
-      } else {
-          const lowercasedFilter = warehouseSearchTerm.toLowerCase().replace(/№/g, '').trim();
-          const filtered = allCityWarehouses.filter(wh =>
-              wh.Description.toLowerCase().includes(lowercasedFilter)
-          );
-          setWarehouseResults(filtered);
+        const data = await res.json();
+        setWarehouseResults(data.data || []);
+      } catch (error: any) {
+        console.error("Failed to fetch warehouses:", error);
+        setModalError(error.message || 'Помилка пошуку відділень.');
+        setWarehouseResults([]);
+      } finally {
+        setIsSearchingWarehouses(false);
       }
-  }, [warehouseSearchTerm, allCityWarehouses]);
+    };
+
+    fetchWarehouses();
+  }, [debouncedWarehouseSearch, novaPoshtaFormData.city?.id]);
 
 
   const fetchAuxiliaryData = useCallback(async () => {
@@ -606,7 +600,6 @@ const OrdersPage: React.FC = () => {
     setWarehouseSearchTerm('');
     setCityResults([]);
     setWarehouseResults([]);
-    setAllCityWarehouses([]);
     setModalError(null);
     setIsNovaPoshtaModalOpen(true);
   };
@@ -975,16 +968,18 @@ const OrdersPage: React.FC = () => {
                     onChange={e => setWarehouseSearchTerm(e.target.value)}
                     onFocus={() => setIsWarehouseDropdownOpen(true)}
                     onBlur={() => setTimeout(() => setIsWarehouseDropdownOpen(false), 200)}
-                    placeholder={isWarehouseListLoading ? 'Завантаження...' : 'Почніть вводити відділення...'}
+                    placeholder={!novaPoshtaFormData.city ? 'Спочатку виберіть місто' : 'Введіть 2+ символи для пошуку...'}
                     required 
-                    disabled={!novaPoshtaFormData.city || isWarehouseListLoading}
+                    disabled={!novaPoshtaFormData.city || isSearchingWarehouses}
                     className="mt-1 block w-full p-2.5 border-slate-300 rounded-lg disabled:bg-slate-100 disabled:cursor-not-allowed" 
                     autoComplete="off"
                   />
                   {isWarehouseDropdownOpen && novaPoshtaFormData.city && (
                         <div className="absolute z-20 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                        {isWarehouseListLoading ? (
-                            <div className="p-3 text-sm text-slate-500">Завантаження відділень...</div>
+                        {isSearchingWarehouses ? (
+                            <div className="p-3 text-sm text-slate-500">Пошук...</div>
+                        ) : warehouseSearchTerm.length < 2 ? (
+                            <div className="p-3 text-sm text-slate-500">Введіть принаймні 2 символи.</div>
                         ) : warehouseResults.length > 0 ? (
                             warehouseResults.map(wh => (
                                 <div key={wh.Ref} 
@@ -998,9 +993,7 @@ const OrdersPage: React.FC = () => {
                                 </div>
                             ))
                         ) : (
-                            <div className="p-3 text-sm text-slate-500">
-                                {allCityWarehouses.length > 0 ? "Відділень не знайдено." : "Для цього міста відділення відсутні."}
-                            </div>
+                            <div className="p-3 text-sm text-slate-500">Відділень не знайдено.</div>
                         )}
                         </div>
                   )}
