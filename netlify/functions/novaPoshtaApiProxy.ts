@@ -1,5 +1,4 @@
 
-
 import { Handler } from '@netlify/functions';
 
 const commonHeaders = {
@@ -18,7 +17,7 @@ const handler: Handler = async (event) => {
   }
   
   if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, headers: commonHeaders, body: JSON.stringify({ message: 'Method Not Allowed' }) };
+    return { statusCode: 405, headers: commonHeaders, body: JSON.stringify({ message: 'Method Not Allowed. Please use POST.' }) };
   }
   
   if (!NP_API_KEY) {
@@ -31,9 +30,9 @@ const handler: Handler = async (event) => {
   }
   
   try {
-    const { modelName, calledMethod, methodProperties } = JSON.parse(event.body || '{}');
+    const requestPayload = JSON.parse(event.body || '{}');
 
-    if (!modelName || !calledMethod) {
+    if (!requestPayload.modelName || !requestPayload.calledMethod) {
       return { 
         statusCode: 400, 
         headers: commonHeaders, 
@@ -41,35 +40,23 @@ const handler: Handler = async (event) => {
       };
     }
 
-    // Intelligent search parameter selection for warehouses
-    if (calledMethod === 'getWarehouses' && methodProperties?.FindByString) {
-        const searchTerm = methodProperties.FindByString;
-        // Check if the search term is purely numeric
-        if (/^\d+$/.test(searchTerm)) {
-            // If it is, use the more precise and reliable `WarehouseId` parameter
-            delete methodProperties.FindByString;
-            methodProperties.WarehouseId = searchTerm;
-        }
-        // For text searches, the default FindByString is correct and will be used.
-    }
-
-    const requestBody = {
+    // Construct the final payload for Nova Poshta API by adding the API key
+    const npRequestBody = {
+      ...requestPayload,
       apiKey: NP_API_KEY,
-      modelName,
-      calledMethod,
-      methodProperties: methodProperties || {},
     };
 
     const npResponse = await fetch(NP_API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestBody),
+      body: JSON.stringify(npRequestBody),
     });
 
     const data = await npResponse.json();
 
     if (!npResponse.ok || !data.success) {
-      console.error("Nova Poshta API Error:", { errors: data.errors, warnings: data.warnings, info: data.info }, "for request:", requestBody);
+      console.error("Nova Poshta API Error:", { errors: data.errors, warnings: data.warnings, info: data.info }, "for request:", requestPayload);
+      // Pass the specific error from NP back to the client
       throw new Error(data.errors?.join(', ') || 'Unknown API error from Nova Poshta.');
     }
     
