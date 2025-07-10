@@ -2,6 +2,7 @@
 
 
 
+
 import React, { useState, useEffect, useCallback, useMemo, useRef, FC, SVGProps } from 'react';
 import { Order, OrderItem, Customer, Product, ManagedUser, PaginatedResponse, NovaPoshtaDepartment } from '../types';
 import { EyeIcon, XMarkIcon, PlusIcon, TrashIcon, PencilIcon, DocumentTextIcon, FilterIcon, DownloadIcon, ChevronDownIcon, ShareIcon, EllipsisVerticalIcon, TruckIcon } from '../components/Icons';
@@ -421,7 +422,7 @@ const OrdersPage: React.FC = () => {
                 recipientCityRef: npDepartment.cityRef,
                 recipientAddressRef: npDepartment.id,
                 weight: packageDetails.weight,
-                volumeGeneral: (parseFloat(packageDetails.length) * parseFloat(packageDetails.width) * parseFloat(packageDetails.height)) / 4000,
+                volumeGeneral: (parseFloat(packageDetails.length) * parseFloat(packageDetails.width) * parseFloat(packageDetails.height)) / 1000000,
                 description: packageDetails.description,
             };
             
