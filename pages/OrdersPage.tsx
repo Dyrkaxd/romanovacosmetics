@@ -9,6 +9,8 @@
 
 
 
+
+
 import React, { useState, useEffect, useCallback, useMemo, useRef, FC, SVGProps } from 'react';
 import { Order, OrderItem, Customer, Product, ManagedUser, PaginatedResponse, NovaPoshtaDepartment } from '../types';
 import { EyeIcon, XMarkIcon, PlusIcon, TrashIcon, PencilIcon, DocumentTextIcon, FilterIcon, DownloadIcon, ChevronDownIcon, ShareIcon, EllipsisVerticalIcon, TruckIcon } from '../components/Icons';
@@ -356,9 +358,10 @@ const OrdersPage: React.FC = () => {
         const data = event.data;
         if (data && typeof data === 'object' && data.externId) {
             const departmentData: NovaPoshtaDepartment = {
-                id: data.externId,
+                ref: data.externId,
                 name: data.name,
                 settlementName: data.settlementName,
+                departmentNumber: data.number,
             };
             setNpDepartment(departmentData);
             closeNpWidget();
@@ -417,7 +420,7 @@ const OrdersPage: React.FC = () => {
             return;
         }
 
-        if (!npDepartment.id || !npDepartment.settlementName) {
+        if (!npDepartment.ref || !npDepartment.settlementName) {
             setModalError('Неповні дані від віджета "Нової Пошти". Спробуйте обрати відділення ще раз.');
             return;
         }
@@ -437,7 +440,7 @@ const OrdersPage: React.FC = () => {
                     phone: customer.phone.replace(/[^0-9]/g, ''),
                 },
                 recipientSettlementName: npDepartment.settlementName,
-                recipientAddressRef: npDepartment.id,
+                recipientAddressRef: npDepartment.ref,
                 weight: packageDetails.weight,
                 volumeGeneral: (parseFloat(packageDetails.length) * parseFloat(packageDetails.width) * parseFloat(packageDetails.height)) / 1000000,
                 description: packageDetails.description,
