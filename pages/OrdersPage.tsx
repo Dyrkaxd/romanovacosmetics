@@ -344,38 +344,25 @@ const OrdersPage: React.FC = () => {
         if (event.origin !== 'https://widget.novapost.com') return;
         const data = event.data;
     
-        // The final selection event payload contains `externalId`
-        if (data && typeof data === 'object' && data.externalId) {
-            if (data.name && data.settlementName && data.number) {
-                const departmentData: NovaPoshtaDepartment = {
-                    ref: data.externalId,
-                    name: data.name,
-                    settlementName: data.settlementName,
-                    departmentNumber: data.number,
-                };
-                setModalError(null);
-                setNpDepartment(departmentData);
-                closeNpWidget();
-            } else {
-                console.warn("Received incomplete department data from widget (with externalId):", data);
-                setNpDepartment(null);
-                setModalError('Не вдалося отримати повні дані відділення від "Нової Пошти". Будь ласка, спробуйте обрати відділення ще раз.');
-                closeNpWidget();
-            }
+        // A valid selection message has all these properties.
+        // Intermediate messages might have `externalId` but lack others. We ignore them.
+        if (data && typeof data === 'object' && data.externalId && data.name && data.settlementName && data.number) {
+            const departmentData: NovaPoshtaDepartment = {
+                ref: data.externalId,
+                name: data.name,
+                settlementName: data.settlementName,
+                departmentNumber: data.number,
+            };
+            setModalError(null);
+            setNpDepartment(departmentData);
+            closeNpWidget();
         } else if (event.data === 'close') {
             closeNpWidget();
-        } else {
-            // It's some other message, not an error. Don't show an error to the user.
-            console.log("Ignoring informational message from NP widget:", data);
         }
+        // Implicitly ignore all other messages (e.g., informational updates) from the widget.
     }, [closeNpWidget]);
     
     const openNpWidget = () => {
-        const customer = customers.find(c => c.id === activeTtnOrder?.customerId);
-        if (!customer?.phone) {
-            setPageError("Неможливо створити ТТН: у клієнта не вказано номер телефону.");
-            return;
-        }
         setIsNpWidgetOpen(true);
     };
 
