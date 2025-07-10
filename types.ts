@@ -61,44 +61,6 @@ export interface Order {
   novaPoshtaPrintUrl?: string;
 }
 
-export interface NovaPoshtaFormData {
-  city: { id: string; name: string; } | null;
-  warehouse: { id: string; name: string; } | null;
-  weight: number;
-  length: number;
-  width: number;
-  height: number;
-  description: string;
-}
-
-export interface NovaPoshtaRef {
-  Ref: string;
-  Description: string;
-}
-
-export interface NovaPoshtaHelperRef {
-  Ref: string;
-  Description: string;
-  phone?: string;
-}
-
-export interface NovaPoshtaHelperResult {
-  sender?: NovaPoshtaHelperRef | { error: string };
-  contact?: NovaPoshtaHelperRef | { error: string };
-  address?: NovaPoshtaHelperRef | { error: string };
-}
-
-export interface NovaPoshtaTrackingInfo {
-  StatusCode: string;
-  Status: string;
-  WarehouseSender: string;
-  WarehouseRecipient: string;
-  ScheduledDeliveryDate: string;
-  RecipientDateTime: string;
-  PayerType: string;
-  AmountToPay: number;
-}
-
 export interface NavItem {
   name: string;
   path: string;
@@ -213,4 +175,17 @@ export interface DashboardData {
   }[];
   recentOrders: Pick<Order, 'id' | 'customerName' | 'totalAmount' | 'status' | 'date'>[];
   topProducts: Pick<TopProduct, 'productName' | 'totalRevenue'>[];
+}
+
+export interface NovaPoshtaDepartment {
+  id: string;
+  shortName: string;
+  addressParts: {
+    city: string;
+    street: string;
+    building: string;
+  };
+  cityRef: string;
+  latitude: string;
+  longitude: string;
 }

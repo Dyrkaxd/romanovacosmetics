@@ -1,15 +1,12 @@
 
 
-
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Order, OrderItem, Customer, Product, ManagedUser, PaginatedResponse, NovaPoshtaFormData, NovaPoshtaRef, NovaPoshtaTrackingInfo } from '../types';
-import { EyeIcon, XMarkIcon, PlusIcon, TrashIcon, PencilIcon, DocumentTextIcon, FilterIcon, DownloadIcon, ChevronDownIcon, ShareIcon, EllipsisVerticalIcon, TruckIcon, PrinterIcon } from '../components/Icons';
+import React, { useState, useEffect, useCallback, useMemo, useRef, FC, SVGProps } from 'react';
+import { Order, OrderItem, Customer, Product, ManagedUser, PaginatedResponse, NovaPoshtaDepartment } from '../types';
+import { EyeIcon, XMarkIcon, PlusIcon, TrashIcon, PencilIcon, DocumentTextIcon, FilterIcon, DownloadIcon, ChevronDownIcon, ShareIcon, EllipsisVerticalIcon, TruckIcon } from '../components/Icons';
 import { authenticatedFetch } from '../utils/api';
-import { Database } from '../types/supabase';
 import Pagination from '../components/Pagination';
 import { useAuth } from '../AuthContext';
-
-type AdminRow = Database['public']['Tables']['admins']['Row'];
+import { useNavigate } from 'react-router-dom';
 
 const orderStatusValues: Order['status'][] = ['Ordered', 'Shipped', 'Received', 'Calculation', 'AwaitingApproval', 'PaidByClient', 'WrittenOff', 'ReadyForPickup'];
 const orderStatusTranslations: Record<Order['status'], string> = {
@@ -41,44 +38,19 @@ const StatusPill: React.FC<{ status: Order['status'] }> = ({ status }) => {
   );
 };
 
-const TrackingStatusPill: React.FC<{ trackingInfo: NovaPoshtaTrackingInfo }> = ({ trackingInfo }) => {
-  const statusCode = trackingInfo?.StatusCode;
-  const statusText = trackingInfo?.Status || 'Оновлення...';
-  
-  const styles: Record<string, string> = {
-    '3': 'bg-red-50 text-red-600 ring-red-600/20', // "Відмова від отримання"
-    '5': 'bg-blue-50 text-blue-700 ring-blue-700/20', // "На шляху до одержувача"
-    '6': 'bg-blue-50 text-blue-700 ring-blue-700/20', // "На шляху до одержувача"
-    '7': 'bg-lime-50 text-lime-700 ring-lime-700/20', // "Прибув у відділення"
-    '9': 'bg-green-50 text-green-700 ring-green-700/20', // "Отримано"
-    '10': 'bg-green-50 text-green-700 ring-green-700/20', // "Отримано"
-    '103': 'bg-red-50 text-red-600 ring-red-600/20', // "Відмова"
-    'default': 'bg-slate-50 text-slate-600 ring-slate-600/20' // Other statuses
-  };
-
-  const styleClass = styles[statusCode] || styles['default'];
-
-  return (
-    <div className={`px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ring-1 ring-inset ${styleClass}`}>
-      {statusText}
-    </div>
-  );
-};
-
-
+const toYYYYMMDD = (date: Date) => date.toISOString().split('T')[0];
 const API_BASE_URL = '/api';
 
 const OrdersPage: React.FC = () => {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
+  const navigate = useNavigate();
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [viewOrder, setViewOrder] = useState<Order | null>(null);
-  const [editableOrderStatus, setEditableOrderStatus] = useState<Order['status'] | undefined>(undefined);
-  const [editableOrderNotes, setEditableOrderNotes] = useState<string>('');
   
-  const [modalMode, setModalMode] = useState<'add' | 'edit' | null>(null);
-  const [activeOrderData, setActiveOrderData] = useState<Partial<Order> | null>(null);
+  const [modalMode, setModalMode] = useState<'add' | 'edit' | 'ttn' | null>(null);
+  const [activeOrderData, setActiveOrderData] = useState<Partial<Order>>({});
   const initialNewOrderItem: OrderItem = { productId: '', productName: '', quantity: 1, price: 0, discount: 0 };
 
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -86,33 +58,10 @@ const OrdersPage: React.FC = () => {
   const [allOrderManagers, setAllOrderManagers] = useState<{ email: string; name: string }[]>([]);
 
   const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [pageError, setPageError] = useState<string | null>(null);
   const [modalError, setModalError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-
-  // Nova Poshta Modal State
-  const [isNovaPoshtaModalOpen, setIsNovaPoshtaModalOpen] = useState(false);
-  const [novaPoshtaFormData, setNovaPoshtaFormData] = useState<NovaPoshtaFormData>({
-    city: null, warehouse: null, weight: 0.5, length: 20, width: 15, height: 10, description: 'Косметичні засоби'
-  });
-  const [isCreatingTtn, setIsCreatingTtn] = useState(false);
-
-  // NP Search State
-  const [citySearchTerm, setCitySearchTerm] = useState('');
-  const [debouncedCitySearch, setDebouncedCitySearch] = useState(citySearchTerm);
-  const [warehouseSearchTerm, setWarehouseSearchTerm] = useState('');
-  const [debouncedWarehouseSearch, setDebouncedWarehouseSearch] = useState(warehouseSearchTerm);
-  const [cityResults, setCityResults] = useState<NovaPoshtaRef[]>([]);
-  const [warehouseResults, setWarehouseResults] = useState<NovaPoshtaRef[]>([]);
-  const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false);
-  const [isWarehouseDropdownOpen, setIsWarehouseDropdownOpen] = useState(false);
-  const [isSearchingCities, setIsSearchingCities] = useState(false);
-  const [isSearchingWarehouses, setIsSearchingWarehouses] = useState(false);
-
-  // Tracking state
-  const [trackingData, setTrackingData] = useState<Record<string, NovaPoshtaTrackingInfo>>({});
-  const [isTrackingLoading, setIsTrackingLoading] = useState(false);
-  const [trackingDetailsOrder, setTrackingDetailsOrder] = useState<Order | null>(null);
   
   // Filtering and Pagination state
   const [searchTerm, setSearchTerm] = useState('');
@@ -135,9 +84,18 @@ const OrdersPage: React.FC = () => {
   const [openActionMenu, setOpenActionMenu] = useState<string | null>(null);
   const actionMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
-  // Derived values for Nova Poshta inputs for more robust state management
-  const cityInputValue = isCityDropdownOpen ? citySearchTerm : novaPoshtaFormData.city?.name || '';
-  const warehouseInputValue = isWarehouseDropdownOpen ? warehouseSearchTerm : novaPoshtaFormData.warehouse?.name || '';
+  // State for Nova Poshta TTN Modal
+  const [activeTtnOrder, setActiveTtnOrder] = useState<Order | null>(null);
+  const [npDepartment, setNpDepartment] = useState<NovaPoshtaDepartment | null>(null);
+  const [isNpWidgetOpen, setIsNpWidgetOpen] = useState(false);
+  const npIframeRef = useRef<HTMLIFrameElement>(null);
+  const [packageDetails, setPackageDetails] = useState({
+      weight: "0.5",
+      length: "20",
+      width: "15",
+      height: "10",
+      description: "Косметичні засоби"
+  });
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -152,7 +110,6 @@ const OrdersPage: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [openProductDropdown, openActionMenu]);
 
-
   useEffect(() => {
     if (successMessage) {
       const timer = setTimeout(() => setSuccessMessage(null), 3000);
@@ -160,151 +117,45 @@ const OrdersPage: React.FC = () => {
     }
   }, [successMessage]);
 
-  // Debounce handlers for Nova Poshta search
-  useEffect(() => {
-    const handler = setTimeout(() => setDebouncedCitySearch(citySearchTerm), 300);
-    return () => clearTimeout(handler);
-  }, [citySearchTerm]);
-  
-  useEffect(() => {
-    const handler = setTimeout(() => setDebouncedWarehouseSearch(warehouseSearchTerm), 300);
-    return () => clearTimeout(handler);
-  }, [warehouseSearchTerm]);
-
-
-  // Fetch cities
-  useEffect(() => {
-    if (!isCityDropdownOpen || debouncedCitySearch.length < 2) {
-      setCityResults([]);
-      return;
-    }
-    const fetchCities = async () => {
-      setIsSearchingCities(true);
-      try {
-        const res = await authenticatedFetch(`/api/novaPoshtaApiProxy`, {
-          method: 'POST',
-          body: JSON.stringify({
-            modelName: 'Address',
-            calledMethod: 'searchSettlements',
-            methodProperties: { CityName: debouncedCitySearch, Limit: 20 },
-          }),
-        });
-        if (!res.ok) throw new Error('Failed to fetch cities');
-        const data = await res.json();
-        const addresses = data.data[0]?.Addresses || [];
-        const transformedCities: NovaPoshtaRef[] = addresses.map((addr: any) => ({
-          Ref: addr.Ref,
-          Description: addr.Present,
-        }));
-        setCityResults(transformedCities);
-      } catch (error) {
-        console.error("City fetch error:", error);
-        setCityResults([]);
-      } finally {
-        setIsSearchingCities(false);
-      }
-    };
-    fetchCities();
-  }, [debouncedCitySearch, isCityDropdownOpen]);
-
-  // Fetch warehouses based on search term
-  useEffect(() => {
-    if (!isWarehouseDropdownOpen || !novaPoshtaFormData.city?.id) {
-        setWarehouseResults([]);
-        return;
-    }
-
-    if (debouncedWarehouseSearch.length === 0) {
-        setWarehouseResults([]);
-        return;
-    }
-
-    const fetchWarehouses = async () => {
-        setIsSearchingWarehouses(true);
-        setModalError(null);
-        try {
-            const res = await authenticatedFetch('/api/novaPoshtaApiProxy', {
-                method: 'POST',
-                body: JSON.stringify({
-                    modelName: 'Address',
-                    calledMethod: 'getWarehouses',
-                    methodProperties: {
-                        CityRef: novaPoshtaFormData.city!.id,
-                        FindByString: debouncedWarehouseSearch,
-                        Limit: 50
-                    },
-                }),
-            });
-            if (!res.ok) {
-                const errorData = await res.json().catch(() => ({ message: 'Не вдалося завантажити відділення.' }));
-                throw new Error(errorData.message);
-            }
-            const data = await res.json();
-            setWarehouseResults(data.data || []);
-        } catch (error: any) {
-            console.error("Failed to fetch warehouses:", error);
-            setModalError(error.message || 'Помилка завантаження відділень.');
-            setWarehouseResults([]);
-        } finally {
-            setIsSearchingWarehouses(false);
-        }
-    };
-
-    fetchWarehouses();
-  }, [debouncedWarehouseSearch, novaPoshtaFormData.city?.id, isWarehouseDropdownOpen]);
-
-
-  const fetchAuxiliaryData = useCallback(async () => {
+  const fetchInitialData = useCallback(async () => {
     try {
-      const promises = [
-        authenticatedFetch(`${API_BASE_URL}/customers?pageSize=10000`),
-        authenticatedFetch(`${API_BASE_URL}/products?pageSize=10000`),
-        authenticatedFetch(`${API_BASE_URL}/managedUsers`),
-      ];
+      const [customersRes, productsRes, managersRes] = await Promise.all([
+        authenticatedFetch(`${API_BASE_URL}/customers?pageSize=1000`), // Fetch all customers for dropdown
+        authenticatedFetch(`${API_BASE_URL}/products?pageSize=1000`), // Fetch all products for dropdown
+        isAdmin ? authenticatedFetch(`${API_BASE_URL}/managedUsers`) : Promise.resolve(null),
+        isAdmin ? authenticatedFetch(`${API_BASE_URL}/admins`) : Promise.resolve(null),
+      ]);
 
-      if (isAdmin) {
-        promises.push(authenticatedFetch(`${API_BASE_URL}/admins`));
+      const customersData: PaginatedResponse<Customer> = await customersRes.json();
+      setCustomers(customersData.data.sort((a,b) => a.name.localeCompare(b.name)));
+
+      const productsData: PaginatedResponse<Product> = await productsRes.json();
+      setAvailableProducts(productsData.data);
+      
+      if(isAdmin && managersRes) {
+        const managers: ManagedUser[] = await managersRes.json();
+        const adminsRes = await (await Promise.all([isAdmin ? authenticatedFetch(`${API_BASE_URL}/admins`) : Promise.resolve(null)]))[0];
+        const admins = await adminsRes!.json();
+
+        const allManagers = [
+          ...admins.map((a: any) => ({ email: a.email, name: a.email })),
+          ...managers.map(m => ({ email: m.email, name: m.name }))
+        ];
+        // Deduplicate
+        const uniqueManagers = Array.from(new Map(allManagers.map(item => [item.email, item])).values());
+        setAllOrderManagers(uniqueManagers.sort((a,b) => a.name.localeCompare(b.name)));
       }
-
-      const responses = await Promise.all(promises);
-
-      const [custRes, prodRes, managerRes] = responses;
-      const adminRes = isAdmin ? responses[3] : null;
-
-      if (!custRes.ok) throw new Error(`Failed to fetch customers: ${custRes.statusText}`);
-      if (!prodRes.ok) throw new Error(`Failed to fetch products: ${prodRes.statusText}`);
-      if (!managerRes.ok) throw new Error(`Failed to fetch managers: ${managerRes.statusText}`);
-      if (adminRes && !adminRes.ok) throw new Error(`Failed to fetch admins: ${adminRes.statusText}`);
-
-      const custData = await custRes.json();
-      const prodData = await prodRes.json();
-      const managerData: ManagedUser[] = await managerRes.json();
-      const adminData: AdminRow[] = adminRes ? await adminRes.json() : [];
-      
-      setCustomers(custData?.data || custData || []);
-      setAvailableProducts(prodData?.data || prodData || []);
-      
-      const combinedUsers = [
-        ...(managerData || []).map(m => ({ email: m.email, name: m.name })),
-        ...(adminData || []).map(a => ({ email: a.email, name: a.email }))
-      ];
-      const uniqueUsers = Array.from(new Map(combinedUsers.map(item => [item.email.toLowerCase(), item])).values())
-        .sort((a,b) => a.name.localeCompare(b.name));
-      
-      setAllOrderManagers(uniqueUsers);
 
     } catch (err: any) {
-      console.error("Failed to fetch auxiliary data:", err);
-      setPageError(err.message || 'Could not load required data for orders.');
+      setPageError("Не вдалося завантажити допоміжні дані (клієнти, товари). " + err.message);
     }
   }, [isAdmin]);
-  
+
   const fetchOrders = useCallback(async (page = 1) => {
     setIsLoading(true);
     setPageError(null);
-    setCurrentPage(page);
-
-    const params = new URLSearchParams({
+    try {
+      const params = new URLSearchParams({
         page: String(page),
         pageSize: String(pageSize),
         search: searchTerm,
@@ -312,495 +163,367 @@ const OrdersPage: React.FC = () => {
         customerId: filterCustomerId,
         managerEmail: filterManagerEmail,
         startDate: filterStartDate,
-        endDate: filterEndDate,
-    });
-
-    try {
-      const response = await authenticatedFetch(`${API_BASE_URL}/orders?${params.toString()}`);
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Failed to fetch orders' }));
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-      }
-      const data: PaginatedResponse<Order> = await response.json();
+        endDate: filterEndDate
+      });
+      const res = await authenticatedFetch(`${API_BASE_URL}/orders?${params.toString()}`);
+      if (!res.ok) throw new Error((await res.json()).message || 'Failed to fetch orders.');
+      const data: PaginatedResponse<Order> = await res.json();
       setOrders(data.data);
       setTotalCount(data.totalCount);
       setCurrentPage(data.currentPage);
-      setPageSize(data.pageSize);
     } catch (err: any) {
-      console.error("Failed to fetch orders:", err);
-      setPageError(err.message || 'Could not load orders. Please try again.');
+      setPageError(err.message);
     } finally {
       setIsLoading(false);
     }
   }, [pageSize, searchTerm, filterStatus, filterCustomerId, filterManagerEmail, filterStartDate, filterEndDate]);
 
   useEffect(() => {
-    fetchAuxiliaryData();
-  }, [fetchAuxiliaryData]);
+    fetchInitialData();
+  }, [fetchInitialData]);
 
   useEffect(() => {
-    fetchOrders(1); // Fetch first page when filters change
-  }, [fetchOrders]);
+    fetchOrders(currentPage);
+  }, [fetchOrders, currentPage]);
 
-  useEffect(() => {
-    const fetchTrackingData = async () => {
-        const ttnsToTrack = orders
-            .filter(o => o.status === 'Shipped' && o.novaPoshtaTtn)
-            .map(o => o.novaPoshtaTtn!);
-
-        if (ttnsToTrack.length === 0) {
-            setTrackingData({});
-            return;
-        }
-
-        setIsTrackingLoading(true);
-        try {
-            const response = await authenticatedFetch('/api/novaPoshtaTracking', {
-                method: 'POST',
-                body: JSON.stringify({ ttns: ttnsToTrack }),
-            });
-            if (!response.ok) {
-                console.error('Failed to fetch tracking data. Status:', response.status);
-                setTrackingData({});
-                return;
-            }
-            const data: Record<string, NovaPoshtaTrackingInfo> = await response.json();
-            setTrackingData(data);
-        } catch (error) {
-            console.error('Error fetching tracking data:', error);
-            setTrackingData({});
-        } finally {
-            setIsTrackingLoading(false);
-        }
-    };
-
-    if (orders.length > 0) {
-        fetchTrackingData();
-    }
-  }, [orders]);
-
-
-  const resetFilters = () => {
-    setFilterStatus('All');
-    setFilterCustomerId('All');
-    setFilterManagerEmail('All');
-    setFilterStartDate('');
-    setFilterEndDate('');
-    setSearchTerm('');
-    setCurrentPage(1);
-  };
-  
-  const handlePageChange = (page: number) => {
-      fetchOrders(page);
-  };
+  const handlePageChange = (page: number) => setCurrentPage(page);
   
   const handlePageSizeChange = (size: number) => {
-      setPageSize(size);
-      setCurrentPage(1); // Reset to first page
-      fetchOrders(1);
+    setPageSize(size);
+    setCurrentPage(1);
   };
 
-
-  const calculateTotalAmount = (items: OrderItem[] = []): number => {
-    return items.reduce((sum, item) => {
-        const itemTotal = (Number(item.quantity) * Number(item.price));
-        const discountAmount = itemTotal * (Number(item.discount || 0) / 100);
-        return sum + (itemTotal - discountAmount);
-    }, 0);
+  const handleSearch = () => {
+    setCurrentPage(1);
+    fetchOrders(1);
   };
 
-  const handleItemChange = (index: number, field: keyof OrderItem | 'productIdSelect', value: string | number) => {
-    setActiveOrderData(prev => {
-      if (!prev) return null;
-      const items = [...(prev.items || [])];
-      const currentItem = { ...items[index] };
-
-      if (field === 'productIdSelect') {
-        const selectedProductId = value as string;
-        const product = availableProducts.find(p => p.id === selectedProductId);
-        if (product) {
-          currentItem.productId = product.id;
-          currentItem.productName = product.name;
-          currentItem.price = product.retailPrice * product.exchangeRate; // Price is retail price * exchange rate
-        } else { 
-          currentItem.productId = ''; 
-          currentItem.productName = 'Товар не знайдено'; 
-          currentItem.price = 0; 
-        }
-      } else if (field === 'quantity' || field === 'price' || field === 'discount') {
-        currentItem[field as 'quantity' | 'price' | 'discount'] = Number(value) < 0 ? 0 : Number(value);
-      } else if (field === 'productName'){ 
-          currentItem[field] = value as string;
-      }
-      
-      items[index] = currentItem;
-      return { ...prev, items };
-    });
-  };
-  
-  const addItem = () => {
-    setActiveOrderData(prev => {
-      if (!prev) return null;
-      const newItems = [...(prev.items || []), { ...initialNewOrderItem }];
-      return { ...prev, items: newItems }
-    });
+  const resetFilters = () => {
+    setSearchTerm(''); setFilterStatus('All'); setFilterCustomerId('All');
+    setFilterManagerEmail('All'); setFilterStartDate(''); setFilterEndDate('');
+    setShowFilters(false);
+    setCurrentPage(1);
   };
 
-  const removeItem = (index: number) => {
-    setActiveOrderData(prev => {
-      if (!prev) return null;
-      const newItems = (prev.items || []).filter((_, i) => i !== index);
-      return { ...prev, items: newItems }
-    });
-  };
-
-
-  const handleSubmitOrder = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setModalError(null);
-    if (!activeOrderData) return;
-
-    if (!activeOrderData.customerId) {
-      setModalError("Будь ласка, виберіть клієнта."); return;
-    }
-    const validItems = (activeOrderData.items || []).filter(
-        item => item.productId && item.productName && Number(item.quantity) > 0 && Number(item.price) >= 0
-    );
-    if (validItems.length === 0) {
-      setModalError("Додайте принаймні один дійсний товар."); return;
-    }
-    
-    const selectedCustomer = customers.find(c => c.id === activeOrderData.customerId);
-    if (!selectedCustomer) {
-       setModalError("Обраний клієнт не знайдений."); return;
-    }
-
-    const isEditing = modalMode === 'edit';
-    const totalAmount = calculateTotalAmount(validItems);
-
-    const orderPayload: Partial<Order> = {
-      ...(isEditing && activeOrderData.id ? { id: activeOrderData.id } : {}),
-      customerId: selectedCustomer.id,
-      customerName: selectedCustomer.name,
-      date: isEditing && activeOrderData.date ? activeOrderData.date : new Date().toISOString(), // Use full ISO string
-      status: activeOrderData.status || 'Ordered',
-      items: validItems.map(item => ({...item, id: isEditing ? item.id : undefined})),
-      totalAmount: totalAmount,
-      notes: activeOrderData.notes || '',
-    };
-
-    setIsLoading(true);
-    try {
-      const url = isEditing && activeOrderData.id ? `${API_BASE_URL}/orders/${activeOrderData.id}` : `${API_BASE_URL}/orders`;
-      const method = isEditing ? 'PUT' : 'POST';
-      const response = await authenticatedFetch(url, {
-        method,
-        body: JSON.stringify(orderPayload),
-      });
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: `Failed to ${isEditing ? 'update' : 'create'} order` }));
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-      }
-      fetchOrders(currentPage); 
-      closeOrderModal();
-    } catch (err: any) {
-      console.error(`Failed to ${isEditing ? 'update' : 'create'} order:`, err);
-      setModalError(err.message || `Could not ${isEditing ? 'update' : 'create'} order.`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  const openOrderModal = (mode: 'add' | 'edit', order: Order | null = null) => {
-    setModalError(null);
-    setModalMode(mode);
-    if (mode === 'add') {
-      setActiveOrderData({ customerId: '', status: 'Ordered', items: [{ ...initialNewOrderItem }], totalAmount: 0, notes: '' });
-    } else if (order) {
-      setActiveOrderData({ ...order, items: order.items.map(item => ({ ...item })) });
-    }
-  };
-
-  const closeOrderModal = () => {
+  // Modal and Form Handlers
+  const closeModal = () => {
     setModalMode(null);
-    setActiveOrderData(null);
-  };
-
-  const handleViewOrder = (order: Order) => {
-    setViewOrder(order);
-    setEditableOrderStatus(order.status);
-    setEditableOrderNotes(order.notes || '');
-    setIsNovaPoshtaModalOpen(false); // Ensure other modals are closed
-  };
-  
-  const handleUpdateOrderInViewModal = async () => {
-    if (!viewOrder) return;
-    const statusChanged = editableOrderStatus !== viewOrder.status;
-    const notesChanged = editableOrderNotes !== (viewOrder.notes || '');
-    if (!statusChanged && !notesChanged) return;
-
-    setIsLoading(true);
-    setModalError(null);
-    try {
-      const payload: Partial<Order> = { ...viewOrder };
-      if (statusChanged && editableOrderStatus) payload.status = editableOrderStatus;
-      if (notesChanged) payload.notes = editableOrderNotes;
-      
-      const response = await authenticatedFetch(`${API_BASE_URL}/orders/${viewOrder.id}`, {
-        method: 'PUT',
-        body: JSON.stringify(payload),
-      });
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Failed to update order' }));
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-      }
-      const updatedOrderFromServer = await response.json();
-      setOrders(prevOrders => prevOrders.map(o => o.id === viewOrder.id ? updatedOrderFromServer : o));
-      setViewOrder(updatedOrderFromServer);
-    } catch (err: any) {
-      console.error("Failed to update order:", err);
-      setModalError(err.message || "Could not update order.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const closeModalView = () => {
     setViewOrder(null);
-    setEditableOrderStatus(undefined);
-    setEditableOrderNotes('');
+    setActiveOrderData({});
     setModalError(null);
+    setActiveTtnOrder(null);
+    setNpDepartment(null);
+  };
+
+  const openAddModal = () => {
+    setActiveOrderData({
+      date: toYYYYMMDD(new Date()),
+      status: 'Ordered',
+      items: [initialNewOrderItem],
+      totalAmount: 0,
+      managedByUserEmail: user?.email,
+    });
+    setModalMode('add');
+  };
+
+  const openEditModal = (order: Order) => {
+    setActiveOrderData({ ...order, date: toYYYYMMDD(new Date(order.date)) });
+    setModalMode('edit');
+  };
+
+  const openViewModal = (order: Order) => {
+    setViewOrder(order);
+  };
+
+  const openTtnModal = (order: Order) => {
+    const customer = customers.find(c => c.id === order.customerId);
+    if (!customer?.phone) {
+        setPageError("Неможливо створити ТТН: у клієнта не вказано номер телефону.");
+        return;
+    }
+    setActiveTtnOrder(order);
+    setModalMode('ttn');
   };
 
   const handleDeleteOrder = async (orderId: string) => {
-    setOpenActionMenu(null);
     if (window.confirm('Ви впевнені, що хочете видалити це замовлення? Цю дію неможливо скасувати.')) {
-      setIsLoading(true); 
-      setPageError(null);
+      setIsLoading(true);
       try {
-        const response = await authenticatedFetch(`${API_BASE_URL}/orders/${orderId}`, { method: 'DELETE' });
-        if (!response.ok && response.status !== 204) {
-          const errData = await response.json().catch(() => ({ message: 'Server error' }));
-          throw new Error(errData.message || 'Could not delete order.');
-        }
-        const newTotalCount = totalCount - 1;
-        const newTotalPages = Math.ceil(newTotalCount / pageSize);
-        const newCurrentPage = (currentPage > newTotalPages && newTotalPages > 0) ? newTotalPages : currentPage;
-        fetchOrders(newCurrentPage);
+        const res = await authenticatedFetch(`${API_BASE_URL}/orders/${orderId}`, { method: 'DELETE' });
+        if (res.status !== 204) throw new Error((await res.json()).message || 'Failed to delete order.');
+        setSuccessMessage('Замовлення успішно видалено.');
+        fetchOrders(currentPage);
       } catch (err: any) {
-        console.error("Failed to delete order:", err);
-        setPageError(err.message || 'Could not delete order. Please try again.');
+        setPageError(err.message);
       } finally {
         setIsLoading(false);
       }
     }
   };
 
-  const handleShareInvoice = (orderId: string) => {
-    setOpenActionMenu(null);
-    const invoiceUrl = `${window.location.origin}/#/invoice/${orderId}`;
-    navigator.clipboard.writeText(invoiceUrl).then(() => {
-        setSuccessMessage('Посилання на рахунок скопійовано!');
-    }, (err) => {
-        console.error('Could not copy text: ', err);
-        setPageError('Не вдалося скопіювати посилання.');
-    });
+  // Form field handlers
+  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setActiveOrderData(prev => ({ ...prev, [name]: value }));
   };
-  
+
+  const handleItemChange = (index: number, field: keyof OrderItem, value: any) => {
+    const items = [...(activeOrderData.items || [])];
+    const itemToUpdate = { ...items[index], [field]: value };
+    
+    if (field === 'productId') {
+        const product = availableProducts.find(p => p.id === value);
+        if (product) {
+            itemToUpdate.productName = product.name;
+            itemToUpdate.price = product.retailPrice;
+            itemToUpdate.salonPriceUsd = product.salonPrice;
+            itemToUpdate.exchangeRate = product.exchangeRate;
+        }
+    }
+    items[index] = itemToUpdate;
+    recalculateTotal(items);
+  };
+
+  const handleAddItem = () => {
+    const items = [...(activeOrderData.items || []), initialNewOrderItem];
+    setActiveOrderData(prev => ({ ...prev, items }));
+  };
+
+  const handleRemoveItem = (index: number) => {
+    const items = [...(activeOrderData.items || [])];
+    items.splice(index, 1);
+    recalculateTotal(items);
+  };
+
+  const recalculateTotal = (items: OrderItem[]) => {
+    const totalAmount = items.reduce((sum, item) => {
+        const itemTotal = item.price * item.quantity;
+        const discountAmount = itemTotal * ((item.discount || 0) / 100);
+        return sum + (itemTotal - discountAmount);
+    }, 0);
+    setActiveOrderData(prev => ({ ...prev, items, totalAmount }));
+  };
+
+  const handleSubmitOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setModalError(null);
+    if (!activeOrderData.customerId || !activeOrderData.items || activeOrderData.items.length === 0) {
+      setModalError("Будь ласка, виберіть клієнта та додайте хоча б один товар."); return;
+    }
+    
+    setIsSubmitting(true);
+    try {
+        const method = modalMode === 'edit' ? 'PUT' : 'POST';
+        const url = modalMode === 'edit' ? `${API_BASE_URL}/orders/${activeOrderData.id}` : `${API_BASE_URL}/orders`;
+        
+        const res = await authenticatedFetch(url, {
+            method,
+            body: JSON.stringify(activeOrderData),
+        });
+
+        if (!res.ok) throw new Error((await res.json()).message || 'Не вдалося зберегти замовлення.');
+
+        setSuccessMessage(`Замовлення успішно ${modalMode === 'edit' ? 'оновлено' : 'створено'}.`);
+        closeModal();
+        fetchOrders(modalMode === 'add' ? 1 : currentPage); // Go to first page on add
+    } catch (err: any) {
+        setModalError(err.message);
+    } finally {
+        setIsSubmitting(false);
+    }
+  };
+
   const filteredProducts = useMemo(() => {
     if (!productSearchTerm) return availableProducts;
     return availableProducts.filter(p => p.name.toLowerCase().includes(productSearchTerm.toLowerCase()));
   }, [productSearchTerm, availableProducts]);
 
-  const openNovaPoshtaModal = (order: Order) => {
-    setOpenActionMenu(null);
-    setViewOrder(order);
-    setNovaPoshtaFormData({
-      city: null, warehouse: null, weight: 0.5, length: 20, width: 15, height: 10, description: 'Косметичні засоби'
-    });
-    setCitySearchTerm('');
-    setWarehouseSearchTerm('');
-    setCityResults([]);
-    setWarehouseResults([]);
-    setModalError(null);
-    setIsNovaPoshtaModalOpen(true);
-  };
+    // Nova Poshta Widget Handlers
+    const openNpWidget = () => {
+        setIsNpWidgetOpen(true);
+        const iframe = npIframeRef.current;
+        if (!iframe) return;
+        iframe.src = 'https://widget.novapost.com/division/index.html';
+        const data = {
+            apiKey: '', // Public key not needed for this widget type
+            city: activeTtnOrder?.customerName.split(' ')[1] || 'Київ', // Crude city extraction
+            theme: 'light',
+            language: 'uk',
+        };
+        iframe.onload = () => {
+            iframe.contentWindow?.postMessage(data, '*');
+        };
+        window.addEventListener('message', handleNpWidgetMessage);
+    };
+
+    const closeNpWidget = () => {
+        setIsNpWidgetOpen(false);
+        const iframe = npIframeRef.current;
+        if (iframe) iframe.src = '';
+        window.removeEventListener('message', handleNpWidgetMessage);
+    };
+
+    const handleNpWidgetMessage = (event: MessageEvent) => {
+        if (event.origin !== 'https://widget.novapost.com') return;
+        if (event.data && typeof event.data === 'object' && event.data.id) {
+            setNpDepartment(event.data);
+            closeNpWidget();
+        } else if (event.data === 'close') {
+            closeNpWidget();
+        }
+    };
   
-  const closeNovaPoshtaModal = () => {
-    setIsNovaPoshtaModalOpen(false);
-    setViewOrder(null);
-    setModalError(null);
-  };
+    const handleCreateTtn = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setModalError(null);
+        if (!activeTtnOrder || !npDepartment) {
+            setModalError('Будь ласка, виберіть відділення "Нової Пошти".');
+            return;
+        }
+        const customer = customers.find(c => c.id === activeTtnOrder.customerId);
+        if (!customer) {
+            setModalError('Не вдалося знайти дані клієнта.');
+            return;
+        }
 
-  const handleCreateTtn = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!viewOrder) return;
-    
-    const { city, warehouse, weight, length, width, height, description } = novaPoshtaFormData;
+        setIsSubmitting(true);
+        try {
+            const payload = {
+                orderId: activeTtnOrder.id,
+                recipient: {
+                    name: customer.name,
+                    phone: customer.phone.replace(/[^0-9]/g, ''),
+                },
+                recipientCityRef: npDepartment.cityRef,
+                recipientAddressRef: npDepartment.id,
+                weight: packageDetails.weight,
+                volumeGeneral: (parseFloat(packageDetails.length) * parseFloat(packageDetails.width) * parseFloat(packageDetails.height)) / 4000,
+                description: packageDetails.description,
+            };
+            
+            const res = await authenticatedFetch(`${API_BASE_URL}/novaPoshta`, {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            });
+            if (!res.ok) throw new Error((await res.json()).message);
 
-    if (!city || !warehouse || !weight || !length || !width || !height || !description.trim()) {
-      setModalError('Будь ласка, заповніть усі поля для створення ТТН.');
-      return;
-    }
-    
-    setModalError(null);
-    setIsCreatingTtn(true);
+            setSuccessMessage(`ТТН успішно створено для замовлення #${activeTtnOrder.id.substring(0,8)}.`);
+            closeModal();
+            fetchOrders(currentPage);
+        } catch (err: any) {
+            setModalError(err.message);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
 
-    try {
-      const payload = { orderId: viewOrder.id, ...novaPoshtaFormData };
-      const response = await authenticatedFetch(`${API_BASE_URL}/novaPoshta`, {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Не вдалося створити ТТН.' }));
-        throw new Error(errorData.message);
-      }
-      
-      const updatedOrder: Order = await response.json();
-      
-      setOrders(prev => prev.map(o => o.id === updatedOrder.id ? updatedOrder : o));
-      setSuccessMessage(`ТТН ${updatedOrder.novaPoshtaTtn} успішно створено!`);
-      closeNovaPoshtaModal();
-
-    } catch (err: any) {
-      setModalError(err.message || 'Сталася помилка. Спробуйте ще раз.');
-    } finally {
-      setIsCreatingTtn(false);
-    }
-  };
 
   return (
     <div className="space-y-6">
-       {successMessage && 
-        <div className="fixed top-5 right-5 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg shadow-lg z-50 animate-pulse" role="alert">
-          <span className="block sm:inline">{successMessage}</span>
-        </div>
-      }
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-3 sm:space-y-0">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Замовлення</h2>
-        <button
-          onClick={() => openOrderModal('add')}
-          className="flex items-center bg-rose-500 hover:bg-rose-600 text-white font-semibold py-2 px-4 rounded-lg shadow-sm transition-colors"
-          aria-label="Створити нове замовлення"
-        >
-          <PlusIcon className="w-5 h-5" />
-          <span className="ml-2">Створити замовлення</span>
+        <button onClick={openAddModal} className="flex items-center bg-rose-500 hover:bg-rose-600 text-white font-semibold py-2 px-4 rounded-lg shadow-sm transition-colors">
+          <PlusIcon className="w-5 h-5 mr-2" /> Додати замовлення
         </button>
       </div>
 
-      <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-2">
-        <input
-            type="search"
-            aria-label="Пошук замовлень"
-            placeholder="Пошук за номером замовлення, ім'ям клієнта..."
-            className="w-full sm:flex-grow p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-        />
-        <button 
-            onClick={() => setShowFilters(!showFilters)}
-            className="w-full sm:w-auto flex items-center justify-center p-2.5 bg-white border border-slate-300 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 transition-colors"
-        >
-            <FilterIcon className="w-5 h-5 mr-2" />
-            <span>Фільтри</span>
-        </button>
-      </div>
-
-       {showFilters && (
-        <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-               <div>
-                 <label htmlFor="filterStatus" className="block text-sm font-medium text-slate-700 mb-1">Статус</label>
-                 <select id="filterStatus" value={filterStatus} onChange={e => setFilterStatus(e.target.value as Order['status'] | 'All')} className="w-full p-2 border border-slate-300 rounded-lg">
-                    <option value="All">Всі статуси</option>
-                    {orderStatusValues.map(s => <option key={s} value={s}>{orderStatusTranslations[s]}</option>)}
-                 </select>
-               </div>
-               {isAdmin && (
-                  <div>
-                    <label htmlFor="filterManager" className="block text-sm font-medium text-slate-700 mb-1">Менеджер</label>
-                    <select id="filterManager" value={filterManagerEmail} onChange={e => setFilterManagerEmail(e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg">
-                      <option value="All">Всі менеджери</option>
-                      {allOrderManagers.map(m => <option key={m.email} value={m.email}>{m.name}</option>)}
-                    </select>
-                  </div>
-               )}
-               <div>
-                  <label htmlFor="filterCustomer" className="block text-sm font-medium text-slate-700 mb-1">Клієнт</label>
-                  <select id="filterCustomer" value={filterCustomerId} onChange={e => setFilterCustomerId(e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg">
-                     <option value="All">Всі клієнти</option>
-                     {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
-               </div>
-               <div>
-                  <label htmlFor="filterStartDate" className="block text-sm font-medium text-slate-700 mb-1">З дати</label>
-                  <input type="date" id="filterStartDate" value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg"/>
-               </div>
-               <div>
-                  <label htmlFor="filterEndDate" className="block text-sm font-medium text-slate-700 mb-1">До дати</label>
-                  <input type="date" id="filterEndDate" value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg"/>
-               </div>
-            </div>
-            <div className="mt-4 text-right">
-                <button onClick={resetFilters} className="text-sm font-semibold text-rose-600 hover:underline">Скинути фільтри</button>
-            </div>
-        </div>
-      )}
-
+      {successMessage && <div role="alert" className="p-3 bg-green-50 text-green-700 border border-green-200 rounded-lg text-sm">{successMessage}</div>}
       {pageError && <div role="alert" className="p-4 bg-red-50 text-red-700 border border-red-200 rounded-lg">{pageError}</div>}
       
+      {/* Search and Filter Bar */}
+      <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-4">
+        <div className="flex flex-col sm:flex-row gap-4">
+          <input
+            type="search"
+            placeholder="Пошук за ID замовлення або іменем клієнта..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+            className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
+          />
+          <button onClick={handleSearch} className="px-4 py-2 bg-slate-700 text-white rounded-lg font-semibold hover:bg-slate-800 transition-colors">
+            Пошук
+          </button>
+          <button onClick={() => setShowFilters(!showFilters)} className="px-4 py-2 bg-white text-slate-700 border border-slate-300 rounded-lg font-semibold hover:bg-slate-50 transition-colors flex items-center justify-center gap-2">
+            <FilterIcon className="w-5 h-5"/> Фільтри
+          </button>
+        </div>
+        {showFilters && (
+           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 border-t border-slate-200 pt-4">
+              <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as any)} className="p-2.5 border border-slate-300 rounded-lg w-full">
+                <option value="All">Всі статуси</option>
+                {orderStatusValues.map(s => <option key={s} value={s}>{orderStatusTranslations[s]}</option>)}
+              </select>
+              <select value={filterCustomerId} onChange={(e) => setFilterCustomerId(e.target.value)} className="p-2.5 border border-slate-300 rounded-lg w-full">
+                <option value="All">Всі клієнти</option>
+                {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+              {isAdmin && (
+                  <select value={filterManagerEmail} onChange={(e) => setFilterManagerEmail(e.target.value)} className="p-2.5 border border-slate-300 rounded-lg w-full">
+                      <option value="All">Всі менеджери</option>
+                      {allOrderManagers.map(m => <option key={m.email} value={m.email}>{m.name}</option>)}
+                  </select>
+              )}
+              <div className="flex items-center gap-2">
+                  <input type="date" value={filterStartDate} onChange={(e) => setFilterStartDate(e.target.value)} className="p-2.5 border border-slate-300 rounded-lg w-full"/>
+                  <span className="text-slate-500">-</span>
+                  <input type="date" value={filterEndDate} onChange={(e) => setFilterEndDate(e.target.value)} className="p-2.5 border border-slate-300 rounded-lg w-full"/>
+              </div>
+              <div className="flex items-center gap-2 lg:col-start-3">
+                 <button onClick={handleSearch} className="w-full px-4 py-2 bg-rose-500 text-white rounded-lg font-semibold hover:bg-rose-600">Застосувати</button>
+                 <button onClick={resetFilters} className="w-full px-4 py-2 bg-white text-slate-700 border border-slate-300 rounded-lg font-semibold hover:bg-slate-50">Скинути</button>
+              </div>
+           </div>
+        )}
+      </div>
+
+      {/* Orders Table */}
       <div className="bg-white shadow-sm rounded-xl overflow-hidden border border-slate-200">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-200">
             <thead className="bg-slate-50">
               <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Замовлення</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider hidden sm:table-cell">Клієнт</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider hidden lg:table-cell">Дата</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">ID Замовлення</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Клієнт</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider hidden md:table-cell">Дата</th>
+                {isAdmin && <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider hidden lg:table-cell">Менеджер</th>}
                 <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Сума</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Статус</th>
-                {isAdmin && <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider hidden xl:table-cell">Менеджер</th>}
-                <th scope="col" className="relative px-6 py-3"><span className="sr-only">Дії</span></th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Дії</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-slate-200">
+             <tbody className="bg-white divide-y divide-slate-200">
               {isLoading ? (
-                 <tr><td colSpan={isAdmin ? 7 : 6} className="px-6 py-10 text-center text-sm text-slate-500">Завантаження...</td></tr>
+                 <tr><td colSpan={isAdmin ? 7:6} className="px-6 py-10 text-center text-sm text-slate-500">Завантаження замовлень...</td></tr>
               ) : orders.length > 0 ? (
-                orders.map((order) => (
+                orders.map(order => (
                   <tr key={order.id} className="hover:bg-rose-50/50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-rose-600">#{order.id.substring(0, 6)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-800 font-medium hidden sm:table-cell">{order.customerName}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 hidden lg:table-cell">{new Date(order.date).toLocaleDateString()}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-900">₴{order.totalAmount.toFixed(2)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {order.status === 'Shipped' && order.novaPoshtaTtn && trackingData[order.novaPoshtaTtn] ? (
-                        <button onClick={() => setTrackingDetailsOrder(order)} className="w-full text-left cursor-pointer">
-                          <TrackingStatusPill trackingInfo={trackingData[order.novaPoshtaTtn]} />
-                        </button>
-                      ) : (
-                        <StatusPill status={order.status} />
-                      )}
-                    </td>
-                    {isAdmin && <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 hidden xl:table-cell">{allOrderManagers.find(m => m.email === order.managedByUserEmail)?.name || order.managedByUserEmail || 'N/A'}</td>}
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-right">
-                        <div className="relative inline-block text-left" ref={el => { actionMenuRefs.current[order.id] = el; }}>
-                            <button onClick={() => setOpenActionMenu(openActionMenu === order.id ? null : order.id)} className="p-2 rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-700">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-rose-600">#{order.id.substring(0, 8)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-800">{order.customerName}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 hidden md:table-cell">{new Date(order.date).toLocaleDateString()}</td>
+                    {isAdmin && <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 hidden lg:table-cell">{allOrderManagers.find(m => m.email === order.managedByUserEmail)?.name || order.managedByUserEmail || 'N/A'}</td>}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-800">₴{order.totalAmount.toFixed(2)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm"><StatusPill status={order.status}/></td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <div className="relative" ref={el => { actionMenuRefs.current[order.id] = el; }}>
+                            <button onClick={() => setOpenActionMenu(openActionMenu === order.id ? null : order.id)} className="p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors">
                                 <EllipsisVerticalIcon className="w-5 h-5"/>
                             </button>
-                            {openActionMenu === order.id && (
-                                <div className="absolute right-0 mt-2 w-56 origin-top-right bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-10">
-                                    <div className="py-1" role="menu" aria-orientation="vertical">
-                                        <button onClick={() => { handleViewOrder(order); setOpenActionMenu(null); }} className="w-full text-left flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"><EyeIcon className="w-5 h-5 mr-3"/>Переглянути</button>
-                                        <button onClick={() => { openOrderModal('edit', order); setOpenActionMenu(null); }} className="w-full text-left flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"><PencilIcon className="w-5 h-5 mr-3"/>Редагувати</button>
-                                        <hr className="my-1"/>
-                                        <button onClick={() => handleShareInvoice(order.id)} className="w-full text-left flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"><ShareIcon className="w-5 h-5 mr-3"/>Поділитися рахунком</button>
-                                        <button onClick={() => openNovaPoshtaModal(order)} className="w-full text-left flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"><TruckIcon className="w-5 h-5 mr-3"/>Створити ТТН</button>
-                                        <hr className="my-1"/>
-                                        <button onClick={() => handleDeleteOrder(order.id)} className="w-full text-left flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700"><TrashIcon className="w-5 h-5 mr-3"/>Видалити</button>
-                                    </div>
+                             {openActionMenu === order.id && (
+                                <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl py-1 z-10 ring-1 ring-black ring-opacity-5">
+                                    <button onClick={() => {openViewModal(order); setOpenActionMenu(null);}} className="w-full text-left flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"><EyeIcon className="w-4 h-4 mr-2"/> Переглянути</button>
+                                    <button onClick={() => {openEditModal(order); setOpenActionMenu(null);}} className="w-full text-left flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"><PencilIcon className="w-4 h-4 mr-2"/> Редагувати</button>
+                                     <hr className="my-1"/>
+                                    {order.novaPoshtaPrintUrl ? (
+                                        <a href={order.novaPoshtaPrintUrl} target="_blank" rel="noopener noreferrer" className="w-full text-left flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"><TruckIcon className="w-4 h-4 mr-2"/> Друкувати ТТН</a>
+                                    ) : (
+                                        <button onClick={() => {openTtnModal(order); setOpenActionMenu(null);}} className="w-full text-left flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"><TruckIcon className="w-4 h-4 mr-2"/> Створити ТТН</button>
+                                    )}
+                                    <a href={`/invoice/${order.id}`} target="_blank" rel="noopener noreferrer" className="w-full text-left flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"><DocumentTextIcon className="w-4 h-4 mr-2"/> Рахунок-фактура</a>
+                                    <a href={`/bill-of-lading/${order.id}`} target="_blank" rel="noopener noreferrer" className="w-full text-left flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"><DocumentTextIcon className="w-4 h-4 mr-2"/> ТТН</a>
+                                    <button onClick={() => {navigator.clipboard.writeText(`${window.location.origin}/#/invoice/${order.id}`); setSuccessMessage('Посилання на рахунок скопійовано!'); setOpenActionMenu(null);}} className="w-full text-left flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"><ShareIcon className="w-4 h-4 mr-2"/> Поділитися рахунком</button>
+                                    <hr className="my-1"/>
+                                    <button onClick={() => {handleDeleteOrder(order.id); setOpenActionMenu(null);}} className="w-full text-left flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700"><TrashIcon className="w-4 h-4 mr-2"/> Видалити</button>
                                 </div>
                             )}
                         </div>
@@ -808,333 +531,210 @@ const OrdersPage: React.FC = () => {
                   </tr>
                 ))
               ) : (
-                <tr><td colSpan={isAdmin ? 7 : 6} className="px-6 py-10 text-center text-sm text-slate-500">
-                  {!pageError && (totalCount === 0 && searchTerm === '' ? "Замовлень ще немає. Натисніть 'Створити замовлення', щоб почати." : "Замовлень, що відповідають вашому пошуку, не знайдено.")}
+                <tr><td colSpan={isAdmin ? 7:6} className="px-6 py-10 text-center text-sm text-slate-500">
+                  {!pageError && (totalCount === 0 && searchTerm === '' ? "Замовлень ще немає. Натисніть 'Додати замовлення', щоб почати." : "Замовлень, що відповідають вашому пошуку, не знайдено.")}
                 </td></tr>
               )}
             </tbody>
           </table>
         </div>
-        {totalCount > 0 && (
-          <Pagination currentPage={currentPage} totalCount={totalCount} pageSize={pageSize} onPageChange={handlePageChange} onPageSizeChange={handlePageSizeChange} isLoading={isLoading}/>
-        )}
+        {totalCount > 0 && <Pagination currentPage={currentPage} totalCount={totalCount} pageSize={pageSize} onPageChange={handlePageChange} onPageSizeChange={handlePageSizeChange} isLoading={isLoading} />}
       </div>
-
-       {modalMode && (
-        <div role="dialog" aria-modal="true" className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
-            <div className="bg-white p-6 rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
-                <div className="flex justify-between items-center pb-4 mb-6 border-b border-slate-200">
-                    <h3 className="text-xl font-semibold text-slate-800">{modalMode === 'edit' ? 'Редагувати замовлення' : 'Створити нове замовлення'}</h3>
-                    <button onClick={closeOrderModal} disabled={isLoading}><XMarkIcon className="w-6 h-6"/></button>
-                </div>
-                {modalError && <div role="alert" className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg">{modalError}</div>}
-                <form onSubmit={handleSubmitOrder} className="space-y-4 overflow-y-auto pr-2 flex-grow">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label htmlFor="customer" className="block text-sm font-medium text-slate-700 mb-1">Клієнт <span className="text-red-500">*</span></label>
-                            <select
-                                id="customer"
-                                value={activeOrderData?.customerId || ''}
-                                onChange={e => setActiveOrderData(prev => prev ? { ...prev, customerId: e.target.value } : null)}
-                                required
-                                className="w-full p-2.5 border border-slate-300 rounded-lg"
-                            >
-                                <option value="" disabled>Виберіть клієнта</option>
-                                {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                            </select>
+      
+       {/* Add/Edit Modal */}
+      {modalMode === 'add' || modalMode === 'edit' ? (
+        <div role="dialog" aria-modal="true" className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-40 p-4">
+            <form id="order-form-id" onSubmit={handleSubmitOrder}>
+                <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[95vh] flex flex-col">
+                    <div className="flex justify-between items-center p-4 border-b">
+                        <h3 className="text-xl font-semibold">{modalMode === 'add' ? 'Створити нове замовлення' : 'Редагувати замовлення'}</h3>
+                        <button type="button" onClick={closeModal}><XMarkIcon className="w-6 h-6"/></button>
+                    </div>
+                    {modalError && <div role="alert" className="m-4 p-3 bg-red-50 text-red-700 rounded-lg text-sm">{modalError}</div>}
+                    <div className="flex-grow overflow-y-auto">
+                        <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700">Клієнт</label>
+                                <select name="customerId" value={activeOrderData.customerId || ''} onChange={handleFormChange} required className="mt-1 block w-full p-2.5 border-slate-300 rounded-lg">
+                                    <option value="" disabled>Виберіть клієнта</option>
+                                    {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                </select>
+                            </div>
+                             <div>
+                                <label className="block text-sm font-medium text-slate-700">Дата</label>
+                                <input type="date" name="date" value={activeOrderData.date || ''} onChange={handleFormChange} className="mt-1 block w-full p-2.5 border-slate-300 rounded-lg"/>
+                            </div>
+                             <div>
+                                <label className="block text-sm font-medium text-slate-700">Статус</label>
+                                <select name="status" value={activeOrderData.status || 'Ordered'} onChange={handleFormChange} className="mt-1 block w-full p-2.5 border-slate-300 rounded-lg">
+                                    {orderStatusValues.map(s => <option key={s} value={s}>{orderStatusTranslations[s]}</option>)}
+                                </select>
+                            </div>
+                            {isAdmin && (
+                              <div className="md:col-span-3">
+                                <label className="block text-sm font-medium text-slate-700">Менеджер</label>
+                                <select name="managedByUserEmail" value={activeOrderData.managedByUserEmail || ''} onChange={handleFormChange} className="mt-1 block w-full p-2.5 border-slate-300 rounded-lg">
+                                    <option value="" disabled>Призначити менеджера</option>
+                                    {allOrderManagers.map(m => <option key={m.email} value={m.email}>{m.name}</option>)}
+                                </select>
+                              </div>
+                            )}
                         </div>
-                        <div>
-                            <label htmlFor="status" className="block text-sm font-medium text-slate-700 mb-1">Статус</label>
-                            <select
-                                id="status"
-                                value={activeOrderData?.status || 'Ordered'}
-                                onChange={e => setActiveOrderData(prev => prev ? { ...prev, status: e.target.value as Order['status'] } : null)}
-                                className="w-full p-2.5 border border-slate-300 rounded-lg"
-                            >
-                                {orderStatusValues.map(s => <option key={s} value={s}>{orderStatusTranslations[s]}</option>)}
-                            </select>
+                        <div className="px-4 pb-4">
+                            <h4 className="text-lg font-semibold text-slate-800 mb-2">Товари в замовленні</h4>
+                            <div className="space-y-3 max-h-64 overflow-y-auto pr-2 border rounded-lg p-2 bg-slate-50">
+                                {(activeOrderData.items || []).map((item, index) => (
+                                    <div key={index} className="grid grid-cols-12 gap-2 items-center bg-white p-2 rounded shadow-sm">
+                                        <div className="col-span-12 md:col-span-5 relative" ref={el => { productDropdownRefs.current[index] = el; }}>
+                                            <input type="text" placeholder="Пошук товару..." 
+                                                defaultValue={item.productName}
+                                                onFocus={() => {setOpenProductDropdown(index); setProductSearchTerm('');}}
+                                                onChange={e => setProductSearchTerm(e.target.value)}
+                                                className="w-full p-2 border-slate-300 rounded-lg"/>
+                                            {openProductDropdown === index && (
+                                                <div className="absolute top-full left-0 w-full max-h-60 overflow-y-auto bg-white border shadow-lg z-20 rounded-b-lg">
+                                                    {filteredProducts.map(p => (
+                                                        <div key={p.id} onClick={() => { handleItemChange(index, 'productId', p.id); setOpenProductDropdown(null); }} className="p-2 hover:bg-rose-100 cursor-pointer text-sm">
+                                                            {p.name}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <input type="number" placeholder="К-сть" value={item.quantity} onChange={e => handleItemChange(index, 'quantity', parseInt(e.target.value))} min="1" className="col-span-4 md:col-span-2 p-2 border-slate-300 rounded-lg"/>
+                                        <input type="number" placeholder="Ціна" value={item.price} onChange={e => handleItemChange(index, 'price', parseFloat(e.target.value))} step="0.01" className="col-span-4 md:col-span-2 p-2 border-slate-300 rounded-lg"/>
+                                        <input type="number" placeholder="Знижка %" value={item.discount} onChange={e => handleItemChange(index, 'discount', parseFloat(e.target.value))} step="0.01" className="col-span-4 md:col-span-2 p-2 border-slate-300 rounded-lg"/>
+                                        <button type="button" onClick={() => handleRemoveItem(index)} className="col-span-12 md:col-span-1 text-red-500 hover:text-red-700 p-2 flex justify-center"><TrashIcon className="w-5 h-5"/></button>
+                                    </div>
+                                ))}
+                            </div>
+                            <button type="button" onClick={handleAddItem} className="mt-3 text-sm font-semibold text-rose-600 hover:text-rose-800">+ Додати товар</button>
+                        </div>
+                        <div className="p-4">
+                            <label className="block text-sm font-medium text-slate-700">Нотатки до замовлення</label>
+                            <textarea name="notes" value={activeOrderData.notes || ''} onChange={handleFormChange} rows={3} className="mt-1 block w-full p-2.5 border-slate-300 rounded-lg"></textarea>
                         </div>
                     </div>
-
-                    <div className="space-y-3 pt-4 border-t">
-                        <h4 className="text-md font-semibold text-slate-700">Позиції замовлення</h4>
-                        <div className="grid grid-cols-12 gap-x-2 text-xs font-semibold text-slate-500 px-2">
-                            <div className="col-span-5">Товар</div>
-                            <div className="col-span-2 text-center">К-сть</div>
-                            <div className="col-span-2 text-center">Ціна (₴)</div>
-                            <div className="col-span-2 text-center">Знижка (%)</div>
-                            <div className="col-span-1"></div>
+                     <div className="flex flex-col sm:flex-row justify-between items-center p-4 border-t bg-slate-50 rounded-b-xl">
+                        <p className="font-semibold text-xl text-slate-800 mb-2 sm:mb-0">Всього: ₴{(activeOrderData.totalAmount || 0).toFixed(2)}</p>
+                        <div className="flex gap-3">
+                            <button type="button" onClick={closeModal} className="bg-white border border-slate-300 py-2 px-4 rounded-lg">Скасувати</button>
+                            <button type="submit" form="order-form-id" disabled={isSubmitting} className="bg-rose-500 hover:bg-rose-600 text-white font-semibold py-2 px-4 rounded-lg disabled:opacity-50">
+                                {isSubmitting ? 'Збереження...' : (modalMode === 'add' ? 'Створити замовлення' : 'Зберегти зміни')}
+                            </button>
                         </div>
-                        {(activeOrderData?.items || []).map((item, index) => (
-                            <div key={index} className="grid grid-cols-12 gap-2 items-center p-2 rounded-lg bg-slate-50">
-                                <div className="col-span-5" ref={el => { productDropdownRefs.current[index] = el; }}>
-                                    <div className="relative">
-                                        <input
-                                            type="text"
-                                            placeholder="Пошук товару..."
-                                            value={openProductDropdown === index ? productSearchTerm : item.productName}
-                                            onFocus={() => { setOpenProductDropdown(index); setProductSearchTerm(''); }}
-                                            onChange={(e) => { setOpenProductDropdown(index); setProductSearchTerm(e.target.value); }}
-                                            className="w-full p-2 border border-slate-300 rounded-md text-sm"
-                                        />
-                                        {openProductDropdown === index && (
-                                            <div className="absolute z-20 w-full bg-white shadow-lg max-h-60 overflow-auto border rounded-md mt-1">
-                                                {filteredProducts.length > 0 ? filteredProducts.map(product => (
-                                                    <div
-                                                        key={product.id}
-                                                        className="p-2 hover:bg-rose-50 cursor-pointer text-sm"
-                                                        onClick={() => {
-                                                            handleItemChange(index, 'productIdSelect', product.id);
-                                                            setOpenProductDropdown(null);
-                                                        }}
-                                                    >
-                                                        {product.name}
-                                                    </div>
-                                                )) : <div className="p-2 text-sm text-slate-500">Товарів не знайдено</div>}
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                                <div className="col-span-2">
-                                    <input type="number" value={item.quantity} onChange={e => handleItemChange(index, 'quantity', e.target.value)} min="1" className="w-full p-2 border border-slate-300 rounded-md text-sm text-center"/>
-                                </div>
-                                <div className="col-span-2">
-                                    <input type="number" value={item.price} onChange={e => handleItemChange(index, 'price', e.target.value)} min="0" step="0.01" className="w-full p-2 border border-slate-300 rounded-md text-sm text-center"/>
-                                </div>
-                                <div className="col-span-2">
-                                    <input type="number" value={item.discount || 0} onChange={e => handleItemChange(index, 'discount', e.target.value)} min="0" max="100" className="w-full p-2 border border-slate-300 rounded-md text-sm text-center"/>
-                                </div>
-                                <div className="col-span-1 text-center">
-                                    <button type="button" onClick={() => removeItem(index)} className="p-2 text-slate-400 hover:text-red-500" title="Видалити позицію"><TrashIcon className="w-5 h-5"/></button>
-                                </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+      ) : null}
+
+      {/* View Modal */}
+      {viewOrder && (
+        <div role="dialog" aria-modal="true" className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-40 p-4">
+             <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+                 <div className="flex justify-between items-center p-4 border-b">
+                     <h3 className="text-xl font-semibold">Деталі замовлення #{viewOrder.id.substring(0,8)}</h3>
+                     <button onClick={closeModal}><XMarkIcon className="w-6 h-6"/></button>
+                 </div>
+                 <div className="p-4 space-y-4 overflow-y-auto">
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                        <p><strong className="text-slate-500">Клієнт:</strong> {viewOrder.customerName}</p>
+                        <p><strong className="text-slate-500">Дата:</strong> {new Date(viewOrder.date).toLocaleDateString()}</p>
+                        <p><strong className="text-slate-500">Статус:</strong> <StatusPill status={viewOrder.status} /></p>
+                        {isAdmin && <p><strong className="text-slate-500">Менеджер:</strong> {allOrderManagers.find(m => m.email === viewOrder.managedByUserEmail)?.name || viewOrder.managedByUserEmail || 'N/A'}</p>}
+                    </div>
+                    <div>
+                        <h4 className="font-semibold mb-2">Товари:</h4>
+                        <ul className="border rounded-lg divide-y">
+                            {viewOrder.items.map(item => (
+                                <li key={item.id} className="p-2 grid grid-cols-4 gap-2 text-sm">
+                                    <span className="col-span-2">{item.productName}</span>
+                                    <span className="text-center">{item.quantity} x ₴{item.price.toFixed(2)}</span>
+                                    <span className="text-right font-medium">₴{(item.quantity * item.price * (1-(item.discount || 0)/100)).toFixed(2)}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                    {viewOrder.notes && <div><strong className="text-slate-500">Нотатки:</strong><p className="p-2 bg-slate-50 rounded-md mt-1 text-sm">{viewOrder.notes}</p></div>}
+                 </div>
+                 <div className="flex justify-between items-center p-4 border-t bg-slate-50 rounded-b-xl">
+                    <p className="font-semibold text-xl">Всього: ₴{viewOrder.totalAmount.toFixed(2)}</p>
+                    <button onClick={closeModal} className="bg-slate-600 text-white py-2 px-4 rounded-lg">Закрити</button>
+                 </div>
+             </div>
+        </div>
+      )}
+
+       {/* TTN Modal */}
+      {modalMode === 'ttn' && activeTtnOrder && (
+        <div role="dialog" aria-modal="true" className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-40 p-4">
+            <form onSubmit={handleCreateTtn}>
+                <div className="bg-white rounded-xl shadow-xl w-full max-w-lg">
+                    <div className="flex justify-between items-center p-4 border-b">
+                        <h3 className="text-xl font-semibold">Створення ТТН для замовлення #{activeTtnOrder.id.substring(0,8)}</h3>
+                        <button type="button" onClick={closeModal} disabled={isSubmitting}><XMarkIcon className="w-6 h-6"/></button>
+                    </div>
+                    {modalError && <div role="alert" className="m-4 p-3 bg-red-50 text-red-700 rounded-lg text-sm">{modalError}</div>}
+                    <div className="p-4 space-y-4">
+                        <div>
+                            <p className="text-sm font-medium text-slate-700">Одержувач: <span className="font-bold text-slate-900">{activeTtnOrder.customerName}</span></p>
+                        </div>
+                        
+                        {/* Nova Poshta Widget Button */}
+                        <div className="nova-poshta-button" onClick={openNpWidget}>
+                          <div className="logo">
+                            <svg width="129" height="18" viewBox="0 0 129 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9.48791 14.0369V10.6806H6.64191V14.0369H4.46643L7.10879 16.6861C7.64025 17.2189 8.49951 17.2189 9.03096 16.6861L11.6733 14.0369H9.48791ZM3.04095 12.6077V5.38722L0.398589 8.03639C-0.132863 8.56922 -0.132863 9.4307 0.398589 9.96352L3.04095 12.6077ZM6.64191 3.96304V7.31933H9.48791V3.96304H11.6634L9.02103 1.31386C8.48958 0.78104 7.63031 0.78104 7.09886 1.31386L4.4565 3.96304H6.64191ZM15.7263 8.03639L13.0839 5.38722V12.6077L15.7263 9.96352C16.2577 9.4307 16.2577 8.56922 15.7263 8.03639Z" fill="#DA291C"/><path d="M24.2303 7.63804V5.12332C24.2303 4.46102 23.7437 3.97302 23.0833 3.97302L20.1561 3.98249V6.64162L21.3653 6.63215V14.0369H24.2353V10.3719H27.8202V14.0369H30.6902V3.96804H27.8202V7.63804H24.2303Z" fill="#DA291C"/><path d="M37.2792 3.8235C34.2553 3.8235 32.0457 6.00957 32.0457 9.00234C32.0457 11.9951 34.2553 14.1812 37.2792 14.1812C40.3031 14.1812 42.5126 11.9951 42.5126 9.00234C42.5126 6.00957 40.3031 3.8235 37.2792 3.8235ZM37.2792 11.3727C35.9187 11.3727 34.9157 10.3668 34.9157 9.00234C34.9157 7.63792 35.9187 6.63203 37.2792 6.63203C38.6397 6.63203 39.6427 7.63792 39.6427 9.00234C39.6427 10.3668 38.6397 11.3727 37.2792 11.3727Z" fill="#DA291C"/><path d="M51.3858 8.70866C52.0958 8.27543 52.5378 7.53347 52.5378 6.64211C52.5378 5.08846 51.5348 3.96804 49.5387 3.96804H43.8733V14.0319H49.5387C51.6341 14.0319 52.8506 12.8119 52.8506 11.1288C52.8506 10.0532 52.2796 9.17675 51.3858 8.70866ZM46.5397 6.21386H48.6747C49.35 6.21386 49.7373 6.54252 49.7373 7.10522C49.7373 7.66792 49.35 7.99657 48.6747 7.99657H46.5397V6.21386ZM48.8783 11.8209H46.5397V9.95358H48.8783C49.5933 9.95358 49.9955 10.2972 49.9955 10.8898C49.9955 11.4774 49.5933 11.8209 48.8783 11.8209Z" fill="#DA291C"/><path d="M57.2347 3.96804L53.2774 14.0319H56.331L56.9666 12.1795H60.9984L61.634 14.0319H64.7472L60.7899 3.96804H57.2347ZM57.7462 9.9237L58.8782 6.63215H59.0967L60.2288 9.9237H57.7462Z" fill="#DA291C"/><path d="M78.4567 3.96804H68.8538V6.62717H70.2887V14.0319H73.1587V6.62717H76.7436V14.0319H79.6136V5.11834C79.6037 4.38633 79.1866 3.96804 78.4567 3.96804Z" fill="#DA291C"/><path d="M86.1973 3.8235C83.1734 3.8235 80.9639 6.00957 80.9639 9.00234C80.9639 11.9951 83.1734 14.1812 86.1973 14.1812C89.2212 14.1812 91.4307 11.9951 91.4307 9.00234C91.4307 6.00957 89.2261 3.8235 86.1973 3.8235ZM86.1973 11.3727C84.8368 11.3727 83.8338 10.3668 83.8338 9.00234C83.8338 7.63792 84.8368 6.63203 86.1973 6.63203C87.5578 6.63203 88.5608 7.63792 88.5608 9.00234C88.5608 10.3668 87.5628 11.3727 86.1973 11.3727Z" fill="#DA291C"/><path d="M103.978 11.3728H101.252V3.96804H98.3872V11.3728H95.6613V3.96804H92.7963V14.0369H106.848V3.96804H103.978V11.3728Z" fill="#DA291C"/><path d="M117.955 6.62717V3.96804H108.209V6.62717H111.65V14.0369H114.514V6.62717H117.955Z" fill="#DA291C"/><path d="M125.458 14.0369H128.571L124.614 3.97305H121.059L117.102 14.0369H120.155L120.791 12.1845H124.823L125.458 14.0369ZM121.565 9.92373L122.697 6.63218H122.916L124.048 9.92373H121.565Z" fill="#DA291C"/></svg>
+                          </div>
+                          <div className="angle"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" clipRule="evenodd" d="M5.49399 1.44891L10.0835 5.68541L10.1057 5.70593C10.4185 5.99458 10.6869 6.24237 10.8896 6.4638C11.1026 6.69642 11.293 6.95179 11.4023 7.27063C11.5643 7.74341 11.5643 8.25668 11.4023 8.72946C11.293 9.0483 11.1026 9.30367 10.8896 9.53629C10.6869 9.75771 10.4184 10.0055 10.1057 10.2942L10.0835 10.3147L5.49398 14.5511L4.47657 13.4489L9.06607 9.21246C9.40722 8.89756 9.62836 8.69258 9.78328 8.52338C9.93272 8.36015 9.96962 8.28306 9.98329 8.24318C10.0373 8.08559 10.0373 7.9145 9.98329 7.7569C9.96963 7.71702 9.93272 7.63993 9.78328 7.4767C9.62837 7.3075 9.40722 7.10252 9.06608 6.78761L4.47656 2.55112L5.49399 1.44891Z" fill="#475569"/></svg></div>
+                          <div className="wrapper">
+                            <span className="text" style={{ marginBottom: npDepartment ? '5px' : '0' }}>{npDepartment?.shortName || ''}</span>
+                            <span className="text-description">{npDepartment ? `${npDepartment.addressParts?.city || ''} вул. ${npDepartment.addressParts?.street || ''}, ${npDepartment.addressParts?.building || ''}` : 'Обрати відділення або поштомат'}</span>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-4 gap-4">
+                            <div className="col-span-2 sm:col-span-1">
+                                <label className="block text-sm font-medium text-slate-700">Вага, кг</label>
+                                <input type="text" value={packageDetails.weight} onChange={e => setPackageDetails(p => ({...p, weight: e.target.value}))} required className="mt-1 block w-full p-2 border-slate-300 rounded-lg"/>
                             </div>
-                        ))}
-                         <button type="button" onClick={addItem} className="flex items-center text-sm font-semibold text-rose-600 hover:text-rose-700">
-                            <PlusIcon className="w-4 h-4 mr-1"/> Додати позицію
+                            <div className="col-span-2 sm:col-span-1">
+                                <label className="block text-sm font-medium text-slate-700">Довжина, см</label>
+                                <input type="text" value={packageDetails.length} onChange={e => setPackageDetails(p => ({...p, length: e.target.value}))} required className="mt-1 block w-full p-2 border-slate-300 rounded-lg"/>
+                            </div>
+                            <div className="col-span-2 sm:col-span-1">
+                                <label className="block text-sm font-medium text-slate-700">Ширина, см</label>
+                                <input type="text" value={packageDetails.width} onChange={e => setPackageDetails(p => ({...p, width: e.target.value}))} required className="mt-1 block w-full p-2 border-slate-300 rounded-lg"/>
+                            </div>
+                            <div className="col-span-2 sm:col-span-1">
+                                <label className="block text-sm font-medium text-slate-700">Висота, см</label>
+                                <input type="text" value={packageDetails.height} onChange={e => setPackageDetails(p => ({...p, height: e.target.value}))} required className="mt-1 block w-full p-2 border-slate-300 rounded-lg"/>
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700">Опис відправлення</label>
+                            <input type="text" value={packageDetails.description} onChange={e => setPackageDetails(p => ({...p, description: e.target.value}))} required className="mt-1 block w-full p-2 border-slate-300 rounded-lg"/>
+                        </div>
+                    </div>
+                    <div className="flex justify-end gap-3 p-4 border-t bg-slate-50">
+                        <button type="button" onClick={closeModal} className="bg-white border border-slate-300 py-2 px-4 rounded-lg" disabled={isSubmitting}>Скасувати</button>
+                        <button type="submit" disabled={isSubmitting || !npDepartment} className="bg-rose-500 hover:bg-rose-600 text-white font-semibold py-2 px-4 rounded-lg disabled:opacity-50">
+                            {isSubmitting ? 'Створення...' : 'Створити ТТН'}
                         </button>
                     </div>
-                    
-                    <div>
-                      <label htmlFor="notes" className="block text-sm font-medium text-slate-700 mb-1">Нотатки до замовлення</label>
-                      <textarea 
-                        id="notes" 
-                        value={activeOrderData?.notes || ''}
-                        onChange={e => setActiveOrderData(prev => prev ? { ...prev, notes: e.target.value } : null)}
-                        rows={3} 
-                        className="w-full p-2.5 border border-slate-300 rounded-lg"
-                      />
-                    </div>
-                    
-                    <div className="text-right font-bold text-lg text-slate-800">
-                        Загальна сума: ₴{calculateTotalAmount(activeOrderData?.items).toFixed(2)}
-                    </div>
-
-                    <div className="flex justify-end pt-6 space-x-3 border-t">
-                      <button type="button" onClick={closeOrderModal} className="bg-white border border-slate-300 py-2 px-4 rounded-lg" disabled={isLoading}>Скасувати</button>
-                      <button type="submit" className="bg-rose-500 hover:bg-rose-600 text-white font-semibold py-2 px-4 rounded-lg" disabled={isLoading}>
-                        {isLoading ? (modalMode === 'edit' ? 'Збереження...' : 'Створення...') : (modalMode === 'edit' ? 'Зберегти зміни' : 'Створити замовлення')}
-                      </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-      )}
-
-       {isNovaPoshtaModalOpen && viewOrder && (
-        <div role="dialog" aria-modal="true" className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-6 rounded-xl shadow-xl w-full max-w-lg">
-            <div className="flex justify-between items-center pb-4 mb-6 border-b">
-              <h3 className="text-xl font-semibold">Створення ТТН для замовлення #{viewOrder.id.substring(0,6)}</h3>
-              <button onClick={closeNovaPoshtaModal} disabled={isCreatingTtn}><XMarkIcon className="w-6 h-6"/></button>
-            </div>
-            {modalError && <div role="alert" className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg">{modalError}</div>}
-            <form onSubmit={handleCreateTtn} className="space-y-4">
-              <div className="relative">
-                  <label htmlFor="city" className="block text-sm font-medium text-slate-700">Місто <span className="text-red-500">*</span></label>
-                  <input type="text" id="city" 
-                    value={cityInputValue}
-                    onChange={e => {
-                      setCitySearchTerm(e.target.value);
-                      if (novaPoshtaFormData.city) {
-                          setNovaPoshtaFormData(prev => ({ ...prev, city: null, warehouse: null }));
-                          setWarehouseSearchTerm('');
-                      }
-                    }}
-                    onFocus={() => setIsCityDropdownOpen(true)}
-                    onBlur={() => setTimeout(() => setIsCityDropdownOpen(false), 200)}
-                    placeholder="Почніть вводити назву міста..." required 
-                    className="mt-1 block w-full p-2.5 border-slate-300 rounded-lg" 
-                    autoComplete="off"
-                  />
-                  {isCityDropdownOpen && (
-                      <div className="absolute z-20 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                        {isSearchingCities ? <div className="p-3 text-sm text-slate-500">Пошук...</div> : 
-                          cityResults.length > 0 ? cityResults.map(city => (
-                            <div key={city.Ref} 
-                                className="p-3 hover:bg-rose-50 cursor-pointer"
-                                onMouseDown={() => {
-                                    setNovaPoshtaFormData(prev => ({...prev, city: { id: city.Ref, name: city.Description }, warehouse: null}));
-                                    setCitySearchTerm('');
-                                    setWarehouseSearchTerm('');
-                                    setIsCityDropdownOpen(false);
-                                }}>
-                                {city.Description}
-                            </div>
-                          )) : debouncedCitySearch.length >=2 ? <div className="p-3 text-sm text-slate-500">Міст не знайдено.</div> : <div className="p-3 text-sm text-slate-500">Введіть 2+ символи...</div>
-                        }
-                      </div>
-                  )}
-              </div>
-              <div className="relative">
-                  <label htmlFor="warehouse" className="block text-sm font-medium text-slate-700">Відділення/поштомат <span className="text-red-500">*</span></label>
-                  <input type="text" id="warehouse" 
-                    value={warehouseInputValue}
-                    onChange={e => setWarehouseSearchTerm(e.target.value)}
-                    onFocus={() => setIsWarehouseDropdownOpen(true)}
-                    onBlur={() => setTimeout(() => setIsWarehouseDropdownOpen(false), 200)}
-                    placeholder={!novaPoshtaFormData.city ? 'Спочатку виберіть місто' : 'Почніть вводити для пошуку...'}
-                    required 
-                    disabled={!novaPoshtaFormData.city}
-                    className="mt-1 block w-full p-2.5 border-slate-300 rounded-lg disabled:bg-slate-100 disabled:cursor-not-allowed" 
-                    autoComplete="off"
-                  />
-                  {isWarehouseDropdownOpen && novaPoshtaFormData.city && (
-                        <div className="absolute z-20 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                        {isSearchingWarehouses ? (
-                            <div className="p-3 text-sm text-slate-500">Пошук...</div>
-                        ) : warehouseResults.length > 0 ? (
-                            warehouseResults.map(wh => (
-                                <div key={wh.Ref} 
-                                    className="p-3 hover:bg-rose-50 cursor-pointer text-sm"
-                                    onMouseDown={() => {
-                                        setNovaPoshtaFormData(prev => ({...prev, warehouse: { id: wh.Ref, name: wh.Description }}));
-                                        setWarehouseSearchTerm('');
-                                        setIsWarehouseDropdownOpen(false);
-                                    }}>
-                                    {wh.Description}
-                                </div>
-                            ))
-                        ) : (
-                             <div className="p-3 text-sm text-slate-500">{debouncedWarehouseSearch ? 'Відділень не знайдено.' : 'Введіть текст для пошуку.'}</div>
-                        )}
-                        </div>
-                  )}
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div>
-                    <label htmlFor="weight" className="block text-sm font-medium text-slate-700">Вага, кг</label>
-                    <input type="number" id="weight" value={novaPoshtaFormData.weight} onChange={e => setNovaPoshtaFormData({...novaPoshtaFormData, weight: parseFloat(e.target.value)})} step="0.1" className="mt-1 block w-full p-2.5 border-slate-300 rounded-lg" />
-                  </div>
-                   <div>
-                    <label htmlFor="length" className="block text-sm font-medium text-slate-700">Довжина, см</label>
-                    <input type="number" id="length" value={novaPoshtaFormData.length} onChange={e => setNovaPoshtaFormData({...novaPoshtaFormData, length: parseFloat(e.target.value)})} className="mt-1 block w-full p-2.5 border-slate-300 rounded-lg" />
-                  </div>
-                   <div>
-                    <label htmlFor="width" className="block text-sm font-medium text-slate-700">Ширина, см</label>
-                    <input type="number" id="width" value={novaPoshtaFormData.width} onChange={e => setNovaPoshtaFormData({...novaPoshtaFormData, width: parseFloat(e.target.value)})} className="mt-1 block w-full p-2.5 border-slate-300 rounded-lg" />
-                  </div>
-                   <div>
-                    <label htmlFor="height" className="block text-sm font-medium text-slate-700">Висота, см</label>
-                    <input type="number" id="height" value={novaPoshtaFormData.height} onChange={e => setNovaPoshtaFormData({...novaPoshtaFormData, height: parseFloat(e.target.value)})} className="mt-1 block w-full p-2.5 border-slate-300 rounded-lg" />
-                  </div>
-              </div>
-              <div>
-                <label htmlFor="description" className="block text-sm font-medium text-slate-700">Опис відправлення</label>
-                <input type="text" id="description" value={novaPoshtaFormData.description} onChange={e => setNovaPoshtaFormData({...novaPoshtaFormData, description: e.target.value})} className="mt-1 block w-full p-2.5 border-slate-300 rounded-lg" />
-              </div>
-              <div className="flex justify-end pt-6 space-x-3 border-t">
-                  <button type="button" onClick={closeNovaPoshtaModal} className="bg-white border border-slate-300 py-2 px-4 rounded-lg" disabled={isCreatingTtn}>Скасувати</button>
-                  <button type="submit" className="bg-rose-500 hover:bg-rose-600 text-white py-2 px-4 rounded-lg flex items-center" disabled={isCreatingTtn}>
-                    <TruckIcon className="w-5 h-5 mr-2"/> {isCreatingTtn ? 'Створення...' : 'Створити ТТН'}
-                  </button>
-              </div>
+                </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {trackingDetailsOrder && trackingData[trackingDetailsOrder.novaPoshtaTtn!] && (
-          <div role="dialog" aria-modal="true" className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
-              <div className="bg-white p-6 rounded-xl shadow-xl w-full max-w-lg">
-                  <div className="flex justify-between items-center pb-4 mb-6 border-b">
-                      <h3 className="text-xl font-semibold">Відстеження: {trackingDetailsOrder.novaPoshtaTtn}</h3>
-                      <button onClick={() => setTrackingDetailsOrder(null)}><XMarkIcon className="w-6 h-6"/></button>
-                  </div>
-                  <div className="space-y-3 text-sm">
-                      <p><strong className="text-slate-500 w-48 inline-block">Статус:</strong> <span className="font-semibold text-rose-600">{trackingData[trackingDetailsOrder.novaPoshtaTtn!].Status}</span></p>
-                      <p><strong className="text-slate-500 w-48 inline-block">Орієнтовна дата доставки:</strong> {new Date(trackingData[trackingDetailsOrder.novaPoshtaTtn!].ScheduledDeliveryDate).toLocaleDateString()}</p>
-                      {trackingData[trackingDetailsOrder.novaPoshtaTtn!].RecipientDateTime &&
-                        <p><strong className="text-slate-500 w-48 inline-block">Дата отримання:</strong> {new Date(trackingData[trackingDetailsOrder.novaPoshtaTtn!].RecipientDateTime).toLocaleString()}</p>
-                      }
-                       <p><strong className="text-slate-500 w-48 inline-block">Відправник:</strong> {trackingData[trackingDetailsOrder.novaPoshtaTtn!].WarehouseSender}</p>
-                       <p><strong className="text-slate-500 w-48 inline-block">Одержувач:</strong> {trackingData[trackingDetailsOrder.novaPoshtaTtn!].WarehouseRecipient}</p>
-                       <p><strong className="text-slate-500 w-48 inline-block">Платник:</strong> {trackingData[trackingDetailsOrder.novaPoshtaTtn!].PayerType}</p>
-                       <p><strong className="text-slate-500 w-48 inline-block">Сума до сплати:</strong> {trackingData[trackingDetailsOrder.novaPoshtaTtn!].AmountToPay} грн</p>
-                  </div>
-                   <div className="mt-6 pt-6 text-right border-t">
-                      <button onClick={() => setTrackingDetailsOrder(null)} className="bg-slate-600 hover:bg-slate-700 text-white py-2 px-4 rounded-lg">Закрити</button>
-                   </div>
-              </div>
-          </div>
-      )}
-
-      {viewOrder && !isNovaPoshtaModalOpen && !trackingDetailsOrder &&(
-         <div role="dialog" aria-modal="true" aria-labelledby="view-order-modal-title" className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-6 rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
-            <div className="flex justify-between items-center pb-4 mb-4 border-b">
-              <h3 id="view-order-modal-title" className="text-xl font-semibold text-slate-800">Замовлення #{viewOrder.id.substring(0, 6)}</h3>
-              <button onClick={closeModalView} disabled={isLoading}><XMarkIcon className="w-6 h-6"/></button>
-            </div>
-            {modalError && <div role="alert" className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg">{modalError}</div>}
-            <div className="space-y-4 overflow-y-auto pr-2 flex-grow">
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                 <div>
-                    <h4 className="font-semibold text-slate-500 mb-2">Деталі замовлення</h4>
-                    <p><span className="font-medium text-slate-600 w-28 inline-block">Клієнт:</span> {viewOrder.customerName}</p>
-                    <p><span className="font-medium text-slate-600 w-28 inline-block">Дата:</span> {new Date(viewOrder.date).toLocaleDateString()}</p>
-                    <p><span className="font-medium text-slate-600 w-28 inline-block">Сума:</span> ₴{viewOrder.totalAmount.toFixed(2)}</p>
-                    <div className="flex items-center mt-1">
-                      <label htmlFor="status" className="font-medium text-slate-600 w-28 inline-block">Статус:</label>
-                      <select id="status" value={editableOrderStatus} onChange={e => setEditableOrderStatus(e.target.value as Order['status'])} className="block w-full border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500 sm:text-sm p-2">
-                        {orderStatusValues.map(s => <option key={s} value={s}>{orderStatusTranslations[s]}</option>)}
-                      </select>
+            {isNpWidgetOpen && (
+                 <div className="modal-overlay" style={{display: 'flex', zIndex: 50}}>
+                    <div className="modal">
+                        <header className="modal-header">
+                            <h2>Вибрати відділення</h2>
+                            <span className="modal-close" onClick={closeNpWidget}>&times;</span>
+                        </header>
+                        <iframe ref={npIframeRef} className="modal-iframe" allow="geolocation"></iframe>
                     </div>
                  </div>
-                 {viewOrder.novaPoshtaTtn && (
-                    <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                        <h4 className="font-semibold text-blue-800 mb-2">Інформація про доставку</h4>
-                        <p><span className="font-medium text-blue-700">ТТН Нової Пошти:</span></p>
-                        <p className="font-bold text-blue-900 text-lg">{viewOrder.novaPoshtaTtn}</p>
-                        {viewOrder.novaPoshtaPrintUrl && 
-                           <a href={viewOrder.novaPoshtaPrintUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center mt-2 text-sm text-rose-600 hover:underline">
-                             <PrinterIcon className="w-4 h-4 mr-1"/> Роздрукувати ТТН
-                           </a>
-                        }
-                    </div>
-                 )}
-               </div>
-               <div>
-                  <label htmlFor="notes" className="font-semibold text-slate-500">Нотатки до замовлення:</label>
-                  <textarea id="notes" value={editableOrderNotes} onChange={e => setEditableOrderNotes(e.target.value)} rows={3} className="mt-1 block w-full p-2.5 border-slate-300 rounded-lg"/>
-               </div>
-               <div className="border border-slate-200 rounded-lg overflow-hidden mt-4">
-                  <table className="min-w-full divide-y divide-slate-200">
-                    <thead className="bg-slate-50"><tr className="text-left text-xs font-semibold text-slate-500 uppercase"><th className="px-4 py-2">Товар</th><th className="px-4 py-2">К-сть</th><th className="px-4 py-2">Ціна</th><th className="px-4 py-2 text-right">Всього</th></tr></thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {viewOrder.items.map(item => (
-                        <tr key={item.id}><td className="px-4 py-2">{item.productName}</td><td className="px-4 py-2">{item.quantity}</td><td className="px-4 py-2">₴{item.price.toFixed(2)}</td><td className="px-4 py-2 text-right">₴{(item.quantity * item.price * (1 - (item.discount || 0)/100)).toFixed(2)}</td></tr>
-                      ))}
-                    </tbody>
-                  </table>
-               </div>
-            </div>
-            <div className="flex justify-end pt-6 space-x-3 border-t">
-              <button type="button" onClick={closeModalView} className="bg-white border border-slate-300 py-2 px-4 rounded-lg" disabled={isLoading}>Закрити</button>
-              <button onClick={handleUpdateOrderInViewModal} className="bg-rose-500 hover:bg-rose-600 text-white font-semibold py-2 px-4 rounded-lg" disabled={isLoading || (editableOrderStatus === viewOrder.status && editableOrderNotes === (viewOrder.notes || ''))}>
-                {isLoading ? 'Збереження...' : 'Зберегти зміни'}
-              </button>
-            </div>
-          </div>
+            )}
         </div>
       )}
     </div>
