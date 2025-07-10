@@ -76,6 +76,18 @@ export interface NovaPoshtaRef {
   Description: string;
 }
 
+export interface NovaPoshtaHelperRef {
+  Ref: string;
+  Description: string;
+  phone?: string;
+}
+
+export interface NovaPoshtaHelperResult {
+  sender?: NovaPoshtaHelperRef | { error: string };
+  contact?: NovaPoshtaHelperRef | { error: string };
+  address?: NovaPoshtaHelperRef | { error: string };
+}
+
 export interface NovaPoshtaTrackingInfo {
   StatusCode: string;
   Status: string;

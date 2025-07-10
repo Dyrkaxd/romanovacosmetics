@@ -2,6 +2,8 @@
 
 
 
+
+
 import type { FC, SVGProps } from 'react';
 
 export const DashboardIcon: FC<SVGProps<SVGSVGElement>> = (props) => (
@@ -89,9 +91,15 @@ export const DocumentTextIcon: FC<SVGProps<SVGSVGElement>> = (props) => (
   </svg>
 );
 
-export const PrinterIcon: FC<SVGProps<SVGSVGElement>> = (props) => (
+export const CreditCardIcon: FC<SVGProps<SVGSVGElement>> = (props) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0c1.291-.646 2.056-1.906 2.056-3.272A4.5 4.5 0 0015.75 10.5H8.25A4.5 4.5 0 003.75 15c0 1.366.765 2.626 2.056 3.272m11.318 0c.231.11.468.204.708.292a1.125 1.125 0 01.372 1.954l-.458.305A1.125 1.125 0 0118.25 22.5H5.75A1.125 1.125 0 014.792 21.29l-.458-.305a1.125 1.125 0 01.372-1.954c.24-.088.477-.182.708-.292m11.318 0a46.471 46.471 0 00-6.176 0" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15A2.25 2.25 0 002.25 6.75v10.5A2.25 2.25 0 004.5 19.5z" />
+  </svg>
+);
+
+export const ChartBarIcon: FC<SVGProps<SVGSVGElement>> = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
   </svg>
 );
 
@@ -101,16 +109,9 @@ export const Bars3Icon: FC<SVGProps<SVGSVGElement>> = (props) => (
   </svg>
 );
 
-export const LightBulbIcon: FC<SVGProps<SVGSVGElement>> = (props) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3 .378A6.011 6.011 0 0112 12.75c-2.176 0-4.205-.756-5.812-2.14m11.624 2.14a6.009 6.009 0 00-5.812-2.14m0 0A6.011 6.011 0 0112 6.75c2.176 0 4.205.756 5.812 2.14m-11.624 2.14a6.009 6.009 0 005.812 2.14M12 18a2.25 2.25 0 01-2.25-2.25V7.5a2.25 2.25 0 014.5 0v8.25A2.25 2.25 0 0112 18z" />
-    <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 15.75H14.25M9 20.25h6" />
- </svg>
-);
-
 export const FilterIcon: FC<SVGProps<SVGSVGElement>> = (props) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M12 3c-1.1 0-2 .9-2 2v1H6c-.6 0-1 .4-1 1s.4 1 1 1h4v.25c0 .41-.17.81-.46 1.1L5.41 12.5H5a2 2 0 00-2 2v1c0 .6.4 1 1 1h14c.6 0 1-.4 1-1v-1a2 2 0 00-2-2h-.41l-4.13-4.15c-.29-.29-.46-.7-.46-1.1V8h4c.6 0 1-.4 1-1s-.4-1-1-1h-4V5c0-1.1-.9-2-2-2zm0 2.5V8m0 0v2.75M12 8H8.75M12 8h3.25" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.244 2.013L9.75 21v-6.572a2.25 2.25 0 00-.659-1.591L3.659 7.409A2.25 2.25 0 013 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0112 3z" />
   </svg>
 );
 
@@ -120,57 +121,75 @@ export const DownloadIcon: FC<SVGProps<SVGSVGElement>> = (props) => (
   </svg>
 );
 
-export const CurrencyDollarIcon: FC<SVGProps<SVGSVGElement>> = (props) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-    </svg>
-);
-
-export const ChartBarIcon: FC<SVGProps<SVGSVGElement>> = (props) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
-    </svg>
-);
-
-export const ArrowPathIcon: FC<SVGProps<SVGSVGElement>> = (props) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0011.667 0l3.181-3.183m-11.667 0l-3.181 3.183m0 0l-3.181-3.183m11.667 0l3.181-3.183" />
-    </svg>
-);
-
 export const ShareIcon: FC<SVGProps<SVGSVGElement>> = (props) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186a.225.225 0 01.586.05l4.307 2.293a2.25 2.25 0 010 3.84l-4.307 2.293a2.25 2.25 0 10-.586-.05m.586-.05a2.25 2.25 0 000-2.186m0 2.186c.195.025.39.042.586.05l4.307-2.293a2.25 2.25 0 010-3.84l-4.307-2.293a2.25 2.25 0 10-.586.05m.586-.05a2.25 2.25 0 000-2.186Z" />
-  </svg>
-);
-
-export const ArrowTrendingUpIcon: FC<SVGProps<SVGSVGElement>> = (props) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18 9 11.25l4.306 4.307a11.95 11.95 0 0 1 5.814-5.519l2.74-1.22m0 0-3.75-.625m3.75.625-6.25 3.75" />
-  </svg>
-);
-
-export const ArrowTrendingDownIcon: FC<SVGProps<SVGSVGElement>> = (props) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 6 9 6.75 4.286-4.286a11.948 11.948 0 0 1 4.306 6.43l.776 2.898m0 0 3.182-5.511m-3.182 5.511L-5.511-3.182" />
-  </svg>
-);
-
-export const CreditCardIcon: FC<SVGProps<SVGSVGElement>> = (props) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3.75m-3.75 2.25h13.5m0-16.5h-13.5a2.25 2.25 0 00-2.25 2.25v13.5a2.25 2.25 0 002.25 2.25h13.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 100-2.186m0 2.186c-.18.324-.283.696-.283 1.093s.103.77.283 1.093m0 2.186V6.631" />
   </svg>
 );
 
 export const EllipsisVerticalIcon: FC<SVGProps<SVGSVGElement>> = (props) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5Zm0 6a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5Zm0 6a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5Z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z" />
   </svg>
 );
 
 export const TruckIcon: FC<SVGProps<SVGSVGElement>> = (props) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-        <path d="M5.52 6.467A2.25 2.25 0 017.683 5.25h5.634a2.25 2.25 0 012.163 1.217l2.128 4.256A2.25 2.25 0 0119.77 12h-1.02a2.25 2.25 0 00-2.25 2.25v2.25H6.75v-2.25a2.25 2.25 0 00-2.25-2.25H3.47a2.25 2.25 0 01-2.148-1.281L.61 6.533a2.25 2.25 0 012.148-3.217H4.5" strokeLinecap="round" strokeLinejoin="round" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 16.5a2.25 2.25 0 100 4.5 2.25 2.25 0 000-4.5zM6.75 16.5a2.25 2.25 0 100 4.5 2.25 2.25 0 000-4.5z" />
-    </svg>
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path d="M9 8.25H7.5a2.25 2.25 0 00-2.25 2.25v9a2.25 2.25 0 002.25 2.25h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25H15M9 12l3 3m0 0l3-3m-3 3v-6m-1.5-9H15a2.25 2.25 0 012.25 2.25v.75M9 7.5h3.75M9 7.5a2.25 2.25 0 012.25-2.25H15a2.25 2.25 0 012.25 2.25v.75" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+  </svg>
+);
+
+export const PrinterIcon: FC<SVGProps<SVGSVGElement>> = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6 18.25m0 0c-.223.049-.447.1-.676.152L5.25 18.97m0 0L3.25 18.25m2 1.429c.229-.043.455-.09.676-.152m0 0l3.07-1.616m-3.07 1.616l.942-4.949m2.128 6.565c.229-.043.455-.09.676-.152m0 0l3.07-1.616m-3.07 1.616l.942-4.949m-5.117 2.166c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6 18.25m0 0c-.223.049-.447.1-.676.152L5.25 18.97m0 0L3.25 18.25m2 1.429c.229-.043.455-.09.676-.152m0 0l3.07-1.616m-3.07 1.616l.942-4.949" />
+  </svg>
+);
+
+export const LightBulbIcon: FC<SVGProps<SVGSVGElement>> = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 0 0 1.5-.189m-1.5.189a6.01 6.01 0 0 1-1.5-.189m3.75 7.478a12.06 12.06 0 0 1-4.5 0m3.75 2.311a12.06 12.06 0 0 0-4.5 0m4.5 2.311a12.06 12.06 0 0 1-4.5 0m7.5 0a9 9 0 0 0 3.75-1.543m-3.75 1.543a9 9 0 0 1-3.75-1.543m0 0A4.5 4.5 0 0 1 9 10.5V8.25a4.5 4.5 0 0 1 9 0v2.25a4.5 4.5 0 0 1-4.5 4.5M12 18v-5.25" />
+  </svg>
+);
+
+export const ArrowPathIcon: FC<SVGProps<SVGSVGElement>> = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0011.667 0l3.181-3.183m-11.667 0l-3.181 3.183m0 0l-3.181-3.183m11.667 0l3.181-3.183" />
+  </svg>
+);
+
+export const CurrencyDollarIcon: FC<SVGProps<SVGSVGElement>> = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+);
+
+export const ArrowTrendingUpIcon: FC<SVGProps<SVGSVGElement>> = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-3.976 5.197m-2.573-2.573l-6.218 6.218a2.25 2.25 0 01-3.182 0l-1.99-1.99a2.25 2.25 0 010-3.182z" />
+  </svg>
+);
+
+export const ArrowTrendingDownIcon: FC<SVGProps<SVGSVGElement>> = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6L9 12.75l4.286-4.286a11.948 11.948 0 014.306 6.43l.776 2.898m0 0l3.182-5.511m-3.182 5.51l-5.511-3.181" />
+  </svg>
+);
+
+export const ClipboardIcon: FC<SVGProps<SVGSVGElement>> = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v3.042m-7.416 0v3.042c0 .212.03.418.084.612m7.332 0c.055.194.084.4.084.612v3.042m-7.416 0v3.042c0 .212.03.418.084.612m-3.5-3.042a2.25 2.25 0 0 0-2.25 2.25v3.75a2.25 2.25 0 0 0 2.25 2.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-3.75a2.25 2.25 0 0 0-2.25-2.25H6.375" />
+  </svg>
+);
+
+export const CheckIcon: FC<SVGProps<SVGSVGElement>> = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+  </svg>
+);
+
+export const KeyIcon: FC<SVGProps<SVGSVGElement>> = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 0 1 3 3m3 0a6 6 0 0 1-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.994-.562 1.591-.43L15.75 5.25z" />
+  </svg>
 );
