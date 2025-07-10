@@ -202,22 +202,20 @@ const OrdersPage: React.FC = () => {
   }, [debouncedCitySearch, isCityDropdownOpen]);
 
 
-  // API-driven search for warehouses. Fetches when dropdown is opened or search term changes.
+  // API-driven search for warehouses. Fetches only when search term has enough characters.
   useEffect(() => {
-    // Don't fetch if the dropdown isn't open or if no city is selected
-    if (!isWarehouseDropdownOpen || !novaPoshtaFormData.city?.id) {
+    // Don't fetch if search term is too short or city is not selected
+    if (debouncedWarehouseSearch.trim().length < 2 || !novaPoshtaFormData.city?.id) {
       setWarehouseResults([]);
       return;
     }
 
     const fetchWarehouses = async () => {
       setIsSearching(true);
-      setModalError(null); // Clear previous errors
+      setModalError(null);
       try {
-        // Sanitize the search term before sending it to the API
         const sanitizedSearch = debouncedWarehouseSearch.replace(/№/g, '').trim();
-        const searchTermParam = sanitizedSearch ? `&findByString=${encodeURIComponent(sanitizedSearch)}` : '';
-        const url = `/api/novaPoshtaApiProxy?action=getWarehouses&cityRef=${novaPoshtaFormData.city?.id}${searchTermParam}`;
+        const url = `/api/novaPoshtaApiProxy?action=getWarehouses&cityRef=${novaPoshtaFormData.city?.id}&findByString=${encodeURIComponent(sanitizedSearch)}`;
         
         const res = await authenticatedFetch(url);
         if (!res.ok) {
@@ -239,7 +237,7 @@ const OrdersPage: React.FC = () => {
     };
 
     fetchWarehouses();
-  }, [debouncedWarehouseSearch, novaPoshtaFormData.city?.id, isWarehouseDropdownOpen]);
+  }, [debouncedWarehouseSearch, novaPoshtaFormData.city?.id]);
 
 
   const fetchAuxiliaryData = useCallback(async () => {
@@ -990,9 +988,9 @@ const OrdersPage: React.FC = () => {
                     autoComplete="off"
                   />
                   {isWarehouseDropdownOpen && novaPoshtaFormData.city && (
-                       <div className="absolute z-20 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                        {isSearching && !warehouseResults.length ? <div className="p-3 text-sm text-slate-500">Пошук...</div> : 
-                          warehouseResults.length > 0 ? warehouseResults.map(wh => (
+                        <div className="absolute z-20 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                        {isSearching ? <div className="p-3 text-sm text-slate-500">Пошук...</div> :
+                            warehouseResults.length > 0 ? warehouseResults.map(wh => (
                             <div key={wh.Ref} 
                                 className="p-3 hover:bg-rose-50 cursor-pointer text-sm"
                                 onMouseDown={() => {
@@ -1001,9 +999,15 @@ const OrdersPage: React.FC = () => {
                                 }}>
                                 {wh.Description}
                             </div>
-                          )) : <div className="p-3 text-sm text-slate-500">Відділень не знайдено.</div>
+                            )) : (
+                            <div className="p-3 text-sm text-slate-500">
+                                {warehouseSearchTerm.trim().length < 2
+                                    ? "Введіть принаймні 2 символи для пошуку."
+                                    : "Відділень не знайдено."}
+                            </div>
+                            )
                         }
-                      </div>
+                        </div>
                   )}
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
