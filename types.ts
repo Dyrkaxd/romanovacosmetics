@@ -178,12 +178,15 @@ export interface DashboardData {
 }
 
 export interface NovaPoshtaDepartment {
-  id: string; // This will be the department's Ref (externId from widget)
-  name: string; // Full name/description from widget
-  settlementName: string; // City name from widget
-  cityRef?: string; // This will be fetched on the backend
+  ref: string; // This is externId from the widget. The unique identifier for API calls.
+  name: string; // Full name/description from widget.
+  settlementName: string; // City name from widget.
+  departmentNumber: string; // 'number' from widget.
   
-  // These fields are not provided by the widget but kept for potential future use or compatibility
+  // This will be fetched on the backend if needed
+  cityRef?: string;
+  
+  // Optional fields for future use
   shortName?: string;
   addressParts?: {
     city: string;
