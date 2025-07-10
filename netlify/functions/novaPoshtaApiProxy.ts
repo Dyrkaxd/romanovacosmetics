@@ -61,18 +61,30 @@ const handler: Handler = async (event) => {
           return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: 'CityRef is required.' }) };
         }
         
-        // This is now a simple proxy for a single search, not a paginated fetch.
-        // This avoids serverless function timeouts.
+        const methodProps: {
+            CityRef: string;
+            Limit: number;
+            Language: string;
+            WarehouseId?: string;
+            FindByString?: string;
+        } = {
+            CityRef: cityRef,
+            Limit: 150,
+            Language: "UA"
+        };
+
+        // Intelligently use WarehouseId for purely numeric searches for better performance
+        if (findByString && /^\d+$/.test(findByString)) {
+            methodProps.WarehouseId = findByString;
+        } else {
+            methodProps.FindByString = findByString || '';
+        }
+        
         const npRequestBody = {
           apiKey: NP_API_KEY,
           modelName: 'Address',
           calledMethod: 'getWarehouses',
-          methodProperties: {
-            CityRef: cityRef,
-            FindByString: findByString || '',
-            Limit: 150, // Limit results for a single search dropdown
-            Language: "UA"
-          },
+          methodProperties: methodProps,
         };
         
         const npResponse = await fetch(NP_API_URL, {
