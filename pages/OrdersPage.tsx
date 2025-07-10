@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect, useCallback, useMemo, useRef, FC, SVGProps } from 'react';
 import { Order, OrderItem, Customer, Product, ManagedUser, PaginatedResponse, NovaPoshtaDepartment } from '../types';
 import { EyeIcon, XMarkIcon, PlusIcon, TrashIcon, PencilIcon, DocumentTextIcon, FilterIcon, DownloadIcon, ChevronDownIcon, ShareIcon, EllipsisVerticalIcon, TruckIcon } from '../components/Icons';
@@ -342,11 +343,17 @@ const OrdersPage: React.FC = () => {
     const openNpWidget = () => {
         setIsNpWidgetOpen(true);
         const iframe = npIframeRef.current;
-        if (!iframe) return;
+        if (!iframe || !activeTtnOrder) return;
+
+        // Find the full customer object to get the city
+        const customer = customers.find(c => c.id === activeTtnOrder.customerId);
+        // Use the customer's city if available, otherwise an empty string to allow manual search
+        const recipientCity = customer?.address?.city || ''; 
+
         iframe.src = 'https://widget.novapost.com/division/index.html';
         const data = {
-            apiKey: '', // Public key not needed for this widget type
-            city: activeTtnOrder?.customerName.split(' ')[1] || 'Київ', // Crude city extraction
+            apiKey: '', // Public key is not needed for this widget type
+            city: recipientCity,
             theme: 'light',
             language: 'uk',
         };
