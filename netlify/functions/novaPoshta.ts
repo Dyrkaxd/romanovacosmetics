@@ -88,7 +88,7 @@ const handler: Handler = async (event) => {
         SendersPhone: NOVA_POSHTA_SENDER_PHONE,
         CityRecipient: recipientCityRef,
         RecipientAddress: recipientAddressRef,
-        ContactRecipient: recipient.name,
+        RecipientName: recipient.name,
         RecipientsPhone: recipient.phone,
       },
     };
