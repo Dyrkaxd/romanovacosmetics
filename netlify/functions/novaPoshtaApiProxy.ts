@@ -1,5 +1,6 @@
 
 
+
 import { Handler } from '@netlify/functions';
 
 const commonHeaders = {
@@ -56,11 +57,9 @@ const handler: Handler = async (event) => {
           Limit: 500, // Get a good number of warehouses
         };
         
-        // Intelligently use WarehouseId for numeric searches and FindByString for text searches
-        const isNumeric = findByString && /^\d+$/.test(findByString);
-        if (isNumeric) {
-            requestBody.methodProperties.WarehouseId = findByString;
-        } else if (findByString) {
+        // Use FindByString for all user-initiated searches for flexibility.
+        // It can handle both numbers and text strings.
+        if (findByString) {
             requestBody.methodProperties.FindByString = findByString;
         }
 
