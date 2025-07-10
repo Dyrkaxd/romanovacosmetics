@@ -4,7 +4,7 @@ import { Handler } from '@netlify/functions';
 
 const commonHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, OPTIONS',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Content-Type': 'application/json',
 };
@@ -17,6 +17,10 @@ const handler: Handler = async (event) => {
     return { statusCode: 204, headers: commonHeaders, body: '' };
   }
   
+  if (event.httpMethod !== 'POST') {
+    return { statusCode: 405, headers: commonHeaders, body: JSON.stringify({ message: 'Method Not Allowed' }) };
+  }
+  
   if (!NP_API_KEY) {
       console.error('Nova Poshta API key is not configured.');
       return {
@@ -27,89 +31,42 @@ const handler: Handler = async (event) => {
   }
   
   try {
-    const { action, findByString, cityRef } = event.queryStringParameters || {};
+    const { modelName, calledMethod, methodProperties } = JSON.parse(event.body || '{}');
 
-    let requestBody: any = {
+    if (!modelName || !calledMethod) {
+      return { 
+        statusCode: 400, 
+        headers: commonHeaders, 
+        body: JSON.stringify({ message: 'modelName and calledMethod are required in the request body.' }) 
+      };
+    }
+
+    const requestBody = {
       apiKey: NP_API_KEY,
-      modelName: '',
-      calledMethod: '',
-      methodProperties: {},
+      modelName,
+      calledMethod,
+      methodProperties: methodProperties || {},
     };
 
-    switch (action) {
-      case 'searchSettlements': {
-        requestBody.modelName = 'Address';
-        requestBody.calledMethod = 'searchSettlements';
-        requestBody.methodProperties = {
-          CityName: findByString,
-          Limit: 20,
-        };
-        const settlementsResponse = await fetch(NP_API_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestBody),
-        });
-        const settlementsData = await settlementsResponse.json();
-        if (!settlementsResponse.ok || !settlementsData.success) {
-            console.error("Nova Poshta API returned an error:", settlementsData.errors, "for request:", requestBody);
-            throw new Error(`Помилка API Нової Пошти: ${settlementsData.errors?.join(', ') || 'Unknown error'}`);
-        }
-        return { statusCode: 200, headers: commonHeaders, body: JSON.stringify(settlementsData) };
-      }
-      case 'getWarehouses': {
-        if (!cityRef) {
-          return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: 'CityRef is required.' }) };
-        }
-        
-        const methodProperties: {
-            CityRef: string;
-            Limit: number;
-            Language: string;
-            WarehouseId?: string;
-            FindByString?: string;
-        } = {
-            CityRef: cityRef,
-            Limit: 150,
-            Language: "UA",
-        };
+    const npResponse = await fetch(NP_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestBody),
+    });
 
-        // Smart parameter selection for optimal performance
-        if (findByString && /^\d+$/.test(findByString)) {
-            // If the search string is purely numeric, use WarehouseId for a precise search.
-            methodProperties.WarehouseId = findByString;
-        } else if (findByString) {
-            // Otherwise, use FindByString for text-based search.
-            methodProperties.FindByString = findByString;
-        }
-        
-        const npRequestBody = {
-          apiKey: NP_API_KEY,
-          modelName: 'Address',
-          calledMethod: 'getWarehouses',
-          methodProperties: methodProperties,
-        };
-        
-        const npResponse = await fetch(NP_API_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(npRequestBody),
-        });
-        const data = await npResponse.json();
+    const data = await npResponse.json();
 
-        if (!data.success) {
-             console.error("Nova Poshta API returned an error:", data.errors, "for request:", npRequestBody);
-             throw new Error(`Помилка API Нової Пошти: ${data.errors?.join(', ') || 'Unknown error'}`);
-        }
-        
-        return {
-          statusCode: 200,
-          headers: commonHeaders,
-          body: JSON.stringify({ success: true, data: data.data || [] }),
-        };
-      }
-      default:
-        return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: 'Invalid action provided.' }) };
+    if (!npResponse.ok || !data.success) {
+      console.error("Nova Poshta API Error:", { errors: data.errors, warnings: data.warnings, info: data.info }, "for request:", requestBody);
+      throw new Error(data.errors?.join(', ') || 'Unknown API error from Nova Poshta.');
     }
+    
+    // Forward the successful response from Nova Poshta to the client
+    return {
+      statusCode: 200,
+      headers: commonHeaders,
+      body: JSON.stringify(data),
+    };
 
   } catch (error: any) {
     console.error('Error in novaPoshtaApiProxy function:', error);

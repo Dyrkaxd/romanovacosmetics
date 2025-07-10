@@ -181,7 +181,14 @@ const OrdersPage: React.FC = () => {
     const fetchCities = async () => {
       setIsSearchingCities(true);
       try {
-        const res = await authenticatedFetch(`/api/novaPoshtaApiProxy?action=searchSettlements&findByString=${debouncedCitySearch}`);
+        const res = await authenticatedFetch(`/api/novaPoshtaApiProxy`, {
+          method: 'POST',
+          body: JSON.stringify({
+            modelName: 'Address',
+            calledMethod: 'searchSettlements',
+            methodProperties: { CityName: debouncedCitySearch, Limit: 20 },
+          }),
+        });
         if (!res.ok) throw new Error('Failed to fetch cities');
         const data = await res.json();
         const addresses = data.data[0]?.Addresses || [];
@@ -211,8 +218,19 @@ const OrdersPage: React.FC = () => {
       setIsSearchingWarehouses(true);
       setModalError(null);
       try {
-        const url = `/api/novaPoshtaApiProxy?action=getWarehouses&cityRef=${novaPoshtaFormData.city!.id}&findByString=${encodeURIComponent(debouncedWarehouseSearch)}`;
-        const res = await authenticatedFetch(url);
+        const res = await authenticatedFetch('/api/novaPoshtaApiProxy', {
+          method: 'POST',
+          body: JSON.stringify({
+            modelName: 'Address',
+            calledMethod: 'getWarehouses',
+            methodProperties: {
+              CityRef: novaPoshtaFormData.city!.id,
+              FindByString: debouncedWarehouseSearch,
+              Limit: 250,
+              Language: "UA",
+            },
+          }),
+        });
         if (!res.ok) {
           const errorData = await res.json().catch(() => ({ message: 'Не вдалося знайти відділення.' }));
           throw new Error(errorData.message);
