@@ -41,6 +41,18 @@ const handler: Handler = async (event) => {
       };
     }
 
+    // Intelligent search parameter selection for warehouses
+    if (calledMethod === 'getWarehouses' && methodProperties?.FindByString) {
+        const searchTerm = methodProperties.FindByString;
+        // Check if the search term is purely numeric
+        if (/^\d+$/.test(searchTerm)) {
+            // If it is, use the more precise and reliable `WarehouseId` parameter
+            delete methodProperties.FindByString;
+            methodProperties.WarehouseId = searchTerm;
+        }
+        // For text searches, the default FindByString is correct and will be used.
+    }
+
     const requestBody = {
       apiKey: NP_API_KEY,
       modelName,
