@@ -37,7 +37,7 @@ const handler: Handler = async (event) => {
     };
 
     switch (action) {
-      case 'searchSettlements':
+      case 'searchSettlements': {
         requestBody.modelName = 'Address';
         requestBody.calledMethod = 'searchSettlements';
         requestBody.methodProperties = {
@@ -55,61 +55,44 @@ const handler: Handler = async (event) => {
             throw new Error(`Помилка API Нової Пошти: ${settlementsData.errors?.join(', ') || 'Unknown error'}`);
         }
         return { statusCode: 200, headers: commonHeaders, body: JSON.stringify(settlementsData) };
-
-      case 'getWarehouses':
+      }
+      case 'getWarehouses': {
         if (!cityRef) {
           return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: 'CityRef is required.' }) };
         }
         
-        let allWarehouses: any[] = [];
-        let currentPage = 1;
-        const limit = 200; // A safe limit per page
+        // This is now a simple proxy for a single search, not a paginated fetch.
+        // This avoids serverless function timeouts.
+        const npRequestBody = {
+          apiKey: NP_API_KEY,
+          modelName: 'Address',
+          calledMethod: 'getWarehouses',
+          methodProperties: {
+            CityRef: cityRef,
+            FindByString: findByString || '',
+            Limit: 150, // Limit results for a single search dropdown
+            Language: "UA"
+          },
+        };
+        
+        const npResponse = await fetch(NP_API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(npRequestBody),
+        });
+        const data = await npResponse.json();
 
-        while (true) {
-            const pageRequestBody = {
-              apiKey: NP_API_KEY,
-              modelName: 'Address',
-              calledMethod: 'getWarehouses',
-              methodProperties: {
-                CityRef: cityRef,
-                Page: currentPage,
-                Limit: limit,
-                Language: "UA"
-              },
-            };
-            
-            const npResponse = await fetch(NP_API_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(pageRequestBody),
-            });
-            const data = await npResponse.json();
-
-            if (!data.success) {
-                 console.error("Nova Poshta API returned an error:", data.errors, "for request:", pageRequestBody);
-                 throw new Error(`Помилка API Нової Пошти: ${data.errors?.join(', ') || 'Unknown error'}`);
-            }
-
-            const warehousesOnPage = data.data || [];
-            allWarehouses = allWarehouses.concat(warehousesOnPage);
-
-            if (warehousesOnPage.length < limit) {
-                // We've fetched the last page, or there were no results.
-                break;
-            }
-            currentPage++;
-             if (currentPage > 10) { // Safety break to prevent infinite loops
-                console.warn(`Stopped fetching warehouses for CityRef ${cityRef} after 10 pages.`);
-                break;
-            }
+        if (!data.success) {
+             console.error("Nova Poshta API returned an error:", data.errors, "for request:", npRequestBody);
+             throw new Error(`Помилка API Нової Пошти: ${data.errors?.join(', ') || 'Unknown error'}`);
         }
         
         return {
           statusCode: 200,
           headers: commonHeaders,
-          body: JSON.stringify({ success: true, data: allWarehouses }),
+          body: JSON.stringify({ success: true, data: data.data || [] }),
         };
-
+      }
       default:
         return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: 'Invalid action provided.' }) };
     }
