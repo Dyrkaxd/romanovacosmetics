@@ -1,16 +1,3 @@
-
-
-
-
-
-
-
-
-
-
-
-
-
 import React, { useState, useEffect, useCallback, useMemo, useRef, FC, SVGProps } from 'react';
 import { Order, OrderItem, Customer, Product, ManagedUser, PaginatedResponse, NovaPoshtaDepartment } from '../types';
 import { EyeIcon, XMarkIcon, PlusIcon, TrashIcon, PencilIcon, DocumentTextIcon, FilterIcon, DownloadIcon, ChevronDownIcon, ShareIcon, EllipsisVerticalIcon, TruckIcon } from '../components/Icons';
@@ -385,14 +372,17 @@ const OrdersPage: React.FC = () => {
           window.addEventListener('message', handleNpWidgetMessage);
 
           const handleLoad = () => {
+              const customer = customers.find(c => c.id === activeTtnOrder?.customerId);
+              const city = customer?.address?.city || '';
               // Use a timeout to ensure the widget's internal scripts are ready for the message.
               setTimeout(() => {
                   const data = {
                       apiKey: '',
-                      // By removing the 'city' property, the widget will open without a pre-filter,
-                      // allowing the user to search for any city. This is more robust.
                       theme: 'light',
                       language: 'uk',
+                      // Conditionally add city to pre-filter if it exists.
+                      // Otherwise, allow user to search freely.
+                      ...(city && { city: city })
                   };
                   iframe.contentWindow?.postMessage(data, '*');
               }, 100);
@@ -410,7 +400,7 @@ const OrdersPage: React.FC = () => {
               }
           };
       }
-  }, [isNpWidgetOpen, activeTtnOrder, handleNpWidgetMessage]);
+  }, [isNpWidgetOpen, activeTtnOrder, customers, handleNpWidgetMessage]);
   
     const handleCreateTtn = async (e: React.FormEvent) => {
         e.preventDefault();
