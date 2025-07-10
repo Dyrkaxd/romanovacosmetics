@@ -343,9 +343,9 @@ const OrdersPage: React.FC = () => {
     const handleNpWidgetMessage = useCallback((event: MessageEvent) => {
         if (event.origin !== 'https://widget.novapost.com') return;
         const data = event.data;
-        if (data && typeof data === 'object' && data.externId) {
+        if (data && typeof data === 'object' && data.externalId) {
             const departmentData: NovaPoshtaDepartment = {
-                ref: data.externId,
+                ref: data.externalId,
                 name: data.name,
                 settlementName: data.settlementName,
                 departmentNumber: data.number,
