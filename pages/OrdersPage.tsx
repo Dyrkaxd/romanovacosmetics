@@ -343,9 +343,9 @@ const OrdersPage: React.FC = () => {
     const handleNpWidgetMessage = useCallback((event: MessageEvent) => {
         if (event.origin !== 'https://widget.novapost.com') return;
         const data = event.data;
-
+    
+        // The final selection event payload contains `externalId`
         if (data && typeof data === 'object' && data.externalId) {
-            // Check if we have all the required fields from the widget selection
             if (data.name && data.settlementName && data.number) {
                 const departmentData: NovaPoshtaDepartment = {
                     ref: data.externalId,
@@ -353,17 +353,20 @@ const OrdersPage: React.FC = () => {
                     settlementName: data.settlementName,
                     departmentNumber: data.number,
                 };
-                setModalError(null); // Clear any previous error on a successful selection
+                setModalError(null);
                 setNpDepartment(departmentData);
+                closeNpWidget();
             } else {
-                // Data from widget is incomplete
-                console.warn("Received incomplete department data from widget:", data);
-                setNpDepartment(null); // Clear any potentially partial data
+                console.warn("Received incomplete department data from widget (with externalId):", data);
+                setNpDepartment(null);
                 setModalError('Не вдалося отримати повні дані відділення від "Нової Пошти". Будь ласка, спробуйте обрати відділення ще раз.');
+                closeNpWidget();
             }
-            closeNpWidget();
         } else if (event.data === 'close') {
             closeNpWidget();
+        } else {
+            // It's some other message, not an error. Don't show an error to the user.
+            console.log("Ignoring informational message from NP widget:", data);
         }
     }, [closeNpWidget]);
     
@@ -377,70 +380,32 @@ const OrdersPage: React.FC = () => {
     };
 
     useEffect(() => {
-        const initializeNpWidget = async () => {
-            if (isNpWidgetOpen && npIframeRef.current && activeTtnOrder) {
-                const iframe = npIframeRef.current;
-                
-                const customer = customers.find(c => c.id === activeTtnOrder.customerId);
-                const city = customer?.address?.city;
-                let settlementRef: string | null = null;
+        if (isNpWidgetOpen && npIframeRef.current) {
+            const iframe = npIframeRef.current;
+            const handleLoad = () => {
+                setTimeout(() => {
+                    const widgetPayload = {
+                        apiKey: '', // Key is not needed for public widget interaction
+                        theme: 'light',
+                        language: 'uk',
+                    };
+                    iframe.contentWindow?.postMessage(widgetPayload, '*');
+                }, 200); // Timeout for stability
+            };
     
-                if (city) {
-                    try {
-                        const res = await authenticatedFetch(`/api/novaPoshtaCityResolver?cityName=${encodeURIComponent(city)}`);
-                        if (res.ok) {
-                            const data = await res.json();
-                            settlementRef = data.ref;
-                        } else {
-                           console.warn(`Could not resolve city "${city}" to a settlement Ref. Widget will open without filter.`);
-                        }
-                    } catch (e) {
-                        console.error("Error fetching settlement Ref:", e);
-                    }
+            window.addEventListener('message', handleNpWidgetMessage);
+            iframe.addEventListener('load', handleLoad, { once: true });
+            iframe.src = 'https://widget.novapost.com/division/index.html';
+    
+            // Cleanup
+            return () => {
+                window.removeEventListener('message', handleNpWidgetMessage);
+                if (iframe) {
+                  iframe.src = 'about:blank';
                 }
-    
-                const handleLoad = () => {
-                    setTimeout(() => {
-                        const widgetPayload: {
-                            apiKey: string;
-                            theme: string;
-                            language: string;
-                            settlementId?: string;
-                            city?: string;
-                        } = {
-                            apiKey: '',
-                            theme: 'light',
-                            language: 'uk',
-                        };
-
-                        if (settlementRef) {
-                            widgetPayload.settlementId = settlementRef;
-                        } else if (city) {
-                            // Fallback to city name if ref resolution fails
-                            widgetPayload.city = city;
-                        }
-
-                        iframe.contentWindow?.postMessage(widgetPayload, '*');
-                    }, 200); // Increased timeout for stability
-                };
-    
-                window.addEventListener('message', handleNpWidgetMessage);
-                iframe.addEventListener('load', handleLoad, { once: true });
-                iframe.src = 'https://widget.novapost.com/division/index.html';
-    
-                // Cleanup
-                return () => {
-                    window.removeEventListener('message', handleNpWidgetMessage);
-                    iframe.removeEventListener('load', handleLoad);
-                    if (iframe) {
-                      iframe.src = 'about:blank';
-                    }
-                };
-            }
-        };
-    
-        initializeNpWidget();
-    }, [isNpWidgetOpen, activeTtnOrder, customers, handleNpWidgetMessage]);
+            };
+        }
+    }, [isNpWidgetOpen, handleNpWidgetMessage]);
   
     const handleCreateTtn = async (e: React.FormEvent) => {
         e.preventDefault();
