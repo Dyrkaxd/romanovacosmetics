@@ -61,19 +61,32 @@ const handler: Handler = async (event) => {
           return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: 'CityRef is required.' }) };
         }
         
-        // This is the simplified and corrected logic. Always use FindByString.
-        const methodProps = {
+        const methodProperties: {
+            CityRef: string;
+            Limit: number;
+            Language: string;
+            WarehouseId?: string;
+            FindByString?: string;
+        } = {
             CityRef: cityRef,
             Limit: 150,
             Language: "UA",
-            FindByString: findByString || '' 
         };
+
+        // Smart parameter selection for optimal performance
+        if (findByString && /^\d+$/.test(findByString)) {
+            // If the search string is purely numeric, use WarehouseId for a precise search.
+            methodProperties.WarehouseId = findByString;
+        } else if (findByString) {
+            // Otherwise, use FindByString for text-based search.
+            methodProperties.FindByString = findByString;
+        }
         
         const npRequestBody = {
           apiKey: NP_API_KEY,
           modelName: 'Address',
           calledMethod: 'getWarehouses',
-          methodProperties: methodProps,
+          methodProperties: methodProperties,
         };
         
         const npResponse = await fetch(NP_API_URL, {
