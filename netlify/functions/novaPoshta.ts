@@ -77,8 +77,8 @@ const handler: Handler = async (event) => {
             return { statusCode: 405, headers: commonHeaders, body: JSON.stringify({ message: 'Method Not Allowed.' }) };
         }
 
-        const { orderId, city, warehouse, weight, description } = JSON.parse(event.body || '{}');
-        if (!orderId || !city || !warehouse || !weight || !description) {
+        const { orderId, city, warehouse, weight, length, width, height, description } = JSON.parse(event.body || '{}');
+        if (!orderId || !city || !warehouse || !weight || !description || !length || !width || !height) {
             return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: 'Необхідно надати повну інформацію для створення ТТН.' }) };
         }
 
@@ -97,30 +97,48 @@ const handler: Handler = async (event) => {
             return { statusCode: 404, headers: commonHeaders, body: JSON.stringify({ message: 'Дані клієнта для цього замовлення не знайдено.' }) };
         }
 
+        // Fetch sender's city Ref from their warehouse address Ref
+        const senderAddressDetailsResponse = await fetch('https://api.novaposhta.ua/v2.0/json/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                apiKey: NP_API_KEY,
+                modelName: "Address",
+                calledMethod: "getWarehouses",
+                methodProperties: {
+                    Ref: SENDER_ADDRESS_REF,
+                }
+            }),
+        });
+        const senderAddressDetailsData = await senderAddressDetailsResponse.json();
+        if (!senderAddressDetailsData.success || !senderAddressDetailsData.data || senderAddressDetailsData.data.length === 0) {
+            console.error("Failed to get sender address details from Nova Poshta:", senderAddressDetailsData.errors);
+            throw new Error('Не вдалося отримати деталі адреси відправника з Нової Пошти.');
+        }
+        const senderCityRef = senderAddressDetailsData.data[0].CityRef;
+        const volume = (length * width * height) / 1000000;
+
         const apiPayload = {
             apiKey: NP_API_KEY,
             modelName: "InternetDocument",
             calledMethod: "save",
             methodProperties: {
-                NewAddress: "1",
                 PayerType: "Recipient",
                 PaymentMethod: "Cash",
                 CargoType: "Parcel",
-                VolumeGeneral: "0.1", // This can be calculated from dimensions if needed
+                VolumeGeneral: volume > 0.0001 ? volume.toFixed(4) : "0.0001",
                 Weight: weight,
                 ServiceType: "WarehouseWarehouse",
                 SeatsAmount: "1",
                 Description: description,
                 Cost: orderData.total_amount,
-                CitySender: SENDER_REF,
+                CitySender: senderCityRef,
                 Sender: SENDER_REF,
                 SenderAddress: SENDER_ADDRESS_REF,
                 ContactSender: SENDER_CONTACT_REF,
                 SendersPhone: SENDER_PHONE,
                 CityRecipient: city.id,
-                Recipient: customer.id, // Assuming customer Ref is stored or can be created on the fly
                 RecipientAddress: warehouse.id,
-                ContactRecipient: customer.id,
                 RecipientsPhone: customer.phone,
                 RecipientName: customer.name,
                 DateTime: toNpDate(new Date()),
@@ -136,7 +154,7 @@ const handler: Handler = async (event) => {
         const npData = await npResponse.json();
 
         if (npResponse.status !== 200 || !npData.success) {
-            console.error("Nova Poshta TTN creation failed:", npData.errors, "for request:", apiPayload);
+            console.error("Nova Poshta TTN creation failed:", npData.errors, "for request payload:", apiPayload.methodProperties);
             throw new Error(`Помилка API Нової Пошти: ${npData.errors.join(', ')}`);
         }
         
