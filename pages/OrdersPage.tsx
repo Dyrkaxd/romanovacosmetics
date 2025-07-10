@@ -1,6 +1,7 @@
 
 
 
+
 import React, { useState, useEffect, useCallback, useMemo, useRef, FC, SVGProps } from 'react';
 import { Order, OrderItem, Customer, Product, ManagedUser, PaginatedResponse, NovaPoshtaDepartment } from '../types';
 import { EyeIcon, XMarkIcon, PlusIcon, TrashIcon, PencilIcon, DocumentTextIcon, FilterIcon, DownloadIcon, ChevronDownIcon, ShareIcon, EllipsisVerticalIcon, TruckIcon } from '../components/Icons';
@@ -339,38 +340,11 @@ const OrdersPage: React.FC = () => {
     return availableProducts.filter(p => p.name.toLowerCase().includes(productSearchTerm.toLowerCase()));
   }, [productSearchTerm, availableProducts]);
 
-    // Nova Poshta Widget Handlers
-    const openNpWidget = () => {
-        setIsNpWidgetOpen(true);
-        const iframe = npIframeRef.current;
-        if (!iframe || !activeTtnOrder) return;
+    const closeNpWidget = useCallback(() => {
+      setIsNpWidgetOpen(false);
+    }, []);
 
-        // Find the full customer object to get the city
-        const customer = customers.find(c => c.id === activeTtnOrder.customerId);
-        // Use the customer's city if available, otherwise an empty string to allow manual search
-        const recipientCity = customer?.address?.city || ''; 
-
-        iframe.src = 'https://widget.novapost.com/division/index.html';
-        const data = {
-            apiKey: '', // Public key is not needed for this widget type
-            city: recipientCity,
-            theme: 'light',
-            language: 'uk',
-        };
-        iframe.onload = () => {
-            iframe.contentWindow?.postMessage(data, '*');
-        };
-        window.addEventListener('message', handleNpWidgetMessage);
-    };
-
-    const closeNpWidget = () => {
-        setIsNpWidgetOpen(false);
-        const iframe = npIframeRef.current;
-        if (iframe) iframe.src = '';
-        window.removeEventListener('message', handleNpWidgetMessage);
-    };
-
-    const handleNpWidgetMessage = (event: MessageEvent) => {
+    const handleNpWidgetMessage = useCallback((event: MessageEvent) => {
         if (event.origin !== 'https://widget.novapost.com') return;
         if (event.data && typeof event.data === 'object' && event.data.id) {
             setNpDepartment(event.data);
@@ -378,7 +352,50 @@ const OrdersPage: React.FC = () => {
         } else if (event.data === 'close') {
             closeNpWidget();
         }
+    }, [closeNpWidget]);
+    
+    const openNpWidget = () => {
+        const customer = customers.find(c => c.id === activeTtnOrder?.customerId);
+        if (!customer?.phone) {
+            setPageError("Неможливо створити ТТН: у клієнта не вказано номер телефону.");
+            return;
+        }
+        setIsNpWidgetOpen(true);
     };
+
+    useEffect(() => {
+      if (isNpWidgetOpen && npIframeRef.current && activeTtnOrder) {
+          const iframe = npIframeRef.current;
+          window.addEventListener('message', handleNpWidgetMessage);
+
+          const handleLoad = () => {
+              // Use a timeout to ensure the widget's internal scripts are ready for the message.
+              setTimeout(() => {
+                  const customer = customers.find(c => c.id === activeTtnOrder.customerId);
+                  const recipientCity = customer?.address?.city || '';
+                  const data = {
+                      apiKey: '',
+                      city: recipientCity,
+                      theme: 'light',
+                      language: 'uk',
+                  };
+                  iframe.contentWindow?.postMessage(data, '*');
+              }, 100);
+          };
+
+          iframe.addEventListener('load', handleLoad);
+          iframe.src = 'https://widget.novapost.com/division/index.html';
+
+          // Cleanup function
+          return () => {
+              window.removeEventListener('message', handleNpWidgetMessage);
+              iframe.removeEventListener('load', handleLoad);
+              if (iframe) {
+                iframe.src = 'about:blank';
+              }
+          };
+      }
+  }, [isNpWidgetOpen, activeTtnOrder, customers, handleNpWidgetMessage]);
   
     const handleCreateTtn = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -738,7 +755,7 @@ const OrdersPage: React.FC = () => {
                             <h2>Вибрати відділення</h2>
                             <span className="modal-close" onClick={closeNpWidget}>&times;</span>
                         </header>
-                        <iframe ref={npIframeRef} className="modal-iframe" allow="geolocation"></iframe>
+                        <iframe ref={npIframeRef} className="modal-iframe" allow="geolocation" title="Nova Poshta Widget"></iframe>
                     </div>
                  </div>
             )}
