@@ -8,6 +8,7 @@
 
 
 
+
 import React, { useState, useEffect, useCallback, useMemo, useRef, FC, SVGProps } from 'react';
 import { Order, OrderItem, Customer, Product, ManagedUser, PaginatedResponse, NovaPoshtaDepartment } from '../types';
 import { EyeIcon, XMarkIcon, PlusIcon, TrashIcon, PencilIcon, DocumentTextIcon, FilterIcon, DownloadIcon, ChevronDownIcon, ShareIcon, EllipsisVerticalIcon, TruckIcon } from '../components/Icons';
@@ -383,11 +384,10 @@ const OrdersPage: React.FC = () => {
           const handleLoad = () => {
               // Use a timeout to ensure the widget's internal scripts are ready for the message.
               setTimeout(() => {
-                  const customer = customers.find(c => c.id === activeTtnOrder.customerId);
-                  const recipientCity = customer?.address?.city || '';
                   const data = {
                       apiKey: '',
-                      city: recipientCity,
+                      // By removing the 'city' property, the widget will open without a pre-filter,
+                      // allowing the user to search for any city. This is more robust.
                       theme: 'light',
                       language: 'uk',
                   };
@@ -407,7 +407,7 @@ const OrdersPage: React.FC = () => {
               }
           };
       }
-  }, [isNpWidgetOpen, activeTtnOrder, customers, handleNpWidgetMessage]);
+  }, [isNpWidgetOpen, activeTtnOrder, handleNpWidgetMessage]);
   
     const handleCreateTtn = async (e: React.FormEvent) => {
         e.preventDefault();
