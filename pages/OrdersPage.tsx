@@ -160,12 +160,12 @@ const OrdersPage: React.FC = () => {
     }
   }, [successMessage]);
 
-  // Debounce handlers
+  // Debounce handlers for Nova Poshta search
   useEffect(() => {
     const handler = setTimeout(() => setDebouncedCitySearch(citySearchTerm), 300);
     return () => clearTimeout(handler);
   }, [citySearchTerm]);
-
+  
   useEffect(() => {
     const handler = setTimeout(() => setDebouncedWarehouseSearch(warehouseSearchTerm), 300);
     return () => clearTimeout(handler);
@@ -207,47 +207,51 @@ const OrdersPage: React.FC = () => {
     fetchCities();
   }, [debouncedCitySearch, isCityDropdownOpen]);
 
-  // Fetch warehouses based on search
+  // Fetch warehouses based on search term
   useEffect(() => {
-    if (!novaPoshtaFormData.city?.id || debouncedWarehouseSearch.length < 2) {
-      setWarehouseResults([]);
-      return;
+    if (!isWarehouseDropdownOpen || !novaPoshtaFormData.city?.id) {
+        setWarehouseResults([]);
+        return;
+    }
+
+    if (debouncedWarehouseSearch.length === 0) {
+        setWarehouseResults([]);
+        return;
     }
 
     const fetchWarehouses = async () => {
-      setIsSearchingWarehouses(true);
-      setModalError(null);
-      try {
-        const res = await authenticatedFetch('/api/novaPoshtaApiProxy', {
-          method: 'POST',
-          body: JSON.stringify({
-            modelName: 'Address',
-            calledMethod: 'getWarehouses',
-            methodProperties: {
-              CityRef: novaPoshtaFormData.city!.id,
-              FindByString: debouncedWarehouseSearch,
-              Limit: 250,
-              Language: "UA",
-            },
-          }),
-        });
-        if (!res.ok) {
-          const errorData = await res.json().catch(() => ({ message: 'Не вдалося знайти відділення.' }));
-          throw new Error(errorData.message);
+        setIsSearchingWarehouses(true);
+        setModalError(null);
+        try {
+            const res = await authenticatedFetch('/api/novaPoshtaApiProxy', {
+                method: 'POST',
+                body: JSON.stringify({
+                    modelName: 'Address',
+                    calledMethod: 'getWarehouses',
+                    methodProperties: {
+                        CityRef: novaPoshtaFormData.city!.id,
+                        FindByString: debouncedWarehouseSearch,
+                        Limit: 50
+                    },
+                }),
+            });
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({ message: 'Не вдалося завантажити відділення.' }));
+                throw new Error(errorData.message);
+            }
+            const data = await res.json();
+            setWarehouseResults(data.data || []);
+        } catch (error: any) {
+            console.error("Failed to fetch warehouses:", error);
+            setModalError(error.message || 'Помилка завантаження відділень.');
+            setWarehouseResults([]);
+        } finally {
+            setIsSearchingWarehouses(false);
         }
-        const data = await res.json();
-        setWarehouseResults(data.data || []);
-      } catch (error: any) {
-        console.error("Failed to fetch warehouses:", error);
-        setModalError(error.message || 'Помилка пошуку відділень.');
-        setWarehouseResults([]);
-      } finally {
-        setIsSearchingWarehouses(false);
-      }
     };
 
     fetchWarehouses();
-  }, [debouncedWarehouseSearch, novaPoshtaFormData.city?.id]);
+  }, [debouncedWarehouseSearch, novaPoshtaFormData.city?.id, isWarehouseDropdownOpen]);
 
 
   const fetchAuxiliaryData = useCallback(async () => {
@@ -971,10 +975,12 @@ const OrdersPage: React.FC = () => {
                                 onMouseDown={() => {
                                     setNovaPoshtaFormData(prev => ({...prev, city: { id: city.Ref, name: city.Description }, warehouse: null}));
                                     setCitySearchTerm('');
+                                    setWarehouseSearchTerm('');
+                                    setIsCityDropdownOpen(false);
                                 }}>
                                 {city.Description}
                             </div>
-                          )) : <div className="p-3 text-sm text-slate-500">Міст не знайдено.</div>
+                          )) : debouncedCitySearch.length >=2 ? <div className="p-3 text-sm text-slate-500">Міст не знайдено.</div> : <div className="p-3 text-sm text-slate-500">Введіть 2+ символи...</div>
                         }
                       </div>
                   )}
@@ -986,9 +992,9 @@ const OrdersPage: React.FC = () => {
                     onChange={e => setWarehouseSearchTerm(e.target.value)}
                     onFocus={() => setIsWarehouseDropdownOpen(true)}
                     onBlur={() => setTimeout(() => setIsWarehouseDropdownOpen(false), 200)}
-                    placeholder={!novaPoshtaFormData.city ? 'Спочатку виберіть місто' : 'Введіть 2+ символи для пошуку...'}
+                    placeholder={!novaPoshtaFormData.city ? 'Спочатку виберіть місто' : 'Почніть вводити для пошуку...'}
                     required 
-                    disabled={!novaPoshtaFormData.city || isSearchingWarehouses}
+                    disabled={!novaPoshtaFormData.city}
                     className="mt-1 block w-full p-2.5 border-slate-300 rounded-lg disabled:bg-slate-100 disabled:cursor-not-allowed" 
                     autoComplete="off"
                   />
@@ -996,8 +1002,6 @@ const OrdersPage: React.FC = () => {
                         <div className="absolute z-20 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                         {isSearchingWarehouses ? (
                             <div className="p-3 text-sm text-slate-500">Пошук...</div>
-                        ) : warehouseSearchTerm.length < 2 ? (
-                            <div className="p-3 text-sm text-slate-500">Введіть принаймні 2 символи.</div>
                         ) : warehouseResults.length > 0 ? (
                             warehouseResults.map(wh => (
                                 <div key={wh.Ref} 
@@ -1011,7 +1015,7 @@ const OrdersPage: React.FC = () => {
                                 </div>
                             ))
                         ) : (
-                            <div className="p-3 text-sm text-slate-500">Відділень не знайдено.</div>
+                             <div className="p-3 text-sm text-slate-500">{debouncedWarehouseSearch ? 'Відділень не знайдено.' : 'Введіть текст для пошуку.'}</div>
                         )}
                         </div>
                   )}
