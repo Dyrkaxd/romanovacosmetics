@@ -343,14 +343,24 @@ const OrdersPage: React.FC = () => {
     const handleNpWidgetMessage = useCallback((event: MessageEvent) => {
         if (event.origin !== 'https://widget.novapost.com') return;
         const data = event.data;
+
         if (data && typeof data === 'object' && data.externalId) {
-            const departmentData: NovaPoshtaDepartment = {
-                ref: data.externalId,
-                name: data.name,
-                settlementName: data.settlementName,
-                departmentNumber: data.number,
-            };
-            setNpDepartment(departmentData);
+            // Check if we have all the required fields from the widget selection
+            if (data.name && data.settlementName && data.number) {
+                const departmentData: NovaPoshtaDepartment = {
+                    ref: data.externalId,
+                    name: data.name,
+                    settlementName: data.settlementName,
+                    departmentNumber: data.number,
+                };
+                setModalError(null); // Clear any previous error on a successful selection
+                setNpDepartment(departmentData);
+            } else {
+                // Data from widget is incomplete
+                console.warn("Received incomplete department data from widget:", data);
+                setNpDepartment(null); // Clear any potentially partial data
+                setModalError('Не вдалося отримати повні дані відділення від "Нової Пошти". Будь ласка, спробуйте обрати відділення ще раз.');
+            }
             closeNpWidget();
         } else if (event.data === 'close') {
             closeNpWidget();
