@@ -4,6 +4,7 @@
 
 
 
+
 import React, { useState, useEffect, useCallback, useMemo, useRef, FC, SVGProps } from 'react';
 import { Order, OrderItem, Customer, Product, ManagedUser, PaginatedResponse, NovaPoshtaDepartment } from '../types';
 import { EyeIcon, XMarkIcon, PlusIcon, TrashIcon, PencilIcon, DocumentTextIcon, FilterIcon, DownloadIcon, ChevronDownIcon, ShareIcon, EllipsisVerticalIcon, TruckIcon } from '../components/Icons';
@@ -11,6 +12,7 @@ import { authenticatedFetch } from '../utils/api';
 import Pagination from '../components/Pagination';
 import { useAuth } from '../AuthContext';
 import { useNavigate } from 'react-router-dom';
+import NovaPoshtaSelector from '../components/NovaPoshtaSelector';
 
 const orderStatusValues: Order['status'][] = ['Ordered', 'Shipped', 'Received', 'Calculation', 'AwaitingApproval', 'PaidByClient', 'WrittenOff', 'ReadyForPickup'];
 const orderStatusTranslations: Record<Order['status'], string> = {
@@ -114,6 +116,8 @@ const OrdersPage: React.FC = () => {
       description: "Косметичні засоби"
   });
   const [isCodEnabled, setIsCodEnabled] = useState(false);
+  const [isNpSelectorOpen, setIsNpSelectorOpen] = useState(false);
+
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -283,6 +287,7 @@ const OrdersPage: React.FC = () => {
         return;
     }
     setActiveTtnOrder(order);
+    setNpDepartment(null);
     setIsCodEnabled(false);
     setModalMode('ttn');
   };
@@ -377,53 +382,9 @@ const OrdersPage: React.FC = () => {
     }
   };
     
-    const openNpWidget = () => {
-        setModalError(null);
-
-        const initAndShowWidget = () => {
-            const handleNpWidgetSelect = (data: any) => {
-                const numberMatch = data.warehouse.match(/№(\d+)/);
-                const departmentNumber = numberMatch ? numberMatch[1] : '';
-
-                const selectedDept: NovaPoshtaDepartment = {
-                    ref: data.warehouseRef,
-                    name: data.warehouse,
-                    settlementName: data.city,
-                    departmentNumber: departmentNumber,
-                    cityRef: data.cityRef,
-                };
-                setNpDepartment(selectedDept);
-                setModalError(null);
-            };
-
-            if ((window as any).NovaPoshta?.Widget?.init) {
-                (window as any).NovaPoshta.Widget.init({
-                    onSelect: handleNpWidgetSelect,
-                    language: 'uk',
-                }).show();
-            } else {
-                 setModalError('Не вдалося ініціалізувати віджет "Нової Пошти".');
-            }
-        };
-
-        if ((window as any).NovaPoshta?.Widget) {
-            initAndShowWidget();
-            return;
-        }
-
-        setModalError('Завантаження віджета "Нової Пошти"...');
-        let attempts = 0;
-        const intervalId = setInterval(() => {
-            attempts++;
-            if ((window as any).NovaPoshta?.Widget) {
-                clearInterval(intervalId);
-                setModalError(null);
-                initAndShowWidget();
-            } else if (attempts > 20) { // 5-second timeout
-                clearInterval(intervalId);
-                setModalError('Не вдалося завантажити віджет "Нової Пошти". Перевірте, чи не блокує його ваш браузер, та оновіть сторінку.');
-            }
-        }, 250);
+    const handleNpDepartmentSelect = (department: NovaPoshtaDepartment) => {
+        setNpDepartment(department);
+        setIsNpSelectorOpen(false); // Close the selector modal
     };
 
     const handleCreateTtn = async (e: React.FormEvent) => {
@@ -758,7 +719,7 @@ const OrdersPage: React.FC = () => {
                                 </div>
                                 <button
                                     type="button"
-                                    onClick={openNpWidget}
+                                    onClick={() => setIsNpSelectorOpen(true)}
                                     className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-sm transition-colors flex-shrink-0"
                                 >
                                     Обрати
@@ -815,6 +776,12 @@ const OrdersPage: React.FC = () => {
             </form>
         </div>
       )}
+
+      <NovaPoshtaSelector 
+        isOpen={isNpSelectorOpen}
+        onClose={() => setIsNpSelectorOpen(false)}
+        onSelect={handleNpDepartmentSelect}
+      />
     </div>
   );
 };

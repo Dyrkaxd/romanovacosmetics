@@ -1,5 +1,6 @@
 
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { authenticatedFetch } from '../utils/api';
 import { NovaPoshtaDepartment } from '../types';
 import { XMarkIcon, SearchIcon } from './Icons';
@@ -50,7 +51,7 @@ const NovaPoshtaSelector: React.FC<NovaPoshtaSelectorProps> = ({ isOpen, onClose
   const [error, setError] = useState<string | null>(null);
 
   const debouncedCitySearch = useDebounce(citySearch, 300);
-  const debouncedDepartmentSearch = useDebounce(departmentSearch, 400);
+  const debouncedDepartmentSearch = useDebounce(departmentSearch, 300);
   
   const cityInputRef = useRef<HTMLInputElement>(null);
 
@@ -63,6 +64,7 @@ const NovaPoshtaSelector: React.FC<NovaPoshtaSelectorProps> = ({ isOpen, onClose
           setDepartments([]);
           setSelectedCity(null);
           setError(null);
+          // Focus input when modal opens
           setTimeout(() => cityInputRef.current?.focus(), 100);
       }
   }, [isOpen]);
@@ -91,7 +93,7 @@ const NovaPoshtaSelector: React.FC<NovaPoshtaSelectorProps> = ({ isOpen, onClose
   }, []);
   
   const searchDepartments = useCallback(async (cityRef: string, query: string) => {
-    if (!cityRef || query.length < 1) {
+    if (!cityRef) {
         setDepartments([]);
         return;
     }
@@ -114,8 +116,10 @@ const NovaPoshtaSelector: React.FC<NovaPoshtaSelectorProps> = ({ isOpen, onClose
   }, []);
 
   useEffect(() => {
-      fetchCities(debouncedCitySearch);
-  }, [debouncedCitySearch, fetchCities]);
+      if (!selectedCity) {
+        fetchCities(debouncedCitySearch);
+      }
+  }, [debouncedCitySearch, fetchCities, selectedCity]);
 
   useEffect(() => {
     if (selectedCity) {
@@ -132,11 +136,14 @@ const NovaPoshtaSelector: React.FC<NovaPoshtaSelectorProps> = ({ isOpen, onClose
   };
   
   const handleDepartmentSelect = (department: NpDepartment) => {
+    const numberMatch = department.Description.match(/№(\d+)/);
+    const departmentNumber = numberMatch ? numberMatch[1] : '';
+
     const finalDepartment: NovaPoshtaDepartment = {
       ref: department.Ref,
       name: department.Description,
       settlementName: department.SettlementDescription,
-      departmentNumber: department.Number,
+      departmentNumber: departmentNumber,
       cityRef: department.CityRef,
     };
     onSelect(finalDepartment);
@@ -148,12 +155,12 @@ const NovaPoshtaSelector: React.FC<NovaPoshtaSelectorProps> = ({ isOpen, onClose
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col">
-        <div className="flex justify-between items-center p-4 border-b">
+        <div className="flex justify-between items-center p-4 border-b border-slate-200">
           <h3 className="text-xl font-semibold text-slate-800">Вибір відділення Нової Пошти</h3>
           <button type="button" onClick={onClose}><XMarkIcon className="w-6 h-6 text-slate-500 hover:text-slate-700"/></button>
         </div>
         <div className="p-4 space-y-4 overflow-y-auto">
-            {error && <div className="p-3 bg-red-50 text-red-700 rounded-md text-sm">{error}</div>}
+            {error && <div className="p-3 bg-red-50 text-red-700 border border-red-200 rounded-md text-sm">{error}</div>}
             
             <div className="relative">
                 <label className="block text-sm font-medium text-slate-700 mb-1">1. Знайдіть місто</label>
@@ -205,20 +212,16 @@ const NovaPoshtaSelector: React.FC<NovaPoshtaSelectorProps> = ({ isOpen, onClose
                         <div className="p-4 text-center text-slate-500">Пошук відділень...</div>
                     ) : (
                        <div className="border border-slate-200 rounded-lg mt-2 max-h-64 overflow-y-auto">
-                           {departmentSearch.length > 0 ? (
-                               departments.length > 0 ? (
-                                  <ul className="divide-y divide-slate-200">
-                                       {departments.map(dep => (
-                                           <li key={dep.Ref} onClick={() => handleDepartmentSelect(dep)} className="p-3 hover:bg-rose-50 cursor-pointer">
-                                              <p className="font-medium text-slate-800">{dep.Description}</p>
-                                           </li>
-                                       ))}
-                                   </ul>
-                               ) : (
-                                   <p className="p-4 text-center text-slate-500">Відділень не знайдено за вашим запитом.</p>
-                               )
+                           {(departments.length > 0) ? (
+                               <ul className="divide-y divide-slate-200">
+                                   {departments.map(dep => (
+                                       <li key={dep.Ref} onClick={() => handleDepartmentSelect(dep)} className="p-3 hover:bg-rose-50 cursor-pointer">
+                                          <p className="font-medium text-slate-800">{dep.Description}</p>
+                                       </li>
+                                   ))}
+                               </ul>
                            ) : (
-                                <p className="p-4 text-center text-slate-500">Почніть вводити номер або адресу, щоб знайти відділення.</p>
+                               debouncedDepartmentSearch.length > 0 && <p className="p-4 text-center text-slate-500">Відділень не знайдено за вашим запитом.</p>
                            )}
                        </div>
                     )}
