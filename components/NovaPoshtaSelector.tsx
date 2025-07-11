@@ -2,7 +2,9 @@
 
 
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+
+
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { authenticatedFetch } from '../utils/api';
 import { NovaPoshtaDepartment } from '../types';
 import { XMarkIcon, SearchIcon } from './Icons';
@@ -43,7 +45,7 @@ const NovaPoshtaSelector: React.FC<NovaPoshtaSelectorProps> = ({ isOpen, onClose
   const [departmentSearch, setDepartmentSearch] = useState('');
   
   const [cities, setCities] = useState<NpCity[]>([]);
-  const [departments, setDepartments] = useState<NpDepartment[]>([]);
+  const [allDepartments, setAllDepartments] = useState<NpDepartment[]>([]);
 
   const [selectedCity, setSelectedCity] = useState<NpCity | null>(null);
   
@@ -53,8 +55,7 @@ const NovaPoshtaSelector: React.FC<NovaPoshtaSelectorProps> = ({ isOpen, onClose
   const [error, setError] = useState<string | null>(null);
 
   const debouncedCitySearch = useDebounce(citySearch, 300);
-  const debouncedDepartmentSearch = useDebounce(departmentSearch, 300);
-
+  
   const cityInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -63,7 +64,7 @@ const NovaPoshtaSelector: React.FC<NovaPoshtaSelectorProps> = ({ isOpen, onClose
           setCitySearch('');
           setDepartmentSearch('');
           setCities([]);
-          setDepartments([]);
+          setAllDepartments([]);
           setSelectedCity(null);
           setError(null);
           // Focus the first input
@@ -91,17 +92,19 @@ const NovaPoshtaSelector: React.FC<NovaPoshtaSelectorProps> = ({ isOpen, onClose
     }
   }, []);
 
-  const fetchDepartments = useCallback(async (cityRef: string, query: string) => {
+  const fetchAllDepartmentsForCity = useCallback(async (cityRef: string) => {
     setIsDepartmentLoading(true);
     setError(null);
+    setAllDepartments([]);
     try {
-        const res = await authenticatedFetch(`/api/novaPoshtaSearch?type=departments&cityRef=${encodeURIComponent(cityRef)}&query=${encodeURIComponent(query)}`);
-        if (!res.ok) throw new Error('Помилка пошуку відділення');
+        // This endpoint now fetches ALL departments, ignoring any query.
+        const res = await authenticatedFetch(`/api/novaPoshtaSearch?type=departments&cityRef=${encodeURIComponent(cityRef)}`);
+        if (!res.ok) throw new Error('Помилка завантаження відділень');
         const data = await res.json();
-        setDepartments(data);
+        setAllDepartments(data);
     } catch (err: any) {
         setError(err.message);
-        setDepartments([]);
+        setAllDepartments([]);
     } finally {
         setIsDepartmentLoading(false);
     }
@@ -110,22 +113,23 @@ const NovaPoshtaSelector: React.FC<NovaPoshtaSelectorProps> = ({ isOpen, onClose
   useEffect(() => {
       fetchCities(debouncedCitySearch);
   }, [debouncedCitySearch, fetchCities]);
-  
-  useEffect(() => {
-    if (selectedCity?.Ref) {
-      if (debouncedDepartmentSearch) {
-        fetchDepartments(selectedCity.Ref, debouncedDepartmentSearch);
-      } else {
-        setDepartments([]);
-      }
-    }
-  }, [selectedCity, debouncedDepartmentSearch, fetchDepartments]);
 
   const handleCitySelect = (city: NpCity) => {
     setSelectedCity(city);
     setCitySearch(city.Description);
     setCities([]); // Hide city results
+    fetchAllDepartmentsForCity(city.Ref); // Fetch all departments for the selected city
   };
+  
+  const filteredDepartments = useMemo(() => {
+      if (!departmentSearch) {
+          return allDepartments;
+      }
+      const lowercasedQuery = departmentSearch.toLowerCase();
+      return allDepartments.filter(dep => 
+          dep.Description.toLowerCase().includes(lowercasedQuery)
+      );
+  }, [departmentSearch, allDepartments]);
 
   const handleDepartmentSelect = (department: NpDepartment) => {
     // Construct the final department object conforming to the NovaPoshtaDepartment type
@@ -167,7 +171,7 @@ const NovaPoshtaSelector: React.FC<NovaPoshtaSelectorProps> = ({ isOpen, onClose
                         disabled={!!selectedCity}
                     />
                      {selectedCity && (
-                        <button onClick={() => { setSelectedCity(null); setCitySearch(''); setDepartments([]); setDepartmentSearch('')}} className="absolute top-1/2 right-3 transform -translate-y-1/2 text-slate-500 hover:text-slate-800">
+                        <button onClick={() => { setSelectedCity(null); setCitySearch(''); setAllDepartments([]); setDepartmentSearch('')}} className="absolute top-1/2 right-3 transform -translate-y-1/2 text-slate-500 hover:text-slate-800">
                            <XMarkIcon className="w-5 h-5"/>
                         </button>
                     )}
@@ -187,35 +191,38 @@ const NovaPoshtaSelector: React.FC<NovaPoshtaSelectorProps> = ({ isOpen, onClose
             
             {/* Step 2: Department Search */}
             {selectedCity && (
-                <div className="relative">
-                     <label className="block text-sm font-medium text-slate-700 mb-1">2. Знайдіть відділення або поштомат</label>
-                     <div className="relative">
-                        <SearchIcon className="w-5 h-5 text-slate-400 absolute top-1/2 left-3 transform -translate-y-1/2"/>
-                        <input
-                            type="text"
-                            placeholder="Введіть номер або адресу..."
-                            value={departmentSearch}
-                            onChange={(e) => setDepartmentSearch(e.target.value)}
-                            className="w-full p-2.5 pl-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-rose-500"
-                            autoFocus
-                        />
-                    </div>
-                    {isDepartmentLoading && <div className="p-2 text-sm text-slate-500">Пошук...</div>}
-                    <div className="border border-slate-200 rounded-lg mt-2 max-h-64 overflow-y-auto">
-                        {departments.length > 0 ? (
-                           <ul className="divide-y divide-slate-200">
-                                {departments.map(dep => (
-                                    <li key={dep.Ref} onClick={() => handleDepartmentSelect(dep)} className="p-3 hover:bg-rose-50 cursor-pointer">
-                                       <p className="font-medium text-slate-800">{dep.Description}</p>
-                                    </li>
-                                ))}
-                            </ul>
-                        ) : !isDepartmentLoading && (
-                            <p className="p-4 text-center text-slate-500">
-                                {debouncedDepartmentSearch ? 'Відділень не знайдено.' : 'Введіть номер або адресу для пошуку.'}
-                            </p>
-                        )}
-                    </div>
+                <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">2. Знайдіть відділення або поштомат</label>
+                    <div className="relative">
+                       <SearchIcon className="w-5 h-5 text-slate-400 absolute top-1/2 left-3 transform -translate-y-1/2"/>
+                       <input
+                           type="text"
+                           placeholder="Введіть номер або адресу..."
+                           value={departmentSearch}
+                           onChange={(e) => setDepartmentSearch(e.target.value)}
+                           className="w-full p-2.5 pl-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-rose-500"
+                           autoFocus
+                       />
+                   </div>
+                    {isDepartmentLoading ? (
+                        <div className="p-4 text-center text-slate-500">Завантаження відділень...</div>
+                    ) : (
+                       <div className="border border-slate-200 rounded-lg mt-2 max-h-64 overflow-y-auto">
+                           {filteredDepartments.length > 0 ? (
+                              <ul className="divide-y divide-slate-200">
+                                   {filteredDepartments.map(dep => (
+                                       <li key={dep.Ref} onClick={() => handleDepartmentSelect(dep)} className="p-3 hover:bg-rose-50 cursor-pointer">
+                                          <p className="font-medium text-slate-800">{dep.Description}</p>
+                                       </li>
+                                   ))}
+                               </ul>
+                           ) : (
+                               <p className="p-4 text-center text-slate-500">
+                                   {departmentSearch ? 'Відділень не знайдено.' : `Знайдено ${allDepartments.length} відділень. Почніть пошук.`}
+                               </p>
+                           )}
+                       </div>
+                    )}
                 </div>
             )}
         </div>
