@@ -1,5 +1,6 @@
 
 
+
 import { Handler } from '@netlify/functions';
 import { requireAuth } from '../utils/auth';
 
@@ -67,7 +68,7 @@ const handler: Handler = async (event) => {
              if (!cityRef) return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: '`cityRef` parameter is required for departments search.' }) };
              const methodProperties: { CityRef: string, FindByString?: string, Limit?: string } = { 
                 CityRef: cityRef,
-                Limit: "150" // Add a reasonable limit to prevent timeouts
+                Limit: "50" // Reduce limit to prevent timeouts
              };
              if (query) {
                 methodProperties.FindByString = query;

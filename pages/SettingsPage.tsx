@@ -87,6 +87,13 @@ const NovaPoshtaSetupHelper: React.FC = () => {
                         {result.addresses?.length === 0 && <p className="text-xs text-amber-700 bg-amber-50 p-2 mt-2 rounded-md">Адресу не знайдено. <a href="https://new.novaposhta.ua/" target="_blank" rel="noopener noreferrer" className="font-semibold underline">Додайте адресу</a> у вашому кабінеті "Нової Пошти" та спробуйте знову.</p>}
                     </div>
                      <div className="p-3 bg-slate-50 rounded-lg border">
+                        <label className="text-xs text-slate-500">NOVA_POSHTA_SENDER_CITY_REF</label>
+                        <div className="flex items-center justify-between">
+                            <p className="font-mono text-sm text-slate-700">{result.senderCityRef || 'Не знайдено'}</p>
+                            {result.senderCityRef && <button onClick={() => handleCopy(result.senderCityRef, 'cityRef')} className="p-1.5 text-slate-500 hover:text-slate-800 rounded-md">{copiedKey === 'cityRef' ? <CheckIcon className="w-5 h-5 text-green-600"/> : <ClipboardIcon className="w-5 h-5"/>}</button>}
+                        </div>
+                    </div>
+                     <div className="p-3 bg-slate-50 rounded-lg border">
                         <label className="text-xs text-slate-500">NOVA_POSHTA_SENDER_PHONE</label>
                          <div className="flex items-center justify-between">
                             <p className="font-mono text-sm text-slate-700">{result.contacts?.[0]?.Phones?.replace(/[^0-9]/g, '') || 'Не знайдено'}</p>

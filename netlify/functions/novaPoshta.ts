@@ -1,6 +1,7 @@
 
 
 
+
 import { Handler } from '@netlify/functions';
 import { supabase } from '../../services/supabaseClient';
 import { requireAuth } from '../utils/auth';
@@ -49,30 +50,17 @@ const handler: Handler = async (event) => {
         NOVA_POSHTA_SENDER_REF,
         NOVA_POSHTA_SENDER_CONTACT_REF,
         NOVA_POSHTA_SENDER_ADDRESS_REF,
-        NOVA_POSHTA_SENDER_PHONE
+        NOVA_POSHTA_SENDER_PHONE,
+        NOVA_POSHTA_SENDER_CITY_REF
     } = process.env;
 
-    if (!NOVA_POSHTA_API_KEY || !NOVA_POSHTA_SENDER_REF || !NOVA_POSHTA_SENDER_CONTACT_REF || !NOVA_POSHTA_SENDER_ADDRESS_REF || !NOVA_POSHTA_SENDER_PHONE) {
-        return { statusCode: 500, headers: commonHeaders, body: JSON.stringify({ message: "Server configuration error: Nova Poshta credentials are not set."})};
+    const requiredNpVars = ['NOVA_POSHTA_API_KEY', 'NOVA_POSHTA_SENDER_REF', 'NOVA_POSHTA_SENDER_CONTACT_REF', 'NOVA_POSHTA_SENDER_ADDRESS_REF', 'NOVA_POSHTA_SENDER_PHONE', 'NOVA_POSHTA_SENDER_CITY_REF'];
+    const missingVars = requiredNpVars.filter(v => !process.env[v]);
+
+    if (missingVars.length > 0) {
+        console.error('Missing Nova Poshta environment variables:', missingVars);
+        return { statusCode: 500, headers: commonHeaders, body: JSON.stringify({ message: `Server configuration error: Missing Nova Poshta credentials: ${missingVars.join(', ')}.`})};
     }
-    
-    // The sender's city must be looked up from the sender's warehouse address ref.
-    const npAddressRes = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            apiKey: NOVA_POSHTA_API_KEY,
-            modelName: "Address",
-            calledMethod: "getWarehouses",
-            methodProperties: { Ref: NOVA_POSHTA_SENDER_ADDRESS_REF }
-        })
-    });
-    const npAddressData = await npAddressRes.json();
-    if (!npAddressData.success || !npAddressData.data || npAddressData.data.length === 0) {
-        console.error('NP Address Error:', npAddressData.errors);
-        throw new Error(`Не вдалося отримати місто відправника. Помилка НП: ${npAddressData.errors.join(', ')}`);
-    }
-    const senderCityRef = npAddressData.data[0].CityRef;
     
     const methodProperties: any = {
       NewAddress: "1",
@@ -85,7 +73,7 @@ const handler: Handler = async (event) => {
       SeatsAmount: "1",
       Description: description,
       Cost: String(cost),
-      CitySender: senderCityRef,
+      CitySender: NOVA_POSHTA_SENDER_CITY_REF,
       Sender: NOVA_POSHTA_SENDER_REF,
       SenderAddress: NOVA_POSHTA_SENDER_ADDRESS_REF,
       ContactSender: NOVA_POSHTA_SENDER_CONTACT_REF,

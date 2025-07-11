@@ -58,6 +58,16 @@ const handler: Handler = async (event) => {
     // 3. Get Addresses
     const addresses = await callNpApi(apiKey, 'Counterparty', 'getCounterpartyAddresses', { Ref: sender.Ref });
 
+    // 4. Get City Ref from the primary address, if it exists
+    let senderCityRef = null;
+    if (addresses && addresses.length > 0) {
+        const primaryAddressRef = addresses[0].Ref;
+        const warehouseData = await callNpApi(apiKey, 'Address', 'getWarehouses', { Ref: primaryAddressRef, Limit: 1 });
+        if (warehouseData && warehouseData.length > 0) {
+            senderCityRef = warehouseData[0].CityRef;
+        }
+    }
+
     return {
       statusCode: 200,
       headers: commonHeaders,
@@ -65,6 +75,7 @@ const handler: Handler = async (event) => {
         sender,
         contacts,
         addresses,
+        senderCityRef,
       }),
     };
 
