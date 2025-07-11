@@ -1,25 +1,12 @@
-[build]
-  command = "npm run build"
-  publish = "dist"
-  functions = "netlify/functions"
-
-[[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/:splat"
-  status = 200
-
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
-
 # /netlify.toml
-# This configuration file sets custom headers for the deployed site on Netlify.
-# Це правило застосовує заголовок до всіх сторінок на вашому сайті.
+
+# Це правило застосовує HTTP-заголовки до всіх сторінок вашого сайту.
 [[headers]]
   for = "/*"
+  
   [headers.values]
-    # Цей заголовок необхідний для коректної роботи входу через Google (FedCM).
-    # Він дозволяє спливаючому вікну входу безпечно обмінюватися даними
-    # з вашим додатком, що вирішує помилки "Cross-Origin-Opener-Policy".
+    # Цей заголовок є ключовим для вирішення проблем із входом через Google (FedCM).
+    # Він дозволяє спливаючому вікну автентифікації Google безпечно
+    # обмінюватися даними з вашим сайтом, що усуває помилки
+    # "Cross-Origin-Opener-Policy policy would block the window.postMessage call".
     Cross-Origin-Opener-Policy = "same-origin-allow-popups"
