@@ -1,3 +1,4 @@
+
 import { Handler } from '@netlify/functions';
 import { requireAuth } from '../utils/auth';
 
@@ -58,15 +59,23 @@ const handler: Handler = async (event) => {
     // 3. Get Addresses
     const addresses = await callNpApi(apiKey, 'Counterparty', 'getCounterpartyAddresses', { Ref: sender.Ref });
 
-    // 4. Get City Ref from the primary address, if it exists
+    // 4. Get City Ref from the primary address, or fall back to searching by city name
     let senderCityRef = null;
-    if (addresses && addresses.length > 0) {
-        const primaryAddressRef = addresses[0].Ref;
-        const warehouseData = await callNpApi(apiKey, 'Address', 'getWarehouses', { Ref: primaryAddressRef, Limit: 1 });
-        if (warehouseData && warehouseData.length > 0) {
-            senderCityRef = warehouseData[0].CityRef;
+    if (addresses && addresses.length > 0 && addresses[0].CityRef) {
+        // Preferred method: Get CityRef directly from the saved address
+        senderCityRef = addresses[0].CityRef;
+    } else if (sender.City) {
+        // Fallback: If no address is saved, use the sender's city name to find the Ref.
+        // This is a huge UX improvement as it unblocks users without a saved address.
+        console.warn(`No address found for sender ${sender.Ref}. Falling back to city name search: "${sender.City}".`);
+        const settlementData = await callNpApi(apiKey, 'Address', 'searchSettlements', { CityName: sender.City, Limit: 1 });
+        if (settlementData && settlementData[0]?.Addresses && settlementData[0].Addresses[0]) {
+            senderCityRef = settlementData[0].Addresses[0].Ref;
+        } else {
+            console.warn(`Could not resolve CityRef for city name "${sender.City}".`);
         }
     }
+
 
     return {
       statusCode: 200,

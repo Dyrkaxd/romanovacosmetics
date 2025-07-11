@@ -2,6 +2,7 @@
 
 
 
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../AuthContext';
 import { ManagedUser } from '../types';
@@ -92,6 +93,11 @@ const NovaPoshtaSetupHelper: React.FC = () => {
                             <p className="font-mono text-sm text-slate-700">{result.senderCityRef || 'Не знайдено'}</p>
                             {result.senderCityRef && <button onClick={() => handleCopy(result.senderCityRef, 'cityRef')} className="p-1.5 text-slate-500 hover:text-slate-800 rounded-md">{copiedKey === 'cityRef' ? <CheckIcon className="w-5 h-5 text-green-600"/> : <ClipboardIcon className="w-5 h-5"/>}</button>}
                         </div>
+                        {result.senderCityRef && result.addresses?.length === 0 && (
+                            <p className="text-xs text-blue-700 bg-blue-50 p-2 mt-2 rounded-md">
+                                <strong>Зверніть увагу:</strong> цей Ref було знайдено на основі міста відправника ("{result.sender?.City}"), оскільки у вас не налаштовано конкретну адресу відправлення. Для більшості випадків цього достатньо.
+                            </p>
+                        )}
                     </div>
                      <div className="p-3 bg-slate-50 rounded-lg border">
                         <label className="text-xs text-slate-500">NOVA_POSHTA_SENDER_PHONE</label>
