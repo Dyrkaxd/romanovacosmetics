@@ -1,28 +1,31 @@
-import React from 'react';
+
+import React, { useState } from 'react';
 import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
 import { useAuth } from '../AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { logoBase64 } from '../assets/logo';
 
 const LoginPage: React.FC = () => {
-  const { signIn } = useAuth();
+  const { signIn, isLoadingAuth } = useAuth();
   const navigate = useNavigate();
+  const [loginError, setLoginError] = useState<string | null>(null);
 
   const handleLoginSuccess = async (credentialResponse: CredentialResponse) => {
+    setLoginError(null);
     const isAuthorized = await signIn(credentialResponse);
 
     if (isAuthorized) {
       navigate('/', { replace: true });
     } else {
-      // This means Google authentication was successful, but the user is not
-      // an admin and not in the managed users list.
-      alert('Ваш обліковий запис Google автентифіковано, але не авторизовано для доступу до цієї програми. Будь ласка, зверніться до адміністратора.');
+      // This can happen if the Google login itself is fine, but our backend says the user is not in the system.
+      // The auth context already handles logging out.
+      setLoginError('Ваш обліковий запис Google автентифіковано, але не авторизовано для доступу до цієї програми. Будь ласка, зверніться до адміністратора.');
     }
   };
 
   const handleLoginError = () => {
     console.error('Помилка входу через Google');
-    alert('Не вдалося увійти через Google. Будь ласка, спробуйте ще раз або перевірте налаштування вашого облікового запису Google.');
+    setLoginError('Не вдалося увійти через Google. Будь ласка, спробуйте ще раз. Перевірте, чи не блокує ваш браузер сторонні файли cookie або вікна входу.');
   };
 
   return (
@@ -35,17 +38,27 @@ const LoginPage: React.FC = () => {
            <p className="text-slate-600 mt-6 text-base">Увійдіть, щоб продовжити до панелі керування</p>
         </div>
         
+        {loginError && (
+          <div className="mb-4 p-3 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm" role="alert">
+            {loginError}
+          </div>
+        )}
+
         <div className="flex justify-center">
-            <GoogleLogin
-              onSuccess={handleLoginSuccess}
-              onError={handleLoginError}
-              useOneTap
-              shape="rectangular"
-              logo_alignment="left"
-              width="300px" 
-              locale="uk"
-              theme="outline"
-            />
+            {isLoadingAuth ? (
+              <div className="h-[40px] flex items-center justify-center text-slate-500">Завантаження...</div>
+            ) : (
+              <GoogleLogin
+                onSuccess={handleLoginSuccess}
+                onError={handleLoginError}
+                useOneTap
+                shape="rectangular"
+                logo_alignment="left"
+                width="300px" 
+                locale="uk"
+                theme="outline"
+              />
+            )}
         </div>
 
         <p className="text-xs text-slate-400 mt-10">

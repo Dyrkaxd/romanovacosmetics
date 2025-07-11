@@ -1,4 +1,5 @@
 
+
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import { supabase } from '../../services/supabaseClient';
 import type { Product, PaginatedResponse } from '../../types';
@@ -91,37 +92,49 @@ const handler: Handler = async (event: HandlerEvent) => {
           const product = transformDbRowToProduct(findResult.product, findResult.group);
           return { statusCode: 200, headers: commonHeaders, body: JSON.stringify(product) };
         } else {
-          // Server-side pagination and filtering
+          // Logic for fetching multiple products (list view / search)
           const { search = '', page = '1', pageSize = '20' } = event.queryStringParameters || {};
-          const currentPage = parseInt(page, 10);
           const size = parseInt(pageSize, 10);
+
+          // IMPORTANT: To prevent timeouts and performance issues, we now require a search term
+          // to fetch products for a list. A call without a search term will return empty.
+          if (!search) {
+             const emptyResponse: PaginatedResponse<Product> = {
+                data: [],
+                totalCount: 0,
+                currentPage: 1,
+                pageSize: size,
+             };
+             return { statusCode: 200, headers: commonHeaders, body: JSON.stringify(emptyResponse) };
+          }
+          
+          // Limit search result size for dropdowns, etc.
+          const searchLimitPerTable = 15;
 
           const allProductsPromises = Object.entries(productGroups).map(async ([group, tableName]) => {
             const { data, error } = await supabase
               .from(tableName)
-              .select('id, name, price, salon_price, exchange_rate, created_at');
-            if (error) throw error;
+              .select('id, name, price, salon_price, exchange_rate, created_at')
+              .ilike('name', `%${search}%`)
+              .limit(searchLimitPerTable);
+
+            if (error) {
+                console.error(`Error searching in table ${tableName}:`, error);
+                return []; // Return empty array for this table on error
+            }
             return (data || []).map(p => transformDbRowToProduct(p as ProductDbRow, group as ProductGroupName));
           });
 
           const productsByGroup = await Promise.all(allProductsPromises);
-          let allProducts = productsByGroup.flat().sort((a,b) => (a.name || '').localeCompare(b.name || ''));
+          const allProducts = productsByGroup.flat().sort((a,b) => (a.name || '').localeCompare(b.name || ''));
 
-          // Filtering
-          if (search) {
-            allProducts = allProducts.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
-          }
-          
-          const totalCount = allProducts.length;
-          const from = (currentPage - 1) * size;
-          const to = from + size;
-          const paginatedData = allProducts.slice(from, to);
-
+          // Because we search across many tables, true pagination is complex.
+          // We return a combined list of top results. The frontend will not paginate this specific search.
           const response: PaginatedResponse<Product> = {
-            data: paginatedData,
-            totalCount,
-            currentPage,
-            pageSize: size,
+            data: allProducts,
+            totalCount: allProducts.length,
+            currentPage: 1,
+            pageSize: allProducts.length,
           };
           
           return { statusCode: 200, headers: commonHeaders, body: JSON.stringify(response) };

@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { authenticatedFetch } from '../utils/api';
 import { NovaPoshtaDepartment } from '../types';
@@ -16,6 +17,7 @@ interface NpDepartment {
   Description: string;
   Number: string;
   SettlementDescription: string;
+  CityRef: string; // The API returns this
 }
 
 interface NovaPoshtaSelectorProps {
@@ -121,16 +123,13 @@ const NovaPoshtaSelector: React.FC<NovaPoshtaSelectorProps> = ({ isOpen, onClose
   };
 
   const handleDepartmentSelect = (department: NpDepartment) => {
-    if (!selectedCity) {
-        setError("Помилка: місто не вибрано. Будь ласка, спробуйте знову.");
-        return;
-    }
+    // Construct the final department object conforming to the NovaPoshtaDepartment type
     const finalDepartment: NovaPoshtaDepartment = {
       ref: department.Ref,
       name: department.Description,
       settlementName: department.SettlementDescription,
       departmentNumber: department.Number,
-      cityRef: selectedCity.Ref,
+      cityRef: department.CityRef,
     };
     onSelect(finalDepartment);
     onClose();
@@ -206,7 +205,7 @@ const NovaPoshtaSelector: React.FC<NovaPoshtaSelectorProps> = ({ isOpen, onClose
                                     </li>
                                 ))}
                             </ul>
-                        ) : !isDepartmentLoading && debouncedDepartmentSearch && (
+                        ) : !isDepartmentLoading && (
                             <p className="p-4 text-center text-slate-500">Відділень, що відповідають пошуку, не знайдено.</p>
                         )}
                     </div>

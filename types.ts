@@ -182,7 +182,7 @@ export interface NovaPoshtaDepartment {
   name: string;
   settlementName: string;
   departmentNumber: string;
-  cityRef: string; // Made this required for better data flow.
+  cityRef: string; // This field is required to correctly create a TTN.
   
   // Optional fields for future use
   shortName?: string;

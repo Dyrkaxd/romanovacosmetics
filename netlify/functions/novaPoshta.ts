@@ -1,5 +1,6 @@
 
 
+
 import { Handler } from '@netlify/functions';
 import { supabase } from '../../services/supabaseClient';
 import { requireAuth } from '../utils/auth';
@@ -34,18 +35,10 @@ const handler: Handler = async (event) => {
       description,
       cost,
       isCodEnabled,
-      codAmount,
     } = JSON.parse(event.body || '{}');
 
-    const missingFields = [];
-    if (!orderId) missingFields.push('orderId');
-    if (!recipient) missingFields.push('recipient');
-    if (!recipientCityRef) missingFields.push('recipientCityRef');
-    if (!recipientAddressRef) missingFields.push('recipientAddressRef');
-    if (!weight) missingFields.push('weight');
-    if (volumeGeneral === undefined || volumeGeneral === null) missingFields.push('volumeGeneral');
-    if (!description) missingFields.push('description');
-    if (cost === undefined || cost === null) missingFields.push('cost');
+    const missingFields = ['orderId', 'recipient', 'recipientCityRef', 'recipientAddressRef', 'weight', 'volumeGeneral', 'description', 'cost']
+      .filter(field => !JSON.parse(event.body || '{}')[field] && JSON.parse(event.body || '{}')[field] !== 0);
     
     if (missingFields.length > 0) {
         return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: `Missing required fields for TTN creation: ${missingFields.join(', ')}.` }) };
@@ -62,8 +55,8 @@ const handler: Handler = async (event) => {
     if (!NOVA_POSHTA_API_KEY || !NOVA_POSHTA_SENDER_REF || !NOVA_POSHTA_SENDER_CONTACT_REF || !NOVA_POSHTA_SENDER_ADDRESS_REF || !NOVA_POSHTA_SENDER_PHONE) {
         return { statusCode: 500, headers: commonHeaders, body: JSON.stringify({ message: "Server configuration error: Nova Poshta credentials are not set."})};
     }
-
-    // We need to get the sender's city Ref from the sender's address Ref
+    
+    // The sender's city must be looked up from the sender's warehouse address ref.
     const npAddressRes = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -77,7 +70,7 @@ const handler: Handler = async (event) => {
     const npAddressData = await npAddressRes.json();
     if (!npAddressData.success || !npAddressData.data || npAddressData.data.length === 0) {
         console.error('NP Address Error:', npAddressData.errors);
-        throw new Error('Не вдалося отримати місто відправника.');
+        throw new Error(`Не вдалося отримати місто відправника. Помилка НП: ${npAddressData.errors.join(', ')}`);
     }
     const senderCityRef = npAddressData.data[0].CityRef;
     
@@ -107,7 +100,7 @@ const handler: Handler = async (event) => {
       methodProperties.BackwardDeliveryData = [{
           PayerType: "Recipient",
           CargoType: "Money",
-          RedeliveryString: String(codAmount)
+          RedeliveryString: String(cost) // The COD amount is the total cost of the order
       }];
     }
 
@@ -143,7 +136,10 @@ const handler: Handler = async (event) => {
       })
       .eq('id', orderId);
       
-    if (dbError) throw dbError;
+    if (dbError) {
+      console.error(`DB update error after creating TTN ${ttn} for order ${orderId}:`, dbError);
+      throw new Error(`ТТН ${ttn} створено, але не вдалося оновити замовлення в базі даних.`);
+    }
 
     return {
       statusCode: 200,

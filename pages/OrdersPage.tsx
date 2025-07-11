@@ -1,5 +1,7 @@
 
 
+
+
 import React, { useState, useEffect, useCallback, useMemo, useRef, FC, SVGProps } from 'react';
 import { Order, OrderItem, Customer, Product, ManagedUser, PaginatedResponse, NovaPoshtaDepartment } from '../types';
 import { EyeIcon, XMarkIcon, PlusIcon, TrashIcon, PencilIcon, DocumentTextIcon, FilterIcon, DownloadIcon, ChevronDownIcon, ShareIcon, EllipsisVerticalIcon, TruckIcon } from '../components/Icons';
@@ -42,6 +44,19 @@ const StatusPill: React.FC<{ status: Order['status'] }> = ({ status }) => {
 const toYYYYMMDD = (date: Date) => date.toISOString().split('T')[0];
 const API_BASE_URL = '/api';
 
+// Debounce hook to delay API calls while user is typing
+const useDebounce = (value: string, delay: number) => {
+    const [debouncedValue, setDebouncedValue] = useState(value);
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedValue(value);
+        }, delay);
+        return () => clearTimeout(handler);
+    }, [value, delay]);
+    return debouncedValue;
+};
+
+
 const OrdersPage: React.FC = () => {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
@@ -55,7 +70,6 @@ const OrdersPage: React.FC = () => {
   const initialNewOrderItem: OrderItem = { productId: '', productName: '', quantity: 1, price: 0, discount: 0 };
 
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [availableProducts, setAvailableProducts] = useState<Product[]>([]);
   const [allOrderManagers, setAllOrderManagers] = useState<{ email: string; name: string }[]>([]);
 
   const [isLoading, setIsLoading] = useState(false);
@@ -76,9 +90,12 @@ const OrdersPage: React.FC = () => {
   const [pageSize, setPageSize] = useState(20);
   const [totalCount, setTotalCount] = useState(0);
 
-  // State for searchable product dropdown
+  // Reworked product fetching states for order modal
   const [openProductDropdown, setOpenProductDropdown] = useState<number | null>(null);
-  const [productSearchTerm, setProductSearchTerm] = useState<string>('');
+  const [productSearchTerm, setProductSearchTerm] = useState('');
+  const [productSearchResults, setProductSearchResults] = useState<Product[]>([]);
+  const [isProductSearching, setIsProductSearching] = useState(false);
+  const debouncedProductSearch = useDebounce(productSearchTerm, 300);
   const productDropdownRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   // State for actions dropdown
@@ -120,18 +137,14 @@ const OrdersPage: React.FC = () => {
 
   const fetchInitialData = useCallback(async () => {
     try {
-      const [customersRes, productsRes, managersRes] = await Promise.all([
+      const [customersRes, managersRes] = await Promise.all([
         authenticatedFetch(`${API_BASE_URL}/customers?pageSize=1000`), // Fetch all customers for dropdown
-        authenticatedFetch(`${API_BASE_URL}/products?pageSize=1000`), // Fetch all products for dropdown
         isAdmin ? authenticatedFetch(`${API_BASE_URL}/managedUsers`) : Promise.resolve(null),
         isAdmin ? authenticatedFetch(`${API_BASE_URL}/admins`) : Promise.resolve(null),
       ]);
 
       const customersData: PaginatedResponse<Customer> = await customersRes.json();
       setCustomers(customersData.data.sort((a,b) => a.name.localeCompare(b.name)));
-
-      const productsData: PaginatedResponse<Product> = await productsRes.json();
-      setAvailableProducts(productsData.data);
       
       if(isAdmin && managersRes) {
         const managers: ManagedUser[] = await managersRes.json();
@@ -148,7 +161,7 @@ const OrdersPage: React.FC = () => {
       }
 
     } catch (err: any) {
-      setPageError("Не вдалося завантажити допоміжні дані (клієнти, товари). " + err.message);
+      setPageError("Не вдалося завантажити допоміжні дані (клієнти, менеджери). " + err.message);
     }
   }, [isAdmin]);
 
@@ -178,6 +191,33 @@ const OrdersPage: React.FC = () => {
       setIsLoading(false);
     }
   }, [pageSize, searchTerm, filterStatus, filterCustomerId, filterManagerEmail, filterStartDate, filterEndDate]);
+
+  // Effect for searching products on-demand
+  useEffect(() => {
+    const searchProducts = async () => {
+        if (debouncedProductSearch.length < 2) {
+            setProductSearchResults([]);
+            return;
+        }
+        setIsProductSearching(true);
+        try {
+            const res = await authenticatedFetch(`${API_BASE_URL}/products?search=${encodeURIComponent(debouncedProductSearch)}`);
+            if (!res.ok) throw new Error('Помилка пошуку товарів');
+            // Backend returns a flat list for search, not a paginated response for this UI element
+            const data: PaginatedResponse<Product> = await res.json();
+            setProductSearchResults(data.data);
+        } catch (err) {
+            console.error(err);
+            setProductSearchResults([]);
+        } finally {
+            setIsProductSearching(false);
+        }
+    };
+    if (openProductDropdown !== null) {
+        searchProducts();
+    }
+  }, [debouncedProductSearch, openProductDropdown]);
+
 
   useEffect(() => {
     fetchInitialData();
@@ -271,20 +311,22 @@ const OrdersPage: React.FC = () => {
 
   const handleItemChange = (index: number, field: keyof OrderItem, value: any) => {
     const items = [...(activeOrderData.items || [])];
-    const itemToUpdate = { ...items[index], [field]: value };
-    
-    if (field === 'productId') {
-        const product = availableProducts.find(p => p.id === value);
-        if (product) {
-            itemToUpdate.productName = product.name;
-            itemToUpdate.price = product.retailPrice;
-            itemToUpdate.salonPriceUsd = product.salonPrice;
-            itemToUpdate.exchangeRate = product.exchangeRate;
-        }
-    }
+    items[index] = { ...items[index], [field]: value };
+    recalculateTotal(items);
+  };
+  
+  const handleProductSelect = (index: number, product: Product) => {
+    const items = [...(activeOrderData.items || [])];
+    const itemToUpdate = { ...items[index] };
+    itemToUpdate.productId = product.id;
+    itemToUpdate.productName = product.name;
+    itemToUpdate.price = product.retailPrice;
+    itemToUpdate.salonPriceUsd = product.salonPrice;
+    itemToUpdate.exchangeRate = product.exchangeRate;
     items[index] = itemToUpdate;
     recalculateTotal(items);
   };
+
 
   const handleAddItem = () => {
     const items = [...(activeOrderData.items || []), initialNewOrderItem];
@@ -334,11 +376,6 @@ const OrdersPage: React.FC = () => {
         setIsSubmitting(false);
     }
   };
-
-  const filteredProducts = useMemo(() => {
-    if (!productSearchTerm) return availableProducts;
-    return availableProducts.filter(p => p.name.toLowerCase().includes(productSearchTerm.toLowerCase()));
-  }, [productSearchTerm, availableProducts]);
     
     const openNpSelector = () => {
       setModalError(null);
@@ -374,7 +411,6 @@ const OrdersPage: React.FC = () => {
                 description: packageDetails.description,
                 cost: activeTtnOrder.totalAmount,
                 isCodEnabled: isCodEnabled,
-                codAmount: isCodEnabled ? activeTtnOrder.totalAmount : 0,
             };
             
             const res = await authenticatedFetch(`${API_BASE_URL}/novaPoshta`, {
@@ -383,7 +419,7 @@ const OrdersPage: React.FC = () => {
             });
             if (!res.ok) throw new Error((await res.json()).message);
 
-            setSuccessMessage(`ТТН успішно створено для замовлення #${activeTtnOrder.id.substring(0,8)}. Статус змінено на 'Відправлено'.`);
+            setSuccessMessage(`ТТН успішно створено. Статус замовлення #${activeTtnOrder.id.substring(0,8)} змінено на "Відправлено".`);
             closeModal();
             fetchOrders(currentPage);
         } catch (err: any) {
@@ -564,16 +600,22 @@ const OrdersPage: React.FC = () => {
                                         <div className="col-span-12 md:col-span-5 relative" ref={el => { productDropdownRefs.current[index] = el; }}>
                                             <input type="text" placeholder="Пошук товару..." 
                                                 defaultValue={item.productName}
-                                                onFocus={() => {setOpenProductDropdown(index); setProductSearchTerm('');}}
+                                                onFocus={() => { setOpenProductDropdown(index); setProductSearchTerm(''); setProductSearchResults([]); }}
                                                 onChange={e => setProductSearchTerm(e.target.value)}
                                                 className="w-full p-2 border-slate-300 rounded-lg"/>
                                             {openProductDropdown === index && (
                                                 <div className="absolute top-full left-0 w-full max-h-60 overflow-y-auto bg-white border shadow-lg z-20 rounded-b-lg">
-                                                    {filteredProducts.map(p => (
-                                                        <div key={p.id} onClick={() => { handleItemChange(index, 'productId', p.id); setOpenProductDropdown(null); }} className="p-2 hover:bg-rose-100 cursor-pointer text-sm">
-                                                            {p.name}
-                                                        </div>
-                                                    ))}
+                                                    {isProductSearching ? (
+                                                        <div className="p-2 text-sm text-slate-500">Пошук...</div>
+                                                    ) : productSearchResults.length > 0 ? (
+                                                        productSearchResults.map(p => (
+                                                            <div key={p.id} onClick={() => { handleProductSelect(index, p); setOpenProductDropdown(null); }} className="p-2 hover:bg-rose-100 cursor-pointer text-sm">
+                                                                {p.name}
+                                                            </div>
+                                                        ))
+                                                    ) : (
+                                                        <div className="p-2 text-sm text-slate-500">{debouncedProductSearch.length < 2 ? 'Введіть мінімум 2 символи' : 'Товар не знайдено'}</div>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
