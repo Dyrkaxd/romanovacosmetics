@@ -38,5 +38,6 @@
 [[headers]]
   for = "/*"
   [headers.values]
-    # Дозволяє спливаючому вікну входу Google безпечно "спілкуватися" з вашим сайтом.
+    # Дозволяє спливаючому вікну входу Google безпечно "спілкуватися" з вашим сайтом,
+    # що вирішує помилки "Cross-Origin-Opener-Policy".
     Cross-Origin-Opener-Policy = "same-origin-allow-popups"
