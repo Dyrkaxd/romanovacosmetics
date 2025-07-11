@@ -77,7 +77,10 @@ const NovaPoshtaSelector: React.FC<NovaPoshtaSelectorProps> = ({ isOpen, onClose
     setError(null);
     try {
       const res = await authenticatedFetch(`/api/novaPoshtaSearch?type=cities&query=${encodeURIComponent(query)}`);
-      if (!res.ok) throw new Error('Помилка пошуку міста');
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ message: 'Помилка пошуку міста' }));
+        throw new Error(errorData.message);
+      }
       const data = await res.json();
       setCities(data);
     } catch (err: any) {
@@ -97,7 +100,10 @@ const NovaPoshtaSelector: React.FC<NovaPoshtaSelectorProps> = ({ isOpen, onClose
     setError(null);
     try {
         const res = await authenticatedFetch(`/api/novaPoshtaSearch?type=departments&cityRef=${encodeURIComponent(cityRef)}&query=${encodeURIComponent(query)}`);
-        if (!res.ok) throw new Error('Помилка завантаження відділень');
+        if (!res.ok) {
+            const errorData = await res.json().catch(() => ({ message: 'Помилка завантаження відділень. Можливо, сервіс "Нової Пошти" тимчасово недоступний.' }));
+            throw new Error(errorData.message);
+        }
         const data = await res.json();
         setDepartments(data);
     } catch (err: any) {

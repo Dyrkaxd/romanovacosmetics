@@ -8,16 +8,16 @@ import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 
 // Lazy load all pages for code splitting
-const DashboardPage = React.lazy(() => import('./pages/DashboardPage'));
-const ProductsPage = React.lazy(() => import('./pages/ProductsPage'));
-const OrdersPage = React.lazy(() => import('./pages/OrdersPage'));
-const CustomersPage = React.lazy(() => import('./pages/CustomersPage'));
-const SettingsPage = React.lazy(() => import('./pages/SettingsPage'));
-const LoginPage = React.lazy(() => import('./pages/LoginPage'));
-const ReportsPage = React.lazy(() => import('./pages/ReportsPage'));
-const ExpensesPage = React.lazy(() => import('./pages/ExpensesPage'));
-const InvoiceViewPage = React.lazy(() => import('./pages/InvoiceViewPage'));
-const BillOfLadingViewPage = React.lazy(() => import('./pages/BillOfLadingViewPage'));
+const DashboardPage = React.lazy(() => import('./pages/DashboardPage.tsx'));
+const ProductsPage = React.lazy(() => import('./pages/ProductsPage.tsx'));
+const OrdersPage = React.lazy(() => import('./pages/OrdersPage.tsx'));
+const CustomersPage = React.lazy(() => import('./pages/CustomersPage.tsx'));
+const SettingsPage = React.lazy(() => import('./pages/SettingsPage.tsx'));
+const LoginPage = React.lazy(() => import('./pages/LoginPage.tsx'));
+const ReportsPage = React.lazy(() => import('./pages/ReportsPage.tsx'));
+const ExpensesPage = React.lazy(() => import('./pages/ExpensesPage.tsx'));
+const InvoiceViewPage = React.lazy(() => import('./pages/InvoiceViewPage.tsx'));
+const BillOfLadingViewPage = React.lazy(() => import('./pages/BillOfLadingViewPage.tsx'));
 
 
 const getPageTitle = (pathname: string): string => {
