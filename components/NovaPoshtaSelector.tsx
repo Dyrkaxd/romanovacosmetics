@@ -1,6 +1,7 @@
 
 
 
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { authenticatedFetch } from '../utils/api';
 import { NovaPoshtaDepartment } from '../types';
@@ -111,9 +112,13 @@ const NovaPoshtaSelector: React.FC<NovaPoshtaSelectorProps> = ({ isOpen, onClose
   }, [debouncedCitySearch, fetchCities]);
   
   useEffect(() => {
-      if (selectedCity?.Ref) {
-          fetchDepartments(selectedCity.Ref, debouncedDepartmentSearch);
+    if (selectedCity?.Ref) {
+      if (debouncedDepartmentSearch) {
+        fetchDepartments(selectedCity.Ref, debouncedDepartmentSearch);
+      } else {
+        setDepartments([]);
       }
+    }
   }, [selectedCity, debouncedDepartmentSearch, fetchDepartments]);
 
   const handleCitySelect = (city: NpCity) => {
@@ -206,7 +211,9 @@ const NovaPoshtaSelector: React.FC<NovaPoshtaSelectorProps> = ({ isOpen, onClose
                                 ))}
                             </ul>
                         ) : !isDepartmentLoading && (
-                            <p className="p-4 text-center text-slate-500">Відділень, що відповідають пошуку, не знайдено.</p>
+                            <p className="p-4 text-center text-slate-500">
+                                {debouncedDepartmentSearch ? 'Відділень не знайдено.' : 'Введіть номер або адресу для пошуку.'}
+                            </p>
                         )}
                     </div>
                 </div>

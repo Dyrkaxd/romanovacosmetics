@@ -1,6 +1,7 @@
 
 
 
+
 import { Handler } from '@netlify/functions';
 import { requireAuth } from '../utils/auth';
 
@@ -66,14 +67,19 @@ const handler: Handler = async (event) => {
 
         } else if (type === 'departments') {
              if (!cityRef) return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: '`cityRef` parameter is required for departments search.' }) };
-             const methodProperties: { CityRef: string, FindByString?: string, Limit?: string } = { 
-                CityRef: cityRef,
-                Limit: "50" // Reduce limit to prevent timeouts
-             };
-             if (query) {
+             
+             // If the search query is empty, return an empty array immediately.
+             // This prevents fetching all warehouses for a city, which can cause timeouts.
+             if (!query) {
+                data = [];
+             } else {
+                const methodProperties: { CityRef: string, FindByString?: string, Limit?: string } = { 
+                    CityRef: cityRef,
+                    Limit: "50"
+                };
                 methodProperties.FindByString = query;
+                data = await callNpApi("Address", "getWarehouses", methodProperties);
              }
-             data = await callNpApi("Address", "getWarehouses", methodProperties);
 
         } else {
             return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: 'Invalid search `type` provided.' }) };
