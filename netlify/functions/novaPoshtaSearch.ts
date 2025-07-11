@@ -1,9 +1,4 @@
 
-
-
-
-
-
 import { Handler } from '@netlify/functions';
 import { requireAuth } from '../utils/auth';
 
@@ -68,20 +63,20 @@ const handler: Handler = async (event) => {
             }));
 
         } else if (type === 'departments') {
-             if (!cityRef) return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: '`cityRef` parameter is required for departments search.' }) };
-             
-            // To prevent timeouts, we fetch ALL warehouses for a city at once, and the client will filter them.
-            // The `query` parameter from the client is ignored for this specific call.
-            const methodProperties: { CityRef: string, FindByString?: string, Limit?: string } = { 
+             if (!cityRef) {
+                return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: '`cityRef` parameter is required for departments search.' }) };
+             }
+             if (!query) {
+                 // Don't make a request if the search query is empty.
+                 return { statusCode: 200, headers: commonHeaders, body: JSON.stringify([]) };
+             }
+            
+            const methodProperties: { CityRef: string, FindByString: string, Limit: string } = { 
                 CityRef: cityRef,
-                Limit: "500" // NP API max limit for warehouses
+                FindByString: query, // Use the query from the client
+                Limit: "50" // A reasonable limit to prevent timeouts
             };
             
-            // If there's a query, we can still use it to pre-filter, but the main change is fetching a large batch.
-            if(query) {
-                methodProperties.FindByString = query;
-            }
-
             data = await callNpApi("Address", "getWarehouses", methodProperties);
 
         } else {

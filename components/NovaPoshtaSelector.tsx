@@ -1,9 +1,4 @@
 
-
-
-
-
-
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { authenticatedFetch } from '../utils/api';
 import { NovaPoshtaDepartment } from '../types';
@@ -45,16 +40,17 @@ const NovaPoshtaSelector: React.FC<NovaPoshtaSelectorProps> = ({ isOpen, onClose
   const [departmentSearch, setDepartmentSearch] = useState('');
   
   const [cities, setCities] = useState<NpCity[]>([]);
-  const [allDepartments, setAllDepartments] = useState<NpDepartment[]>([]);
+  const [departments, setDepartments] = useState<NpDepartment[]>([]);
 
   const [selectedCity, setSelectedCity] = useState<NpCity | null>(null);
   
   const [isCityLoading, setIsCityLoading] = useState(false);
-  const [isDepartmentLoading, setIsDepartmentLoading] = useState(false);
+  const [isDepartmentSearching, setIsDepartmentSearching] = useState(false);
   
   const [error, setError] = useState<string | null>(null);
 
   const debouncedCitySearch = useDebounce(citySearch, 300);
+  const debouncedDepartmentSearch = useDebounce(departmentSearch, 300);
   
   const cityInputRef = useRef<HTMLInputElement>(null);
 
@@ -64,7 +60,7 @@ const NovaPoshtaSelector: React.FC<NovaPoshtaSelectorProps> = ({ isOpen, onClose
           setCitySearch('');
           setDepartmentSearch('');
           setCities([]);
-          setAllDepartments([]);
+          setDepartments([]);
           setSelectedCity(null);
           setError(null);
           // Focus the first input
@@ -91,22 +87,24 @@ const NovaPoshtaSelector: React.FC<NovaPoshtaSelectorProps> = ({ isOpen, onClose
       setIsCityLoading(false);
     }
   }, []);
-
-  const fetchAllDepartmentsForCity = useCallback(async (cityRef: string) => {
-    setIsDepartmentLoading(true);
+  
+  const fetchDepartments = useCallback(async (cityRef: string, query: string) => {
+    if (!cityRef || query.length < 1) {
+        setDepartments([]);
+        return;
+    }
+    setIsDepartmentSearching(true);
     setError(null);
-    setAllDepartments([]);
     try {
-        // This endpoint now fetches ALL departments, ignoring any query.
-        const res = await authenticatedFetch(`/api/novaPoshtaSearch?type=departments&cityRef=${encodeURIComponent(cityRef)}`);
+        const res = await authenticatedFetch(`/api/novaPoshtaSearch?type=departments&cityRef=${encodeURIComponent(cityRef)}&query=${encodeURIComponent(query)}`);
         if (!res.ok) throw new Error('Помилка завантаження відділень');
         const data = await res.json();
-        setAllDepartments(data);
+        setDepartments(data);
     } catch (err: any) {
         setError(err.message);
-        setAllDepartments([]);
+        setDepartments([]);
     } finally {
-        setIsDepartmentLoading(false);
+        setIsDepartmentSearching(false);
     }
   }, []);
 
@@ -114,23 +112,19 @@ const NovaPoshtaSelector: React.FC<NovaPoshtaSelectorProps> = ({ isOpen, onClose
       fetchCities(debouncedCitySearch);
   }, [debouncedCitySearch, fetchCities]);
 
+  useEffect(() => {
+    if (selectedCity) {
+        fetchDepartments(selectedCity.Ref, debouncedDepartmentSearch);
+    }
+  }, [selectedCity, debouncedDepartmentSearch, fetchDepartments]);
+
   const handleCitySelect = (city: NpCity) => {
     setSelectedCity(city);
     setCitySearch(city.Description);
     setCities([]); // Hide city results
-    fetchAllDepartmentsForCity(city.Ref); // Fetch all departments for the selected city
+    setDepartments([]); // Clear old departments
   };
   
-  const filteredDepartments = useMemo(() => {
-      if (!departmentSearch) {
-          return allDepartments;
-      }
-      const lowercasedQuery = departmentSearch.toLowerCase();
-      return allDepartments.filter(dep => 
-          dep.Description.toLowerCase().includes(lowercasedQuery)
-      );
-  }, [departmentSearch, allDepartments]);
-
   const handleDepartmentSelect = (department: NpDepartment) => {
     // Construct the final department object conforming to the NovaPoshtaDepartment type
     const finalDepartment: NovaPoshtaDepartment = {
@@ -171,7 +165,7 @@ const NovaPoshtaSelector: React.FC<NovaPoshtaSelectorProps> = ({ isOpen, onClose
                         disabled={!!selectedCity}
                     />
                      {selectedCity && (
-                        <button onClick={() => { setSelectedCity(null); setCitySearch(''); setAllDepartments([]); setDepartmentSearch('')}} className="absolute top-1/2 right-3 transform -translate-y-1/2 text-slate-500 hover:text-slate-800">
+                        <button onClick={() => { setSelectedCity(null); setCitySearch(''); setDepartments([]); setDepartmentSearch('')}} className="absolute top-1/2 right-3 transform -translate-y-1/2 text-slate-500 hover:text-slate-800">
                            <XMarkIcon className="w-5 h-5"/>
                         </button>
                     )}
@@ -204,13 +198,13 @@ const NovaPoshtaSelector: React.FC<NovaPoshtaSelectorProps> = ({ isOpen, onClose
                            autoFocus
                        />
                    </div>
-                    {isDepartmentLoading ? (
-                        <div className="p-4 text-center text-slate-500">Завантаження відділень...</div>
+                    {isDepartmentSearching ? (
+                        <div className="p-4 text-center text-slate-500">Пошук відділень...</div>
                     ) : (
                        <div className="border border-slate-200 rounded-lg mt-2 max-h-64 overflow-y-auto">
-                           {filteredDepartments.length > 0 ? (
+                           {departments.length > 0 ? (
                               <ul className="divide-y divide-slate-200">
-                                   {filteredDepartments.map(dep => (
+                                   {departments.map(dep => (
                                        <li key={dep.Ref} onClick={() => handleDepartmentSelect(dep)} className="p-3 hover:bg-rose-50 cursor-pointer">
                                           <p className="font-medium text-slate-800">{dep.Description}</p>
                                        </li>
@@ -218,7 +212,7 @@ const NovaPoshtaSelector: React.FC<NovaPoshtaSelectorProps> = ({ isOpen, onClose
                                </ul>
                            ) : (
                                <p className="p-4 text-center text-slate-500">
-                                   {departmentSearch ? 'Відділень не знайдено.' : `Знайдено ${allDepartments.length} відділень. Почніть пошук.`}
+                                   {departmentSearch ? 'Відділень не знайдено.' : 'Введіть номер або адресу для пошуку.'}
                                </p>
                            )}
                        </div>
