@@ -66,15 +66,12 @@ const handler: Handler = async (event) => {
              if (!cityRef) {
                 return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: '`cityRef` parameter is required for departments search.' }) };
              }
-             if (!query) {
-                 // Don't make a request if the search query is empty.
-                 return { statusCode: 200, headers: commonHeaders, body: JSON.stringify([]) };
-             }
             
-            const methodProperties: { CityRef: string, FindByString: string, Limit: string } = { 
+            // Fetch all warehouses for a city. The 'query' parameter is ignored for performance.
+            // Nova Poshta API has a max limit of 500 for getWarehouses.
+            const methodProperties = { 
                 CityRef: cityRef,
-                FindByString: query, // Use the query from the client
-                Limit: "50" // A reasonable limit to prevent timeouts
+                Limit: "500" 
             };
             
             data = await callNpApi("Address", "getWarehouses", methodProperties);
