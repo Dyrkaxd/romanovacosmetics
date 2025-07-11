@@ -12,14 +12,24 @@ const LoginPage: React.FC = () => {
 
   const handleLoginSuccess = async (credentialResponse: CredentialResponse) => {
     setLoginError(null);
-    const isAuthorized = await signIn(credentialResponse);
+    try {
+      const isAuthorized = await signIn(credentialResponse);
 
-    if (isAuthorized) {
-      navigate('/', { replace: true });
-    } else {
-      // This can happen if the Google login itself is fine, but our backend says the user is not in the system.
-      // The auth context already handles logging out.
-      setLoginError('Ваш обліковий запис Google автентифіковано, але не авторизовано для доступу до цієї програми. Будь ласка, зверніться до адміністратора.');
+      if (isAuthorized) {
+        navigate('/', { replace: true });
+      } else {
+        // This case is for when the user is authenticated with Google but not found in our database (admins/managers).
+        // The auth context already handles logging out.
+        setLoginError('Ваш обліковий запис Google автентифіковано, але не авторизовано для доступу до цієї програми. Будь ласка, зверніться до адміністратора.');
+      }
+    } catch (error: any) {
+        console.error('Login process failed after Google success:', error);
+        // This check is specifically for the HTML response error
+        if (error instanceof SyntaxError && error.message.includes('not valid JSON')) {
+            setLoginError('Помилка конфігурації сервера. Не вдалося зв\'язатися з API. Перевірте, що файл `netlify.toml` налаштовано правильно.');
+        } else {
+            setLoginError(error.message || 'Сталася невідома помилка під час входу.');
+        }
     }
   };
 
@@ -60,8 +70,12 @@ const LoginPage: React.FC = () => {
               />
             )}
         </div>
+        
+        <div className="mt-6 text-xs text-slate-500 bg-slate-100 p-3 rounded-lg text-left">
+            <p><span className="font-semibold">Проблеми з входом?</span> Переконайтеся, що ваш браузер або блокувальники реклами не блокують спливаючі вікна чи сторонні сервіси входу.</p>
+        </div>
 
-        <p className="text-xs text-slate-400 mt-10">
+        <p className="text-xs text-slate-400 mt-8">
           Використовуючи цей сервіс, ви погоджуєтеся з Умовами використання та Політикою конфіденційності Google.
         </p>
       </div>

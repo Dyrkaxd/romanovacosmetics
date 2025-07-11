@@ -52,7 +52,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         try {
             const errData = await response.json();
             errorMessage = errData.message || errorMessage;
-        } catch (e) { /* ignore json parse error */ }
+        } catch (e) { 
+            if(e instanceof SyntaxError){
+                throw new SyntaxError(`Server Configuration Error: The response from the API was not valid JSON. This often happens if the API route is not correctly configured on the server. Please check your rewrite rules (e.g., in netlify.toml). Response text: ${await response.text()}`);
+            }
+         }
         throw new Error(errorMessage);
     }
 
@@ -100,7 +104,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (!credentialResponse.credential) {
       console.error("Credential не знайдено у відповіді.");
       setIsLoadingAuth(false);
-      return false;
+      throw new Error("Не знайдено облікових даних у відповіді Google.");
     }
 
     const jwt = credentialResponse.credential;
@@ -126,7 +130,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setUser(null);
         setToken(null);
         sessionStorage.removeItem('authToken');
-        return false;
+        // Re-throw the error so the calling component can handle it
+        throw error;
     } finally {
         setIsLoadingAuth(false);
     }
