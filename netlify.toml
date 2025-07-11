@@ -1,17 +1,14 @@
 # === netlify.toml ===
 
-# Для React Router / Vite: перенаправляет все запросы на index.html
+# 🔁 Редиректы для SPA (Vite)
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
 
-# Добавляем нужные заголовки для FedCM и postMessage
+# ✅ Headers для FedCM и postMessage
 [[headers]]
   for = "/*"
   [headers.values]
     Cross-Origin-Opener-Policy = "same-origin-allow-popups"
     Cross-Origin-Embedder-Policy = "unsafe-none"
-    X-Frame-Options = "SAMEORIGIN"
-    Referrer-Policy = "strict-origin-when-cross-origin"
-    Permissions-Policy = "interest-cohort=()"
