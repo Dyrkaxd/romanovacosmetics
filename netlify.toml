@@ -1,12 +1,44 @@
-# /netlify.toml
+# === netlify.toml ===
 
-# Це правило застосовує HTTP-заголовки до всіх сторінок вашого сайту.
+# ===== Основные настройки редиректов (если SPA) =====
+# Если у тебя сайт на React, Vue или другом SPA,
+# то этот редирект перенаправляет все маршруты на index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# ===== HTTP Headers =====
+# Добавляем заголовки безопасности для FedCM и postMessage
 [[headers]]
   for = "/*"
-  
   [headers.values]
-    # Цей заголовок є ключовим для вирішення проблем із входом через Google (FedCM).
-    # Він дозволяє спливаючому вікну автентифікації Google безпечно
-    # обмінюватися даними з вашим сайтом, що усуває помилки
-    # "Cross-Origin-Opener-Policy policy would block the window.postMessage call".
+    # Разрешаем безопасное взаимодействие между popup и родительским окном
     Cross-Origin-Opener-Policy = "same-origin-allow-popups"
+
+    # Если ты работаешь с внешними скриптами, можно ослабить Embedder Policy:
+    Cross-Origin-Embedder-Policy = "unsafe-none"
+
+    # Настройки Content Security Policy (если надо — пример, можешь убрать)
+    #Content-Security-Policy = "default-src 'self'; script-src 'self' https://accounts.google.com; connect-src 'self'; img-src 'self' data:; frame-src 'self' https://accounts.google.com;"
+
+    # Другие заголовки безопасности по желанию
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "interest-cohort=()"
+
+# ===== Примеры переменных окружения (если нужно) =====
+# [build.environment]
+#   NODE_ENV = "production"
+#   GOOGLE_CLIENT_ID = "твоя_client_id"
+
+# ===== Примеры настроек билдов (опционально) =====
+# [build]
+#   publish = "dist"
+#   command = "npm run build"
+
+# ===== Примеры функций (если используешь serverless) =====
+# [functions]
+#   directory = "netlify/functions"
+#   node_bundler = "esbuild"
