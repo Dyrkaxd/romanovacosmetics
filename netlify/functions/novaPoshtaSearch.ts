@@ -68,11 +68,17 @@ const handler: Handler = async (event) => {
                 return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: '`cityRef` parameter is required for departments search.' }) };
              }
             
-            // Get all warehouses for the city. Filtering will be done on the client for stability.
-            data = await callNpApi("Address", "getWarehouses", {
-                CityRef: cityRef,
-                Limit: "500" // Get up to 500 warehouses for the city
-            });
+            // Wrap the call in a try/catch to handle cases where NP API returns an error
+            // (e.g., for villages with no departments), preventing a 500 error.
+            try {
+                data = await callNpApi("Address", "getWarehouses", {
+                    CityRef: cityRef,
+                    Limit: "500" // Get up to 500 warehouses for the city
+                });
+            } catch (e: any) {
+                console.warn(`Nova Poshta API call for warehouses failed for cityRef ${cityRef}. Error: ${e.message}. Returning empty array.`);
+                data = []; // Return an empty array to the client on failure.
+            }
 
         } else {
             return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: 'Invalid search `type` provided.' }) };
