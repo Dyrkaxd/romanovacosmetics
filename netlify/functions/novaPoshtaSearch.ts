@@ -67,18 +67,12 @@ const handler: Handler = async (event) => {
              if (!cityRef) {
                 return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: '`cityRef` parameter is required for departments search.' }) };
              }
-             if (!query || query.length < 2) {
-                // Return an empty array if the search query is too short, as the NP API may error.
-                return { statusCode: 200, headers: commonHeaders, body: JSON.stringify([]) };
-             }
             
-            const methodProperties = { 
+            // Get all warehouses for the city. Filtering will be done on the client for stability.
+            data = await callNpApi("Address", "getWarehouses", {
                 CityRef: cityRef,
-                FindByString: query, // Use the search query
-                Limit: "50" // A reasonable limit for search results
-            };
-            
-            data = await callNpApi("Address", "getWarehouses", methodProperties);
+                Limit: "500" // Get up to 500 warehouses for the city
+            });
 
         } else {
             return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: 'Invalid search `type` provided.' }) };
