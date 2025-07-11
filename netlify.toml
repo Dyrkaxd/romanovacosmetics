@@ -1,14 +1,8 @@
-[build]
-  command = "npm run build"
-  publish = "dist"
-  functions = "netlify/functions"
-
-[[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/:splat"
-  status = 200
-
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+# Це правило застосовує заголовок до всіх сторінок на вашому сайті.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    # Цей заголовок необхідний для коректної роботи входу через Google (FedCM).
+    # Він дозволяє спливаючому вікну входу безпечно обмінюватися даними
+    # з вашим додатком, що вирішує помилки "Cross-Origin-Opener-Policy".
+    Cross-Origin-Opener-Policy = "same-origin-allow-popups"
