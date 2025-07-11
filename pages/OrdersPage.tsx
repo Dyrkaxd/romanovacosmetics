@@ -2,6 +2,8 @@
 
 
 
+
+
 import React, { useState, useEffect, useCallback, useMemo, useRef, FC, SVGProps } from 'react';
 import { Order, OrderItem, Customer, Product, ManagedUser, PaginatedResponse, NovaPoshtaDepartment } from '../types';
 import { EyeIcon, XMarkIcon, PlusIcon, TrashIcon, PencilIcon, DocumentTextIcon, FilterIcon, DownloadIcon, ChevronDownIcon, ShareIcon, EllipsisVerticalIcon, TruckIcon } from '../components/Icons';
@@ -225,34 +227,6 @@ const OrdersPage: React.FC = () => {
     fetchOrders(currentPage);
   }, [fetchOrders, currentPage]);
 
-    // Effect to handle Nova Poshta widget callback
-    useEffect(() => {
-        if (modalMode !== 'ttn') return;
-
-        const handleNpWidgetSelect = (data: any) => {
-            const numberMatch = data.warehouse.match(/№(\d+)/);
-            const departmentNumber = numberMatch ? numberMatch[1] : '';
-
-            const selectedDept: NovaPoshtaDepartment = {
-                ref: data.warehouseRef,
-                name: data.warehouse,
-                settlementName: data.city,
-                departmentNumber: departmentNumber,
-                cityRef: data.cityRef,
-            };
-            setNpDepartment(selectedDept);
-            setModalError(null);
-        };
-        (window as any).onNovaPoshtaWidget = handleNpWidgetSelect;
-
-        return () => {
-            if ((window as any).onNovaPoshtaWidget === handleNpWidgetSelect) {
-                (window as any).onNovaPoshtaWidget = undefined;
-            }
-        };
-    }, [modalMode]);
-
-
   const handlePageChange = (page: number) => setCurrentPage(page);
   
   const handlePageSizeChange = (size: number) => {
@@ -404,11 +378,52 @@ const OrdersPage: React.FC = () => {
   };
     
     const openNpWidget = () => {
-        if ((window as any).NovaPoshta?.Widget?.show) {
-            (window as any).NovaPoshta.Widget.show();
-        } else {
-            setModalError('Не вдалося завантажити віджет "Нової Пошти". Перевірте, чи не блокує його ваш браузер, та оновіть сторінку.');
+        setModalError(null);
+
+        const initAndShowWidget = () => {
+            const handleNpWidgetSelect = (data: any) => {
+                const numberMatch = data.warehouse.match(/№(\d+)/);
+                const departmentNumber = numberMatch ? numberMatch[1] : '';
+
+                const selectedDept: NovaPoshtaDepartment = {
+                    ref: data.warehouseRef,
+                    name: data.warehouse,
+                    settlementName: data.city,
+                    departmentNumber: departmentNumber,
+                    cityRef: data.cityRef,
+                };
+                setNpDepartment(selectedDept);
+                setModalError(null);
+            };
+
+            if ((window as any).NovaPoshta?.Widget?.init) {
+                (window as any).NovaPoshta.Widget.init({
+                    onSelect: handleNpWidgetSelect,
+                    language: 'uk',
+                }).show();
+            } else {
+                 setModalError('Не вдалося ініціалізувати віджет "Нової Пошти".');
+            }
+        };
+
+        if ((window as any).NovaPoshta?.Widget) {
+            initAndShowWidget();
+            return;
         }
+
+        setModalError('Завантаження віджета "Нової Пошти"...');
+        let attempts = 0;
+        const intervalId = setInterval(() => {
+            attempts++;
+            if ((window as any).NovaPoshta?.Widget) {
+                clearInterval(intervalId);
+                setModalError(null);
+                initAndShowWidget();
+            } else if (attempts > 20) { // 5-second timeout
+                clearInterval(intervalId);
+                setModalError('Не вдалося завантажити віджет "Нової Пошти". Перевірте, чи не блокує його ваш браузер, та оновіть сторінку.');
+            }
+        }, 250);
     };
 
     const handleCreateTtn = async (e: React.FormEvent) => {
