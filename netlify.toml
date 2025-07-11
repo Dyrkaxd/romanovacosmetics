@@ -1,23 +1,17 @@
 # === netlify.toml ===
 
-# Правильные редиректы для SPA
-[[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/:splat"
-  status = 200
-
+# Для React Router / Vite: перенаправляет все запросы на index.html
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
 
-# Заголовки для FedCM и postMessage
+# Добавляем нужные заголовки для FedCM и postMessage
 [[headers]]
   for = "/*"
   [headers.values]
     Cross-Origin-Opener-Policy = "same-origin-allow-popups"
     Cross-Origin-Embedder-Policy = "unsafe-none"
     X-Frame-Options = "SAMEORIGIN"
-    X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
     Permissions-Policy = "interest-cohort=()"
