@@ -5,6 +5,7 @@
 
 
 
+
 import React, { useState, useEffect, useCallback, useMemo, useRef, FC, SVGProps } from 'react';
 import { Order, OrderItem, Customer, Product, ManagedUser, PaginatedResponse, NovaPoshtaDepartment } from '../types';
 import { EyeIcon, XMarkIcon, PlusIcon, TrashIcon, PencilIcon, DocumentTextIcon, FilterIcon, DownloadIcon, ChevronDownIcon, ShareIcon, EllipsisVerticalIcon, TruckIcon } from '../components/Icons';
@@ -12,7 +13,12 @@ import { authenticatedFetch } from '../utils/api';
 import Pagination from '../components/Pagination';
 import { useAuth } from '../AuthContext';
 import { useNavigate } from 'react-router-dom';
-import NovaPoshtaSelector from '../components/NovaPoshtaSelector';
+
+declare global {
+  interface Window {
+    NPWidget: any; 
+  }
+}
 
 const orderStatusValues: Order['status'][] = ['Ordered', 'Shipped', 'Received', 'Calculation', 'AwaitingApproval', 'PaidByClient', 'WrittenOff', 'ReadyForPickup'];
 const orderStatusTranslations: Record<Order['status'], string> = {
@@ -116,7 +122,7 @@ const OrdersPage: React.FC = () => {
       description: "Косметичні засоби"
   });
   const [isCodEnabled, setIsCodEnabled] = useState(false);
-  const [isNpSelectorOpen, setIsNpSelectorOpen] = useState(false);
+  const [npWidgetError, setNpWidgetError] = useState<string | null>(null);
 
 
   useEffect(() => {
@@ -258,6 +264,7 @@ const OrdersPage: React.FC = () => {
     setModalError(null);
     setActiveTtnOrder(null);
     setNpDepartment(null);
+    setNpWidgetError(null);
   };
 
   const openAddModal = () => {
@@ -382,9 +389,28 @@ const OrdersPage: React.FC = () => {
     }
   };
     
-    const handleNpDepartmentSelect = (department: NovaPoshtaDepartment) => {
-        setNpDepartment(department);
-        setIsNpSelectorOpen(false); // Close the selector modal
+    const openNpWidget = () => {
+        setNpWidgetError(null);
+        if (typeof window.NPWidget === 'undefined') {
+            setNpWidgetError('Не вдалося завантажити віджет "Нової Пошти". Перевірте, чи не блокує його ваш браузер, та оновіть сторінку.');
+            return;
+        }
+
+        const widget = new window.NPWidget({
+            apiKey: '', // API key is optional as per documentation
+            onSelect: (data: any) => {
+                 const department: NovaPoshtaDepartment = {
+                    ref: data.ref,
+                    name: data.description,
+                    settlementName: data.city_name,
+                    departmentNumber: data.number,
+                    cityRef: data.city_ref,
+                };
+                setNpDepartment(department);
+            },
+            closeOnSelect: true,
+        });
+        widget.open();
     };
 
     const handleCreateTtn = async (e: React.FormEvent) => {
@@ -699,6 +725,7 @@ const OrdersPage: React.FC = () => {
                         <button type="button" onClick={closeModal} disabled={isSubmitting}><XMarkIcon className="w-6 h-6"/></button>
                     </div>
                     {modalError && <div role="alert" className="m-4 p-3 bg-red-50 text-red-700 rounded-lg text-sm">{modalError}</div>}
+                    {npWidgetError && <div role="alert" className="m-4 p-3 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm">{npWidgetError}</div>}
                     <div className="p-4 space-y-4">
                         <div>
                             <p className="text-sm font-medium text-slate-700">Одержувач: <span className="font-bold text-slate-900">{activeTtnOrder.customerName}</span></p>
@@ -719,7 +746,7 @@ const OrdersPage: React.FC = () => {
                                 </div>
                                 <button
                                     type="button"
-                                    onClick={() => setIsNpSelectorOpen(true)}
+                                    onClick={openNpWidget}
                                     className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-sm transition-colors flex-shrink-0"
                                 >
                                     Обрати
@@ -776,12 +803,6 @@ const OrdersPage: React.FC = () => {
             </form>
         </div>
       )}
-
-      <NovaPoshtaSelector 
-        isOpen={isNpSelectorOpen}
-        onClose={() => setIsNpSelectorOpen(false)}
-        onSelect={handleNpDepartmentSelect}
-      />
     </div>
   );
 };
