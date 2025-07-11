@@ -1,4 +1,5 @@
 
+
 import { Handler } from '@netlify/functions';
 import { requireAuth } from '../utils/auth';
 
@@ -66,9 +67,8 @@ const handler: Handler = async (event) => {
              if (!cityRef) {
                 return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: '`cityRef` parameter is required for departments search.' }) };
              }
-             if (!query) {
-                // Return an empty array if no search query is provided to prevent timeouts.
-                // The frontend should guide the user to type something.
+             if (!query || query.length < 2) {
+                // Return an empty array if the search query is too short, as the NP API may error.
                 return { statusCode: 200, headers: commonHeaders, body: JSON.stringify([]) };
              }
             
