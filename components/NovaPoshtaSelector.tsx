@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { authenticatedFetch } from '../utils/api';
 import { NovaPoshtaDepartment } from '../types';
@@ -120,11 +121,16 @@ const NovaPoshtaSelector: React.FC<NovaPoshtaSelectorProps> = ({ isOpen, onClose
   };
 
   const handleDepartmentSelect = (department: NpDepartment) => {
+    if (!selectedCity) {
+        setError("Помилка: місто не вибрано. Будь ласка, спробуйте знову.");
+        return;
+    }
     const finalDepartment: NovaPoshtaDepartment = {
       ref: department.Ref,
       name: department.Description,
       settlementName: department.SettlementDescription,
       departmentNumber: department.Number,
+      cityRef: selectedCity.Ref,
     };
     onSelect(finalDepartment);
     onClose();

@@ -27,18 +27,20 @@ const handler: Handler = async (event) => {
     const {
       orderId,
       recipient,
-      recipientSettlementName,
+      recipientCityRef,
       recipientAddressRef,
       weight,
       volumeGeneral,
       description,
       cost,
+      isCodEnabled,
+      codAmount,
     } = JSON.parse(event.body || '{}');
 
     const missingFields = [];
     if (!orderId) missingFields.push('orderId');
     if (!recipient) missingFields.push('recipient');
-    if (!recipientSettlementName) missingFields.push('recipientSettlementName');
+    if (!recipientCityRef) missingFields.push('recipientCityRef');
     if (!recipientAddressRef) missingFields.push('recipientAddressRef');
     if (!weight) missingFields.push('weight');
     if (volumeGeneral === undefined || volumeGeneral === null) missingFields.push('volumeGeneral');
@@ -61,25 +63,6 @@ const handler: Handler = async (event) => {
         return { statusCode: 500, headers: commonHeaders, body: JSON.stringify({ message: "Server configuration error: Nova Poshta credentials are not set."})};
     }
 
-    // Resolve settlement name to city Ref
-    const citySearchRes = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            apiKey: NOVA_POSHTA_API_KEY,
-            modelName: "Address",
-            calledMethod: "getCities",
-            methodProperties: { FindByString: recipientSettlementName, Limit: 1 }
-        })
-    });
-    const citySearchData = await citySearchRes.json();
-    if (!citySearchData.success || !citySearchData.data || citySearchData.data.length === 0) {
-        console.error('NP City Search Error:', citySearchData.errors);
-        throw new Error(`Не вдалося знайти місто "${recipientSettlementName}" у базі "Нової Пошти".`);
-    }
-    const recipientCityRef = citySearchData.data[0].Ref;
-
-
     // We need to get the sender's city Ref from the sender's address Ref
     const npAddressRes = await fetch(API_URL, {
         method: 'POST',
@@ -98,31 +81,41 @@ const handler: Handler = async (event) => {
     }
     const senderCityRef = npAddressData.data[0].CityRef;
     
+    const methodProperties: any = {
+      NewAddress: "1",
+      PayerType: "Sender",
+      PaymentMethod: "Cash",
+      CargoType: "Parcel",
+      VolumeGeneral: String(volumeGeneral),
+      Weight: String(weight),
+      ServiceType: "WarehouseWarehouse",
+      SeatsAmount: "1",
+      Description: description,
+      Cost: String(cost),
+      CitySender: senderCityRef,
+      Sender: NOVA_POSHTA_SENDER_REF,
+      SenderAddress: NOVA_POSHTA_SENDER_ADDRESS_REF,
+      ContactSender: NOVA_POSHTA_SENDER_CONTACT_REF,
+      SendersPhone: NOVA_POSHTA_SENDER_PHONE,
+      CityRecipient: recipientCityRef,
+      RecipientAddress: recipientAddressRef,
+      RecipientName: recipient.name,
+      RecipientsPhone: recipient.phone,
+    };
+    
+    if (isCodEnabled) {
+      methodProperties.BackwardDeliveryData = [{
+          PayerType: "Recipient",
+          CargoType: "Money",
+          RedeliveryString: String(codAmount)
+      }];
+    }
+
     const payload = {
       apiKey: NOVA_POSHTA_API_KEY,
       modelName: "InternetDocument",
       calledMethod: "save",
-      methodProperties: {
-        NewAddress: "1",
-        PayerType: "Sender",
-        PaymentMethod: "Cash",
-        CargoType: "Parcel",
-        VolumeGeneral: String(volumeGeneral),
-        Weight: String(weight),
-        ServiceType: "WarehouseWarehouse",
-        SeatsAmount: "1",
-        Description: description,
-        Cost: String(cost),
-        CitySender: senderCityRef,
-        Sender: NOVA_POSHTA_SENDER_REF,
-        SenderAddress: NOVA_POSHTA_SENDER_ADDRESS_REF,
-        ContactSender: NOVA_POSHTA_SENDER_CONTACT_REF,
-        SendersPhone: NOVA_POSHTA_SENDER_PHONE,
-        CityRecipient: recipientCityRef,
-        RecipientAddress: recipientAddressRef,
-        RecipientName: recipient.name,
-        RecipientsPhone: recipient.phone,
-      },
+      methodProperties,
     };
     
     const npResponse = await fetch(API_URL, {
@@ -140,10 +133,14 @@ const handler: Handler = async (event) => {
     const ttn = npData.data[0].IntDocNumber;
     const printUrl = `https://my.novaposhta.ua/orders/printDocument/orders[]/${ttn}/type/pdf/apiKey/${NOVA_POSHTA_API_KEY}`;
     
-    // Update Supabase
+    // Update Supabase with TTN info AND the new status
     const { error: dbError } = await supabase
       .from('orders')
-      .update({ nova_poshta_ttn: ttn, nova_poshta_print_url: printUrl })
+      .update({ 
+          nova_poshta_ttn: ttn, 
+          nova_poshta_print_url: printUrl,
+          status: 'Shipped' // Automatically update status
+      })
       .eq('id', orderId);
       
     if (dbError) throw dbError;
