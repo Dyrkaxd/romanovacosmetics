@@ -40,3 +40,8 @@
     # Воно дозволяє спливаючим вікнам, відкритим вашим сайтом (наприклад, Google Sign-In),
     # безпечно обмінюватися даними з вашим головним вікном додатку.
     Cross-Origin-Opener-Policy = "same-origin-allow-popups"
+    Cross-Origin-Embedder-Policy = "require-corp"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Permissions-Policy = "geolocation=(), microphone=(), camera=()"
