@@ -1,43 +1,46 @@
-# /netlify.toml
-
-# --- Налаштування збірки ---
-# Вказує Netlify, як зібрати ваш сайт.
+# ==> Global build settings
+# These settings are applied to all deploys.
 [build]
-  # Команда для запуску збірки (з вашого package.json)
+  # The command to build your site
   command = "npm run build"
   
-  # Папка, куди збирається сайт (Vite за замовчуванням створює папку "dist")
+  # The directory to publish, created by the build command
   publish = "dist"
   
-  # Папка з вашими серверними функціями
+  # The directory where your serverless functions are located
   functions = "netlify/functions"
 
+# ==> Redirects and Rewrites
+# These rules are processed from top to bottom.
 
-# --- Правила перенаправлення ---
-
-# Правило №1: Проксі для API-запитів.
-# Це найважливіше правило для виправлення помилки "not valid JSON".
-# Воно перенаправляє всі запити, що починаються з /api/, на ваші серверні функції.
-# Це правило ПОВИННО бути ПЕРШИМ.
+# Proxy API requests to Netlify Functions.
+# This makes calls to /api/* available on the client-side,
+# routing them to your backend functions without CORS issues.
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"
-  status = 200
+  status = 200 # A 200 status signifies a rewrite
 
-# Правило №2: Перенаправлення для односторінкового додатку (SPA).
-# Це правило гарантує, що при оновленні сторінки (наприклад, /orders)
-# завантажується ваш головний index.html, і React Router обробляє маршрутизацію.
+# SPA fallback rule.
+# This rule should be the last one in the file. It ensures that any request
+# that doesn't match a file on disk or a previous redirect rule
+# gets redirected to your main index.html file. This is crucial for client-side routing.
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
 
-
-# --- Налаштування заголовків (Headers) ---
-# Це правило виправляє помилки з Google Sign-In (FedCM та COOP).
+# ==> Custom Headers
+# These headers enhance security and fix specific cross-origin issues.
 [[headers]]
+  # Apply these headers to all pages on your site.
   for = "/*"
   [headers.values]
-    # Дозволяє спливаючому вікну входу Google безпечно "спілкуватися" з вашим сайтом,
-    # що вирішує помилки "Cross-Origin-Opener-Policy".
+    # This is the key fix for the "Cross-Origin-Opener-Policy" error.
+    # It allows pop-ups opened by your site (like Google Sign-In) to securely
+    # communicate back to your main application window.
     Cross-Origin-Opener-Policy = "same-origin-allow-popups"
+    
+    # Optional: A more relaxed embedder policy can sometimes help.
+    # We'll keep it commented out unless the Nova Poshta widget causes issues.
+    # Cross-Origin-Embedder-Policy = "credentialless"
