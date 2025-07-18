@@ -40,6 +40,7 @@ const findProductById = async (id: string): Promise<Product | null> => {
           retailPrice: dbProduct.price,
           salonPrice: dbProduct.salon_price ?? 0,
           exchangeRate: dbProduct.exchange_rate ?? 0,
+          quantity: dbProduct.quantity ?? 0,
           created_at: dbProduct.created_at || undefined,
       };
     }

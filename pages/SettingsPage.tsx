@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../AuthContext';
 import { ManagedUser } from '../types';
 import { Database } from '../types/supabase';
-import { PlusIcon, TrashIcon, UsersIcon, PencilIcon, XMarkIcon, CurrencyDollarIcon } from '../components/Icons';
+import { PlusIcon, TrashIcon, UsersIcon, PencilIcon, XMarkIcon, CurrencyDollarIcon, ArchiveBoxIcon } from '../components/Icons';
 import { authenticatedFetch } from '../utils/api';
 
 const API_BASE_URL = '/api';
@@ -10,6 +10,20 @@ type ManagedUserRow = Database['public']['Tables']['managed_users']['Row'];
 type AdminRow = Database['public']['Tables']['admins']['Row'];
 
 const productGroups = ['BDR', 'LA', 'АГ', 'АБ', 'АР', 'без сокращений', 'АФ', 'ДС', 'м8', 'JDA', 'Faith', 'AB', 'ГФ', 'ЕС', 'ГП', 'СД', 'ATA', 'W'];
+
+const Switch: React.FC<{ checked: boolean; onChange: (checked: boolean) => void; disabled?: boolean; }> = ({ checked, onChange, disabled }) => (
+    <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
+        disabled={disabled}
+        className={`${checked ? 'bg-indigo-600' : 'bg-slate-200'} relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 disabled:opacity-50`}
+    >
+        <span className={`${checked ? 'translate-x-5' : 'translate-x-0'} pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`}/>
+    </button>
+);
+
 
 const SettingsPage: React.FC = () => {
   const { user } = useAuth();
@@ -46,10 +60,11 @@ const SettingsPage: React.FC = () => {
     try {
       const response = await authenticatedFetch(`${API_BASE_URL}/managedUsers`);
       if (!response.ok) throw new Error((await response.json()).message || 'Failed to fetch managed users.');
-      const usersFromDb: ManagedUserRow[] = await response.json();
+      const usersFromDb: (ManagedUserRow & { can_access_warehouse?: boolean })[] = await response.json();
       setManagedUsers(usersFromDb.map(u => ({
         id: u.id, name: u.name, email: u.email,
         notes: u.notes || undefined, dateAdded: u.created_at || new Date().toISOString(),
+        canAccessWarehouse: u.can_access_warehouse ?? false
       })));
     } catch (err: any) {
       setError(err.message);
@@ -79,14 +94,14 @@ const SettingsPage: React.FC = () => {
     }
   }, [isAdmin, fetchManagedUsers, fetchAdmins]);
 
-  const resetMessages = (timeout = 5000) => {
-    setError(null);
-    setTimeout(() => setSuccessMessage(null), timeout);
-  }
+  const showSuccessMessage = (message: string) => {
+    setSuccessMessage(message);
+    setTimeout(() => setSuccessMessage(null), 4000);
+  };
 
   const handleAddManager = async (e: React.FormEvent) => {
     e.preventDefault();
-    resetMessages(0);
+    setError(null);
     if (!newManagerName.trim() || !newManagerEmail.trim()) {
       setError("Ім'я та email менеджера є обов'язковими."); return;
     }
@@ -95,7 +110,7 @@ const SettingsPage: React.FC = () => {
       const payload = { name: newManagerName.trim(), email: newManagerEmail.trim().toLowerCase(), notes: newManagerNotes.trim() };
       const response = await authenticatedFetch(`${API_BASE_URL}/managedUsers`, { method: 'POST', body: JSON.stringify(payload) });
       if (!response.ok) throw new Error((await response.json()).message || 'Failed to add manager.');
-      setSuccessMessage(`Менеджера "${payload.name}" успішно додано.`);
+      showSuccessMessage(`Менеджера "${payload.name}" успішно додано.`);
       setNewManagerName(''); setNewManagerEmail(''); setNewManagerNotes('');
       fetchManagedUsers();
     } catch (err: any) {
@@ -107,12 +122,12 @@ const SettingsPage: React.FC = () => {
 
   const handleRemoveManager = async (managerId: string) => {
     if (window.confirm("Ви впевнені, що хочете видалити цього менеджера?")) {
-      resetMessages(0);
+      setError(null);
       setIsLoadingManagers(true);
       try {
         const response = await authenticatedFetch(`${API_BASE_URL}/managedUsers/${managerId}`, { method: 'DELETE' });
         if (response.status !== 204) throw new Error((await response.json()).message || 'Failed to delete manager.');
-        setSuccessMessage("Менеджера успішно видалено.");
+        showSuccessMessage("Менеджера успішно видалено.");
         fetchManagedUsers();
       } catch (err: any) {
         setError(err.message);
@@ -127,21 +142,21 @@ const SettingsPage: React.FC = () => {
     setCurrentEditName(manager.name);
     setCurrentEditNotes(manager.notes || '');
     setIsEditModalOpen(true);
-    resetMessages(0);
+    setError(null);
   };
 
   const closeEditModal = () => { setIsEditModalOpen(false); setEditingManager(null); };
 
   const handleUpdateManager = async (e: React.FormEvent) => {
     e.preventDefault();
-    resetMessages(0);
+    setError(null);
     if (!editingManager || !currentEditName.trim()) { setError("Ім'я не може бути порожнім."); return; }
     setIsLoadingManagers(true);
     try {
       const payload = { name: currentEditName.trim(), notes: currentEditNotes.trim() };
       const response = await authenticatedFetch(`${API_BASE_URL}/managedUsers/${editingManager.id}`, { method: 'PUT', body: JSON.stringify(payload) });
       if (!response.ok) throw new Error((await response.json()).message || 'Failed to update manager.');
-      setSuccessMessage(`Дані менеджера "${payload.name}" успішно оновлено.`);
+      showSuccessMessage(`Дані менеджера "${payload.name}" успішно оновлено.`);
       closeEditModal();
       fetchManagedUsers();
     } catch (err: any) {
@@ -150,10 +165,28 @@ const SettingsPage: React.FC = () => {
       setIsLoadingManagers(false);
     }
   };
+  
+  const handleWarehouseAccessChange = async (managerId: string, hasAccess: boolean) => {
+      setError(null);
+      try {
+          const response = await authenticatedFetch(`${API_BASE_URL}/managedUsers/${managerId}`, {
+              method: 'PUT',
+              body: JSON.stringify({ can_access_warehouse: hasAccess })
+          });
+          if (!response.ok) throw new Error((await response.json()).message || 'Failed to update access.');
+          showSuccessMessage(`Доступ до складу оновлено.`);
+          // Optimistically update UI
+          setManagedUsers(users => users.map(u => u.id === managerId ? { ...u, canAccessWarehouse: hasAccess } : u));
+      } catch (err: any) {
+          setError(err.message);
+          // Revert optimistic update on failure
+          fetchManagedUsers();
+      }
+  };
 
   const handleAddAdmin = async (e: React.FormEvent) => {
       e.preventDefault();
-      resetMessages(0);
+      setError(null);
       if (!newAdminEmail.trim() || !/\S+@\S+\.\S+/.test(newAdminEmail)) {
         setError("Будь ласка, введіть дійсну адресу електронної пошти."); return;
       }
@@ -161,7 +194,7 @@ const SettingsPage: React.FC = () => {
       try {
         const response = await authenticatedFetch(`${API_BASE_URL}/admins`, { method: 'POST', body: JSON.stringify({ email: newAdminEmail }) });
         if (!response.ok) throw new Error((await response.json()).message || 'Failed to add admin.');
-        setSuccessMessage(`Адміністратора ${newAdminEmail} успішно додано.`);
+        showSuccessMessage(`Адміністратора ${newAdminEmail} успішно додано.`);
         setNewAdminEmail('');
         fetchAdmins();
       } catch (err: any) {
@@ -173,12 +206,12 @@ const SettingsPage: React.FC = () => {
 
   const handleRemoveAdmin = async (emailToRemove: string) => {
     if (window.confirm(`Ви впевнені, що хочете видалити адміністратора ${emailToRemove}?`)) {
-      resetMessages(0);
+      setError(null);
       setIsLoadingAdmins(true);
       try {
         const response = await authenticatedFetch(`${API_BASE_URL}/admins`, { method: 'DELETE', body: JSON.stringify({ email: emailToRemove }) });
         if (response.status !== 204) throw new Error((await response.json()).message || 'Failed to delete admin.');
-        setSuccessMessage(`Адміністратора ${emailToRemove} успішно видалено.`);
+        showSuccessMessage(`Адміністратора ${emailToRemove} успішно видалено.`);
         fetchAdmins();
       } catch (err: any) {
         setError(err.message);
@@ -189,7 +222,7 @@ const SettingsPage: React.FC = () => {
   };
 
   const handleExchangeRateUpdate = async (groupName?: string) => {
-    resetMessages(0);
+    setError(null);
     const rateToUpdate = groupName ? groupRates[groupName] : globalRate;
     if (!rateToUpdate || parseFloat(rateToUpdate) <= 0) {
       setError('Курс повинен бути позитивним числом.'); return;
@@ -202,7 +235,7 @@ const SettingsPage: React.FC = () => {
       const response = await authenticatedFetch(`${API_BASE_URL}/exchangeRates`, { method: 'POST', body: JSON.stringify(payload) });
       if (!response.ok) throw new Error((await response.json()).message || 'Не вдалося оновити курс.');
       const { updatedCount } = await response.json();
-      setSuccessMessage(`Курс успішно оновлено для ${updatedCount} товарів.`);
+      showSuccessMessage(`Курс успішно оновлено для ${updatedCount} товарів.`);
       if(groupName) setGroupRates(prev => ({...prev, [groupName]: ''})); else setGlobalRate('');
     } catch (err: any) {
       setError(err.message);
@@ -214,8 +247,8 @@ const SettingsPage: React.FC = () => {
   return (
     <div className="space-y-8">
       <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Налаштування</h2>
-      {error && <div role="alert" className="mb-4 p-3 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm">{error}</div>}
-      {successMessage && <div role="alert" className="mb-4 p-3 bg-green-50 text-green-700 border border-green-200 rounded-lg text-sm">{successMessage}</div>}
+      {error && <div role="alert" className="my-4 p-3 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm">{error}</div>}
+      {successMessage && <div role="alert" className="my-4 p-3 bg-green-50 text-green-700 border border-green-200 rounded-lg text-sm">{successMessage}</div>}
       
       <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
         <h3 className="text-lg font-semibold text-slate-800 mb-2">Інформація про мій обліковий запис</h3>
@@ -301,6 +334,23 @@ const SettingsPage: React.FC = () => {
               <PlusIcon className="w-5 h-5 mr-2" /> {isLoadingManagers ? 'Додавання...' : 'Додати менеджера'}
             </button>
           </form>
+          <div className="mb-8 pb-6 border-b border-slate-200">
+            <h4 className="text-md font-semibold text-slate-700 mb-1 flex items-center"><ArchiveBoxIcon className="w-6 h-6 mr-2 text-indigo-500"/>Доступ до Складу</h4>
+             <p className="text-sm text-slate-500 mb-4">Надайте менеджерам доступ до сторінки "Склад".</p>
+             {isLoadingManagers && managedUsers.length === 0 ? <p>Завантаження менеджерів...</p> : (
+                <ul className="space-y-3">
+                    {managedUsers.map(manager => (
+                       <li key={manager.id} className="flex justify-between items-center p-3 bg-slate-50 rounded-lg border">
+                         <div>
+                            <p className="font-medium text-slate-800">{manager.name}</p>
+                            <p className="text-sm text-slate-500">{manager.email}</p>
+                         </div>
+                         <Switch checked={manager.canAccessWarehouse ?? false} onChange={(checked) => handleWarehouseAccessChange(manager.id, checked)} />
+                       </li>
+                    ))}
+                </ul>
+             )}
+          </div>
           <h4 className="text-md font-semibold text-slate-700 mb-4">Список менеджерів ({managedUsers.length}):</h4>
           {isLoadingManagers && managedUsers.length === 0 ? <p>Завантаження...</p> : (
             <ul className="space-y-3">

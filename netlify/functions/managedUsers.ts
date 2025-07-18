@@ -1,4 +1,5 @@
 
+
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import { supabase } from '../../services/supabaseClient'; 
 import type { ManagedUser } from '../../types';
@@ -21,6 +22,7 @@ const transformDbRowToManagedUser = (dbUser: ManagedUserDbRow): ManagedUser => {
     email: dbUser.email,
     notes: dbUser.notes || undefined,
     dateAdded: dbUser.created_at,
+    canAccessWarehouse: dbUser.can_access_warehouse ?? false,
   };
 };
 
@@ -86,6 +88,8 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
           const dataToUpdate: Partial<ManagedUserDbRow> = {};
           if (updatedManagerData.name !== undefined) dataToUpdate.name = updatedManagerData.name;
           if (updatedManagerData.notes !== undefined) dataToUpdate.notes = updatedManagerData.notes;
+          if (updatedManagerData.can_access_warehouse !== undefined) dataToUpdate.can_access_warehouse = updatedManagerData.can_access_warehouse;
+          
           if (Object.keys(dataToUpdate).length === 0) return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: 'No fields provided for update' }) };
 
           const { data, error } = await supabase.from('managed_users').update(dataToUpdate).eq('id', resourceId).select().single();

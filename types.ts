@@ -7,6 +7,7 @@ export interface Product {
   retailPrice: number; // Renamed from price
   salonPrice: number;
   exchangeRate: number;
+  quantity: number;
   created_at?: string; 
 }
 
@@ -76,6 +77,7 @@ export interface AuthenticatedUser {
   name?: string;
   picture?: string;
   role?: 'admin' | 'manager'; // Added role
+  canAccessWarehouse?: boolean;
 }
 
 export interface ManagedUser {
@@ -84,6 +86,7 @@ export interface ManagedUser {
   email: string;
   dateAdded: string; // This will be derived from created_at from the database
   notes?: string;
+  canAccessWarehouse?: boolean;
 }
 
 export interface SalesDataPoint {

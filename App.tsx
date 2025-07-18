@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, Suspense } from 'react';
 import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
@@ -10,6 +11,7 @@ import Header from './components/Header';
 // Lazy load all pages for code splitting
 const DashboardPage = React.lazy(() => import('./pages/DashboardPage.tsx'));
 const ProductsPage = React.lazy(() => import('./pages/ProductsPage.tsx'));
+const WarehousePage = React.lazy(() => import('./pages/WarehousePage.tsx'));
 const OrdersPage = React.lazy(() => import('./pages/OrdersPage.tsx'));
 const CustomersPage = React.lazy(() => import('./pages/CustomersPage.tsx'));
 const SettingsPage = React.lazy(() => import('./pages/SettingsPage.tsx'));
@@ -29,6 +31,8 @@ const getPageTitle = (pathname: string): string => {
       return 'Панель керування';
     case '/products':
       return 'Керування товарами';
+    case '/warehouse':
+      return 'Керування складом';
     case '/orders':
       return 'Керування замовленнями';
     case '/customers':
@@ -60,6 +64,9 @@ const MainAppLayout: React.FC = () => {
   const pageTitle = getPageTitle(location.pathname);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
+  const hasWarehouseAccess = user?.canAccessWarehouse ?? false;
+
 
   const toggleMobileSidebar = () => {
     setIsMobileSidebarOpen(!isMobileSidebarOpen);
@@ -73,15 +80,16 @@ const MainAppLayout: React.FC = () => {
         <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
           <Suspense fallback={<PageLoader />}>
             <Routes>
-              {user?.role === 'admin' ? (
+              {isAdmin ? (
                 <Route path="/" element={<DashboardPage />} />
               ) : (
                 // For managers, redirect root to the default page which is orders
                 <Route path="/" element={<Navigate to="/orders" replace />} />
               )}
-              {user?.role === 'admin' && <Route path="/reports" element={<ReportsPage />} />}
-              {user?.role === 'admin' && <Route path="/expenses" element={<ExpensesPage />} />}
-              {user?.role === 'admin' && <Route path="/products" element={<ProductsPage />} />}
+              {isAdmin && <Route path="/reports" element={<ReportsPage />} />}
+              {isAdmin && <Route path="/expenses" element={<ExpensesPage />} />}
+              {isAdmin && <Route path="/products" element={<ProductsPage />} />}
+              {(isAdmin || hasWarehouseAccess) && <Route path="/warehouse" element={<WarehousePage />} />}
               <Route path="/orders" element={<OrdersPage />} />
               <Route path="/customers" element={<CustomersPage />} />
               <Route path="/settings" element={<SettingsPage />} />

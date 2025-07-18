@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Product, PaginatedResponse } from '../types';
 import { PlusIcon, XMarkIcon, EyeIcon, PencilIcon, TrashIcon } from '../components/Icons';
@@ -16,7 +17,8 @@ const ProductsPage: React.FC = () => {
     name: '', 
     retailPrice: 0, 
     salonPrice: 0, 
-    exchangeRate: 0, 
+    exchangeRate: 0,
+    quantity: 0,
     group: 'BDR', // Default group
   };
   const [currentProduct, setCurrentProduct] = useState<Partial<Product>>(initialProductState);
@@ -87,7 +89,7 @@ const ProductsPage: React.FC = () => {
     const { name, value } = e.target;
     setCurrentProduct(prev => ({ 
       ...prev, 
-      [name]: (name === 'retailPrice' || name === 'salonPrice' || name === 'exchangeRate') ? parseFloat(value) : value 
+      [name]: (name === 'retailPrice' || name === 'salonPrice' || name === 'exchangeRate' || name === 'quantity') ? parseFloat(value) : value 
     }));
   };
 
@@ -108,6 +110,7 @@ const ProductsPage: React.FC = () => {
         salonPrice: currentProduct.salonPrice,
         exchangeRate: currentProduct.exchangeRate,
         group: currentProduct.group,
+        quantity: currentProduct.quantity ?? 0,
     };
 
     try {
@@ -221,22 +224,20 @@ const ProductsPage: React.FC = () => {
               <tr>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Назва</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Група</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Ціна салону</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">К-сть на складі</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Ціна роздрібна</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Курс</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Дії</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-slate-200">
               {isLoading ? (
-                <tr><td colSpan={6} className="px-6 py-10 text-center text-sm text-slate-500">Завантаження...</td></tr>
+                <tr><td colSpan={5} className="px-6 py-10 text-center text-sm text-slate-500">Завантаження...</td></tr>
               ) : products.length > 0 ? products.map((product) => (
                 <tr key={product.id} className="hover:bg-rose-50/50 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-800">{product.name}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{product.group}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">${product.salonPrice.toFixed(2)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-700">{product.quantity}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">${product.retailPrice.toFixed(2)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{product.exchangeRate.toFixed(2)}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-1">
                     <button onClick={() => openViewModal(product)} className="text-slate-500 hover:text-sky-600 transition-colors p-2 rounded-md hover:bg-sky-50" aria-label={`Переглянути деталі для ${product.name}`} title="Переглянути"><EyeIcon className="w-5 h-5"/></button>
                     <button onClick={() => openEditModal(product)} className="text-slate-500 hover:text-rose-600 transition-colors p-2 rounded-md hover:bg-rose-50" aria-label={`Редагувати ${product.name}`} title="Редагувати">
@@ -249,7 +250,7 @@ const ProductsPage: React.FC = () => {
                 </tr>
               )) : (
                 <tr>
-                  <td colSpan={6} className="px-6 py-10 text-center text-sm text-slate-500">
+                  <td colSpan={5} className="px-6 py-10 text-center text-sm text-slate-500">
                     { !pageError && (totalCount === 0 && searchTerm === '' ? "Товарів ще немає. Натисніть 'Додати новий товар', щоб створити." : "Товарів, що відповідають вашему пошуку, не знайдено.")}
                   </td>
                 </tr>
@@ -272,8 +273,8 @@ const ProductsPage: React.FC = () => {
                   </div>
                   <div className="grid grid-cols-3 gap-y-2 text-sm pt-3 border-t border-slate-100">
                     <div>
-                      <p className="text-slate-500">Салон ($)</p>
-                      <p className="font-medium text-slate-700">{product.salonPrice.toFixed(2)}</p>
+                      <p className="text-slate-500">Кількість</p>
+                      <p className="font-medium text-slate-700">{product.quantity}</p>
                     </div>
                     <div>
                       <p className="text-slate-500">Роздріб ($)</p>
@@ -353,9 +354,15 @@ const ProductsPage: React.FC = () => {
                     <input type="number" name="salonPrice" id="salonPrice" value={currentProduct.salonPrice === undefined ? '' : currentProduct.salonPrice} onChange={handleInputChange} step="0.01" min="0" required aria-required="true" className="block w-full border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500 sm:text-sm p-2.5" />
                 </div>
               </div>
-              <div> 
-                  <label htmlFor="exchangeRate" className="block text-sm font-medium text-slate-700 mb-1">Курс (UAH/$) <span aria-hidden="true" className="text-red-500">*</span></label>
-                  <input type="number" name="exchangeRate" id="exchangeRate" value={currentProduct.exchangeRate === undefined ? '' : currentProduct.exchangeRate} onChange={handleInputChange} step="0.01" min="0.01" required aria-required="true" className="block w-full border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500 sm:text-sm p-2.5" />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div> 
+                      <label htmlFor="exchangeRate" className="block text-sm font-medium text-slate-700 mb-1">Курс (UAH/$) <span aria-hidden="true" className="text-red-500">*</span></label>
+                      <input type="number" name="exchangeRate" id="exchangeRate" value={currentProduct.exchangeRate === undefined ? '' : currentProduct.exchangeRate} onChange={handleInputChange} step="0.01" min="0.01" required aria-required="true" className="block w-full border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500 sm:text-sm p-2.5" />
+                  </div>
+                   <div> 
+                      <label htmlFor="quantity" className="block text-sm font-medium text-slate-700 mb-1">Кількість на складі</label>
+                      <input type="number" name="quantity" id="quantity" value={currentProduct.quantity === undefined ? '' : currentProduct.quantity} onChange={handleInputChange} step="1" min="0" required className="block w-full border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500 sm:text-sm p-2.5" />
+                  </div>
               </div>
               
               <div className="flex flex-col sm:flex-row justify-end pt-6 space-y-2 sm:space-y-0 sm:space-x-3 border-t border-slate-200">
@@ -389,6 +396,7 @@ const ProductsPage: React.FC = () => {
               <div className='space-y-2'>
                 <p><span className="font-semibold text-slate-600">Назва:</span> <span className="text-slate-800">{currentProduct.name}</span></p>
                 <p><span className="font-semibold text-slate-600">Група:</span> <span className="font-medium text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full text-sm inline-block">{currentProduct.group}</span></p>
+                 <p><span className="font-semibold text-slate-600">Кількість на складі:</span> <span className="text-slate-800 font-bold">{currentProduct.quantity}</span></p>
                 <p><span className="font-semibold text-slate-600">Ціна роздрібна:</span> <span className="text-slate-800">${currentProduct.retailPrice?.toFixed(2)}</span></p>
                 <p><span className="font-semibold text-slate-600">Ціна салону:</span> <span className="text-slate-800">${currentProduct.salonPrice?.toFixed(2)}</span></p>
                 <p><span className="font-semibold text-slate-600">Курс:</span> <span className="text-slate-800">{currentProduct.exchangeRate?.toFixed(2)}</span></p>
