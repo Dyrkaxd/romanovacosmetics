@@ -110,7 +110,7 @@ const ProductsPage: React.FC = () => {
         salonPrice: currentProduct.salonPrice,
         exchangeRate: currentProduct.exchangeRate,
         group: currentProduct.group,
-        quantity: currentProduct.quantity ?? 0,
+        quantity: Number.isFinite(currentProduct.quantity) ? currentProduct.quantity : 0,
     };
 
     try {

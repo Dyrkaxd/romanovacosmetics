@@ -96,47 +96,41 @@ const handler: Handler = async (event: HandlerEvent) => {
         } else {
           // Logic for fetching multiple products (list view / search)
           const { search = '', page = '1', pageSize = '20' } = event.queryStringParameters || {};
+          const currentPage = parseInt(page, 10);
           const size = parseInt(pageSize, 10);
-
-          // IMPORTANT: To prevent timeouts and performance issues, we now require a search term
-          // to fetch products for a list. A call without a search term will return empty.
-          if (!search) {
-             const emptyResponse: PaginatedResponse<Product> = {
-                data: [],
-                totalCount: 0,
-                currentPage: 1,
-                pageSize: size,
-             };
-             return { statusCode: 200, headers: commonHeaders, body: JSON.stringify(emptyResponse) };
-          }
-          
-          // Limit search result size for dropdowns, etc.
-          const searchLimitPerTable = 15;
+          const from = (currentPage - 1) * size;
+          const to = from + size - 1;
 
           const allProductsPromises = Object.entries(productGroups).map(async ([group, tableName]) => {
-            const { data, error } = await supabase
+            let query = supabase
               .from(tableName)
-              .select('id, name, price, salon_price, exchange_rate, quantity, created_at')
-              .ilike('name', `%${search}%`)
-              .limit(searchLimitPerTable);
+              .select('id, name, price, salon_price, exchange_rate, quantity, created_at');
+            
+            if (search) {
+              query = query.ilike('name', `%${search}%`);
+            }
+
+            const { data, error } = await query;
 
             if (error) {
                 console.error(`Error searching in table ${tableName}:`, error);
                 return []; // Return empty array for this table on error
             }
-            return (data || []).map(p => transformDbRowToProduct(p as ProductDbRow, group as ProductGroupName));
+            return (data || []).map(p => transformDbRowToProduct(p as ProductDbRow, group as ProductGroupName))
           });
 
           const productsByGroup = await Promise.all(allProductsPromises);
-          const allProducts = productsByGroup.flat().sort((a,b) => (a.name || '').localeCompare(b.name || ''));
+          let allProducts = productsByGroup.flat();
+          allProducts.sort((a,b) => (a.name || '').localeCompare(b.name || ''));
 
-          // Because we search across many tables, true pagination is complex.
-          // We return a combined list of top results. The frontend will not paginate this specific search.
+          const totalCount = allProducts.length;
+          const paginatedData = allProducts.slice(from, to + 1);
+          
           const response: PaginatedResponse<Product> = {
-            data: allProducts,
-            totalCount: allProducts.length,
-            currentPage: 1,
-            pageSize: allProducts.length,
+            data: paginatedData,
+            totalCount,
+            currentPage,
+            pageSize: size,
           };
           
           return { statusCode: 200, headers: commonHeaders, body: JSON.stringify(response) };

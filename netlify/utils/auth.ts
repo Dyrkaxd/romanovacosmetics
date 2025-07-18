@@ -116,10 +116,25 @@ export const requireAuth = async (event: HandlerEvent): Promise<AuthenticatedUse
     throw { statusCode: 403, message: 'User is not authorized to access this application.' };
 
   } catch (error: any) {
-    if (error.statusCode) {
+    if (error.statusCode) { // Re-throw our custom AuthError
       throw error;
     }
+
     console.error('Unexpected error during authorization check:', error);
-    throw { statusCode: 500, message: 'A server error occurred during user authorization.' };
+    
+    let message = 'A server error occurred during user authorization.';
+    const errorMessage = error?.message?.toLowerCase() || '';
+
+    // Check for common Supabase issues to provide better feedback.
+    if (errorMessage.includes('rls') || errorMessage.includes('row level security')) {
+        message = 'Authorization failed due to a database security policy. Please check that Row Level Security (RLS) is disabled for the "admins" and "managed_users" tables, or that the correct `SUPABASE_SERVICE_ROLE_KEY` is configured in the environment variables.';
+    } else if (isMissingTableError(error)) {
+        message = `Database setup error: A required table ('admins' or 'managed_users') might be missing. Please ensure the database schema is correctly set up by running the provided SQL script.`;
+    } else if (error.message) {
+        // Provide a more generic but still informative message
+        message = `A database error occurred during user authorization. Please check the function logs. Details: ${error.message}`;
+    }
+
+    throw { statusCode: 500, message: message };
   }
 };
