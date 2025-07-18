@@ -61,7 +61,6 @@ const LoginPage: React.FC = () => {
               <GoogleLogin
                 onSuccess={handleLoginSuccess}
                 onError={handleLoginError}
-                ux_mode="redirect"
                 shape="rectangular"
                 logo_alignment="left"
                 width="300px" 
@@ -72,7 +71,7 @@ const LoginPage: React.FC = () => {
         </div>
         
         <div className="mt-6 text-xs text-slate-500 bg-slate-100 p-3 rounded-lg text-left">
-            <p><span className="font-semibold">Проблеми з входом?</span> Після натискання кнопки вас буде перенаправлено на сторінку входу Google. Переконайтеся, що ваш браузер не блокує перенаправлення.</p>
+            <p><span className="font-semibold">Проблеми з входом?</span> Вхід відбувається у спливаючому вікні. Переконайтеся, що ваш браузер не блокує спливаючі вікна для цього сайту.</p>
         </div>
 
         <p className="text-xs text-slate-400 mt-8">
