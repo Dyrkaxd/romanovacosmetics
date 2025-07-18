@@ -1,16 +1,6 @@
-
-
-
-
-
-
-
-
-
-
 import React, { useState, useEffect, useCallback, useMemo, useRef, FC, SVGProps } from 'react';
-import { Order, OrderItem, Customer, Product, ManagedUser, PaginatedResponse, NovaPoshtaDepartment } from '../types';
-import { EyeIcon, XMarkIcon, PlusIcon, TrashIcon, PencilIcon, DocumentTextIcon, FilterIcon, DownloadIcon, ChevronDownIcon, ShareIcon, EllipsisVerticalIcon, TruckIcon } from '../components/Icons';
+import { Order, OrderItem, Customer, Product, ManagedUser, PaginatedResponse, NovaPoshtaDepartment, NovaPoshtaTrackingInfo } from '../types';
+import { EyeIcon, XMarkIcon, PlusIcon, TrashIcon, PencilIcon, DocumentTextIcon, FilterIcon, DownloadIcon, ChevronDownIcon, ShareIcon, EllipsisVerticalIcon, TruckIcon, MapPinIcon, ArrowPathIcon } from '../components/Icons';
 import { authenticatedFetch } from '../utils/api';
 import Pagination from '../components/Pagination';
 import { useAuth } from '../AuthContext';
@@ -76,7 +66,7 @@ const OrdersPage: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [viewOrder, setViewOrder] = useState<Order | null>(null);
   
-  const [modalMode, setModalMode] = useState<'add' | 'edit' | 'ttn' | null>(null);
+  const [modalMode, setModalMode] = useState<'add' | 'edit' | 'ttn' | 'track' | null>(null);
   const [activeOrderData, setActiveOrderData] = useState<Partial<Order>>({});
   const initialNewOrderItem: OrderItem = { productId: '', productName: '', quantity: 1, price: 0, discount: 0 };
 
@@ -125,6 +115,11 @@ const OrdersPage: React.FC = () => {
   });
   const [isCodEnabled, setIsCodEnabled] = useState(false);
   const [npWidgetError, setNpWidgetError] = useState<string | null>(null);
+  
+  // State for Nova Poshta Tracking Modal
+  const [trackingInfo, setTrackingInfo] = useState<NovaPoshtaTrackingInfo | null>(null);
+  const [isTrackingLoading, setIsTrackingLoading] = useState(false);
+  const [trackingError, setTrackingError] = useState<string | null>(null);
 
 
   useEffect(() => {
@@ -267,6 +262,8 @@ const OrdersPage: React.FC = () => {
     setActiveTtnOrder(null);
     setNpDepartment(null);
     setNpWidgetError(null);
+    setTrackingInfo(null);
+    setTrackingError(null);
   };
 
   const openAddModal = () => {
@@ -299,6 +296,16 @@ const OrdersPage: React.FC = () => {
     setNpDepartment(null);
     setIsCodEnabled(false);
     setModalMode('ttn');
+    // Proactively check if widget is loaded
+    if (typeof window.NPWidget === 'undefined') {
+        retryNpWidgetLoad();
+    }
+  };
+  
+  const openTrackingModal = (order: Order) => {
+      setActiveTtnOrder(order);
+      setModalMode('track');
+      handleTrackTtn(order.novaPoshtaTtn!);
   };
 
   const handleDeleteOrder = async (orderId: string) => {
@@ -391,10 +398,26 @@ const OrdersPage: React.FC = () => {
     }
   };
     
+    const retryNpWidgetLoad = () => {
+        setNpWidgetError(null);
+        const existingScript = document.getElementById('np-widget-script');
+        if (existingScript) {
+            existingScript.remove();
+        }
+        const newScript = document.createElement('script');
+        newScript.id = 'np-widget-script';
+        newScript.src = 'https://widget.novaposhta.ua/widget/NPWidget.js';
+        newScript.async = true;
+        newScript.defer = true;
+        newScript.onload = () => console.log('NP Widget reloaded successfully.');
+        newScript.onerror = () => setNpWidgetError('Повторна спроба завантажити віджет не вдалася. Перевірте інтернет-з\'єднання.');
+        document.body.appendChild(newScript);
+    };
+    
     const openNpWidget = () => {
         setNpWidgetError(null);
         if (typeof window.NPWidget === 'undefined') {
-            setNpWidgetError('Не вдалося завантажити віджет "Нової Пошти". Перевірте, чи не блокує його ваш браузер, та оновіть сторінку.');
+            setNpWidgetError('Не вдалося завантажити віджет "Нової Пошти".');
             return;
         }
 
@@ -459,6 +482,28 @@ const OrdersPage: React.FC = () => {
             setModalError(err.message);
         } finally {
             setIsSubmitting(false);
+        }
+    };
+    
+    const handleTrackTtn = async (ttn: string) => {
+        setIsTrackingLoading(true);
+        setTrackingError(null);
+        setTrackingInfo(null);
+        try {
+            const res = await authenticatedFetch(`${API_BASE_URL}/novaPoshtaTracking?ttn=${ttn}`);
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.message || 'Не вдалося отримати інформацію про відстеження.');
+            }
+            const data: NovaPoshtaTrackingInfo = await res.json();
+            if(data.StatusCode === '3'){
+                 throw new Error(`ТТН з номером ${ttn} не знайдено.`);
+            }
+            setTrackingInfo(data);
+        } catch (err: any) {
+            setTrackingError(err.message);
+        } finally {
+            setIsTrackingLoading(false);
         }
     };
 
@@ -563,6 +608,9 @@ const OrdersPage: React.FC = () => {
                                         <a href={order.novaPoshtaPrintUrl} target="_blank" rel="noopener noreferrer" className="w-full text-left flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"><TruckIcon className="w-4 h-4 mr-2"/> Друкувати ТТН</a>
                                     ) : (
                                         <button onClick={() => {openTtnModal(order); setOpenActionMenu(null);}} className="w-full text-left flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"><TruckIcon className="w-4 h-4 mr-2"/> Створити ТТН</button>
+                                    )}
+                                    {order.novaPoshtaTtn && (
+                                      <button onClick={() => {openTrackingModal(order); setOpenActionMenu(null);}} className="w-full text-left flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"><MapPinIcon className="w-4 h-4 mr-2"/> Відстежити ТТН</button>
                                     )}
                                     <a href={`/invoice/${order.id}`} target="_blank" rel="noopener noreferrer" className="w-full text-left flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"><DocumentTextIcon className="w-4 h-4 mr-2"/> Рахунок-фактура</a>
                                     <a href={`/bill-of-lading/${order.id}`} target="_blank" rel="noopener noreferrer" className="w-full text-left flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"><DocumentTextIcon className="w-4 h-4 mr-2"/> ТТН</a>
@@ -751,7 +799,12 @@ const OrdersPage: React.FC = () => {
                         <button type="button" onClick={closeModal} disabled={isSubmitting}><XMarkIcon className="w-6 h-6"/></button>
                     </div>
                     {modalError && <div role="alert" className="m-4 p-3 bg-red-50 text-red-700 rounded-lg text-sm">{modalError}</div>}
-                    {npWidgetError && <div role="alert" className="m-4 p-3 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm">{npWidgetError}</div>}
+                    {npWidgetError && (
+                        <div role="alert" className="m-4 p-3 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm flex items-center justify-between">
+                            <span>{npWidgetError}</span>
+                            <button type="button" onClick={retryNpWidgetLoad} className="ml-2 text-sm font-semibold underline text-red-800 hover:text-red-900">Спробувати знову</button>
+                        </div>
+                    )}
                     <div className="p-4 space-y-4">
                         <div>
                             <p className="text-sm font-medium text-slate-700">Одержувач: <span className="font-bold text-slate-900">{activeTtnOrder.customerName}</span></p>
@@ -827,6 +880,54 @@ const OrdersPage: React.FC = () => {
                     </div>
                 </div>
             </form>
+        </div>
+      )}
+      
+       {/* Tracking Modal */}
+      {modalMode === 'track' && activeTtnOrder && (
+        <div role="dialog" aria-modal="true" className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-40 p-4">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-lg">
+                <div className="flex justify-between items-center p-4 border-b">
+                    <h3 className="text-xl font-semibold">Відстеження ТТН: {activeTtnOrder.novaPoshtaTtn}</h3>
+                    <button type="button" onClick={closeModal}><XMarkIcon className="w-6 h-6"/></button>
+                </div>
+                <div className="p-6">
+                    {isTrackingLoading ? (
+                        <div className="flex justify-center items-center py-10">
+                            <div className="w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full animate-spin"></div>
+                        </div>
+                    ) : trackingError ? (
+                        <div role="alert" className="p-3 bg-red-50 text-red-700 rounded-lg text-sm">{trackingError}</div>
+                    ) : trackingInfo ? (
+                        <div className="space-y-3 text-sm">
+                            <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
+                                <p className="text-sm font-semibold text-blue-800">Статус відправлення</p>
+                                <p className="text-lg font-bold text-blue-900">{trackingInfo.Status}</p>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div className="p-3 bg-slate-50 rounded-md">
+                                    <p className="text-xs text-slate-500">Звідки:</p>
+                                    <p className="font-semibold text-slate-700">{trackingInfo.CitySender}</p>
+                                    <p className="text-slate-600">{trackingInfo.WarehouseSender}</p>
+                                </div>
+                                <div className="p-3 bg-slate-50 rounded-md">
+                                    <p className="text-xs text-slate-500">Куди:</p>
+                                    <p className="font-semibold text-slate-700">{trackingInfo.CityRecipient}</p>
+                                    <p className="text-slate-600">{trackingInfo.WarehouseRecipient}</p>
+                                </div>
+                            </div>
+                            <div className="text-xs text-slate-500 pt-2 grid grid-cols-2 gap-3">
+                               <p><strong>Створено:</strong> {new Date(trackingInfo.DateCreated).toLocaleString('uk-UA')}</p>
+                               <p><strong>Очікується:</strong> {new Date(trackingInfo.ScheduledDeliveryDate).toLocaleDateString('uk-UA')}</p>
+                               {trackingInfo.ActualDeliveryDate && <p><strong>Доставлено:</strong> {new Date(trackingInfo.ActualDeliveryDate).toLocaleString('uk-UA')}</p>}
+                            </div>
+                        </div>
+                    ) : null}
+                </div>
+                 <div className="flex justify-end gap-3 p-4 border-t bg-slate-50">
+                    <button type="button" onClick={closeModal} className="bg-white border border-slate-300 py-2 px-4 rounded-lg">Закрити</button>
+                </div>
+            </div>
         </div>
       )}
     </div>

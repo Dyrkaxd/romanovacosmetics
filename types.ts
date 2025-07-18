@@ -1,7 +1,3 @@
-
-
-
-
 import type { FC, SVGProps } from 'react';
 
 export interface Product {
@@ -193,4 +189,18 @@ export interface NovaPoshtaDepartment {
   };
   latitude?: string;
   longitude?: string;
+}
+
+export interface NovaPoshtaTrackingInfo {
+  Status: string;
+  StatusCode: string;
+  WarehouseSender: string;
+  WarehouseRecipient: string;
+  DateCreated: string;
+  ScheduledDeliveryDate: string;
+  RecipientDateTime: string; // Will be empty until delivered
+  CitySender: string;
+  CityRecipient: string;
+  Number: string; // TTN
+  ActualDeliveryDate: string;
 }
