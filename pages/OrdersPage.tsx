@@ -6,6 +6,8 @@
 
 
 
+
+
 import React, { useState, useEffect, useCallback, useMemo, useRef, FC, SVGProps } from 'react';
 import { Order, OrderItem, Customer, Product, ManagedUser, PaginatedResponse, NovaPoshtaDepartment } from '../types';
 import { EyeIcon, XMarkIcon, PlusIcon, TrashIcon, PencilIcon, DocumentTextIcon, FilterIcon, DownloadIcon, ChevronDownIcon, ShareIcon, EllipsisVerticalIcon, TruckIcon } from '../components/Icons';
@@ -624,40 +626,64 @@ const OrdersPage: React.FC = () => {
                             )}
                         </div>
                         <div className="px-4 pb-4">
-                            <h4 className="text-lg font-semibold text-slate-800 mb-2">Товари в замовленні</h4>
-                            <div className="space-y-3 max-h-64 overflow-y-auto pr-2 border rounded-lg p-2 bg-slate-50">
+                            <h4 className="text-lg font-semibold text-slate-800 mb-4">Товари в замовленні</h4>
+                            <div className="space-y-3 max-h-[40vh] min-h-[150px] overflow-y-auto -mr-2 pr-2">
+                                {/* Header for Desktop */}
+                                <div className="hidden md:grid grid-cols-12 gap-x-4 items-center text-xs font-semibold text-slate-500 px-3 pb-2 border-b border-slate-200">
+                                    <div className="col-span-5">Назва товару</div>
+                                    <div className="col-span-2 text-center">Кількість</div>
+                                    <div className="col-span-2 text-center">Ціна (₴)</div>
+                                    <div className="col-span-2 text-center">Знижка (%)</div>
+                                    <div className="col-span-1 text-right">Дія</div>
+                                </div>
                                 {(activeOrderData.items || []).map((item, index) => (
-                                    <div key={index} className="grid grid-cols-12 gap-2 items-center bg-white p-2 rounded shadow-sm">
-                                        <div className="col-span-12 md:col-span-5 relative" ref={el => { productDropdownRefs.current[index] = el; }}>
-                                            <input type="text" placeholder="Пошук товару..." 
-                                                defaultValue={item.productName}
-                                                onFocus={() => { setOpenProductDropdown(index); setProductSearchTerm(''); setProductSearchResults([]); }}
-                                                onChange={e => setProductSearchTerm(e.target.value)}
-                                                className="w-full p-2 border-slate-300 rounded-lg"/>
-                                            {openProductDropdown === index && (
-                                                <div className="absolute top-full left-0 w-full max-h-60 overflow-y-auto bg-white border shadow-lg z-20 rounded-b-lg">
-                                                    {isProductSearching ? (
-                                                        <div className="p-2 text-sm text-slate-500">Пошук...</div>
-                                                    ) : productSearchResults.length > 0 ? (
-                                                        productSearchResults.map(p => (
-                                                            <div key={p.id} onClick={() => { handleProductSelect(index, p); setOpenProductDropdown(null); }} className="p-2 hover:bg-rose-100 cursor-pointer text-sm">
-                                                                {p.name}
-                                                            </div>
-                                                        ))
-                                                    ) : (
-                                                        <div className="p-2 text-sm text-slate-500">{debouncedProductSearch.length < 2 ? 'Введіть мінімум 2 символи' : 'Товар не знайдено'}</div>
-                                                    )}
-                                                </div>
-                                            )}
+                                    <div key={index} className="bg-slate-50 p-3 rounded-lg border border-slate-200/80">
+                                        <div className="grid grid-cols-12 gap-x-4 gap-y-2 items-start">
+                                            <div className="col-span-12 md:col-span-5 relative" ref={el => { productDropdownRefs.current[index] = el; }}>
+                                                <label className="md:hidden text-xs font-medium text-slate-600 mb-1 block">Товар</label>
+                                                <input type="text" placeholder="Пошук товару..." 
+                                                    defaultValue={item.productName}
+                                                    onFocus={() => { setOpenProductDropdown(index); setProductSearchTerm(item.productName || ''); setProductSearchResults([]); }}
+                                                    onChange={e => setProductSearchTerm(e.target.value)}
+                                                    className="w-full p-2 border-slate-300 rounded-lg"/>
+                                                {openProductDropdown === index && (
+                                                    <div className="absolute top-full left-0 w-full max-h-60 overflow-y-auto bg-white border shadow-lg z-20 rounded-b-lg">
+                                                        {isProductSearching ? (
+                                                            <div className="p-2 text-sm text-slate-500">Пошук...</div>
+                                                        ) : productSearchResults.length > 0 ? (
+                                                            productSearchResults.map(p => (
+                                                                <div key={p.id} onClick={() => { handleProductSelect(index, p); setOpenProductDropdown(null); }} className="p-2 hover:bg-rose-100 cursor-pointer text-sm">
+                                                                    {p.name}
+                                                                </div>
+                                                            ))
+                                                        ) : (
+                                                            <div className="p-2 text-sm text-slate-500">{debouncedProductSearch.length < 2 ? 'Введіть мінімум 2 символи' : 'Товар не знайдено'}</div>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="col-span-4 md:col-span-2">
+                                                <label className="md:hidden text-xs font-medium text-slate-600 mb-1 block">К-сть</label>
+                                                <input type="number" value={item.quantity} onChange={e => handleItemChange(index, 'quantity', parseInt(e.target.value) || 1)} min="1" className="w-full text-center p-2 border-slate-300 rounded-lg"/>
+                                            </div>
+                                            <div className="col-span-4 md:col-span-2">
+                                                <label className="md:hidden text-xs font-medium text-slate-600 mb-1 block">Ціна</label>
+                                                <input type="number" value={item.price} onChange={e => handleItemChange(index, 'price', parseFloat(e.target.value) || 0)} step="0.01" min="0" className="w-full text-center p-2 border-slate-300 rounded-lg"/>
+                                            </div>
+                                            <div className="col-span-4 md:col-span-2">
+                                                 <label className="md:hidden text-xs font-medium text-slate-600 mb-1 block">Знижка</label>
+                                                <input type="number" value={item.discount || 0} onChange={e => handleItemChange(index, 'discount', parseFloat(e.target.value) || 0)} step="0.01" min="0" max="100" className="w-full text-center p-2 border-slate-300 rounded-lg"/>
+                                            </div>
+                                            <div className="col-span-12 md:col-span-1 flex items-center justify-end md:justify-center h-full">
+                                                <button type="button" onClick={() => handleRemoveItem(index)} className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded-md">
+                                                    <TrashIcon className="w-5 h-5"/>
+                                                </button>
+                                            </div>
                                         </div>
-                                        <input type="number" placeholder="К-сть" value={item.quantity} onChange={e => handleItemChange(index, 'quantity', parseInt(e.target.value))} min="1" className="col-span-4 md:col-span-2 p-2 border-slate-300 rounded-lg"/>
-                                        <input type="number" placeholder="Ціна" value={item.price} onChange={e => handleItemChange(index, 'price', parseFloat(e.target.value))} step="0.01" className="col-span-4 md:col-span-2 p-2 border-slate-300 rounded-lg"/>
-                                        <input type="number" placeholder="Знижка %" value={item.discount} onChange={e => handleItemChange(index, 'discount', parseFloat(e.target.value))} step="0.01" className="col-span-4 md:col-span-2 p-2 border-slate-300 rounded-lg"/>
-                                        <button type="button" onClick={() => handleRemoveItem(index)} className="col-span-12 md:col-span-1 text-red-500 hover:text-red-700 p-2 flex justify-center"><TrashIcon className="w-5 h-5"/></button>
                                     </div>
                                 ))}
                             </div>
-                            <button type="button" onClick={handleAddItem} className="mt-3 text-sm font-semibold text-rose-600 hover:text-rose-800">+ Додати товар</button>
+                            <button type="button" onClick={handleAddItem} className="mt-4 text-sm font-semibold text-rose-600 hover:text-rose-800">+ Додати товар</button>
                         </div>
                         <div className="p-4">
                             <label className="block text-sm font-medium text-slate-700">Нотатки до замовлення</label>
