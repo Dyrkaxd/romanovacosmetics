@@ -35,7 +35,7 @@ const LoginPage: React.FC = () => {
 
   const handleLoginError = () => {
     console.error('Помилка входу через Google');
-    setLoginError('Не вдалося увійти через Google. Будь ласка, спробуйте ще раз. Перевірте, чи не блокує ваш браузер сторонні файли cookie або вікна входу.');
+    setLoginError('Не вдалося увійти через Google. Будь ласка, спробуйте ще раз.');
   };
 
   return (
@@ -61,7 +61,7 @@ const LoginPage: React.FC = () => {
               <GoogleLogin
                 onSuccess={handleLoginSuccess}
                 onError={handleLoginError}
-                useOneTap
+                ux_mode="redirect"
                 shape="rectangular"
                 logo_alignment="left"
                 width="300px" 
@@ -72,7 +72,7 @@ const LoginPage: React.FC = () => {
         </div>
         
         <div className="mt-6 text-xs text-slate-500 bg-slate-100 p-3 rounded-lg text-left">
-            <p><span className="font-semibold">Проблеми з входом?</span> Переконайтеся, що ваш браузер або блокувальники реклами не блокують спливаючі вікна чи сторонні сервіси входу.</p>
+            <p><span className="font-semibold">Проблеми з входом?</span> Після натискання кнопки вас буде перенаправлено на сторінку входу Google. Переконайтеся, що ваш браузер не блокує перенаправлення.</p>
         </div>
 
         <p className="text-xs text-slate-400 mt-8">
