@@ -1,16 +1,10 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, FC, SVGProps } from 'react';
-import { Order, OrderItem, Customer, Product, ManagedUser, PaginatedResponse, NovaPoshtaDepartment, NovaPoshtaTrackingInfo } from '../types';
+import { Order, OrderItem, Customer, Product, ManagedUser, PaginatedResponse } from '../types';
 import { EyeIcon, XMarkIcon, PlusIcon, TrashIcon, PencilIcon, DocumentTextIcon, FilterIcon, DownloadIcon, ChevronDownIcon, ShareIcon, EllipsisVerticalIcon, TruckIcon, MapPinIcon, ArrowPathIcon } from '../components/Icons';
 import { authenticatedFetch } from '../utils/api';
 import Pagination from '../components/Pagination';
 import { useAuth } from '../AuthContext';
 import { useNavigate } from 'react-router-dom';
-
-declare global {
-  interface Window {
-    NPWidget: any; 
-  }
-}
 
 const orderStatusValues: Order['status'][] = ['Ordered', 'Shipped', 'Received', 'Calculation', 'AwaitingApproval', 'PaidByClient', 'WrittenOff', 'ReadyForPickup'];
 const orderStatusTranslations: Record<Order['status'], string> = {
@@ -66,7 +60,7 @@ const OrdersPage: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [viewOrder, setViewOrder] = useState<Order | null>(null);
   
-  const [modalMode, setModalMode] = useState<'add' | 'edit' | 'ttn' | 'track' | null>(null);
+  const [modalMode, setModalMode] = useState<'add' | 'edit' | null>(null);
   const [activeOrderData, setActiveOrderData] = useState<Partial<Order>>({});
   const initialNewOrderItem: OrderItem = { productId: '', productName: '', quantity: 1, price: 0, discount: 0 };
 
@@ -102,25 +96,6 @@ const OrdersPage: React.FC = () => {
   // State for actions dropdown
   const [openActionMenu, setOpenActionMenu] = useState<string | null>(null);
   const actionMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
-
-  // State for Nova Poshta TTN Modal
-  const [activeTtnOrder, setActiveTtnOrder] = useState<Order | null>(null);
-  const [npDepartment, setNpDepartment] = useState<NovaPoshtaDepartment | null>(null);
-  const [packageDetails, setPackageDetails] = useState({
-      weight: "0.5",
-      length: "20",
-      width: "15",
-      height: "10",
-      description: "Косметичні засоби"
-  });
-  const [isCodEnabled, setIsCodEnabled] = useState(false);
-  const [npWidgetError, setNpWidgetError] = useState<string | null>(null);
-  
-  // State for Nova Poshta Tracking Modal
-  const [trackingInfo, setTrackingInfo] = useState<NovaPoshtaTrackingInfo | null>(null);
-  const [isTrackingLoading, setIsTrackingLoading] = useState(false);
-  const [trackingError, setTrackingError] = useState<string | null>(null);
-
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -259,11 +234,6 @@ const OrdersPage: React.FC = () => {
     setViewOrder(null);
     setActiveOrderData({});
     setModalError(null);
-    setActiveTtnOrder(null);
-    setNpDepartment(null);
-    setNpWidgetError(null);
-    setTrackingInfo(null);
-    setTrackingError(null);
   };
 
   const openAddModal = () => {
@@ -284,28 +254,6 @@ const OrdersPage: React.FC = () => {
 
   const openViewModal = (order: Order) => {
     setViewOrder(order);
-  };
-
-  const openTtnModal = (order: Order) => {
-    const customer = customers.find(c => c.id === order.customerId);
-    if (!customer?.phone) {
-        setPageError("Неможливо створити ТТН: у клієнта не вказано номер телефону.");
-        return;
-    }
-    setActiveTtnOrder(order);
-    setNpDepartment(null);
-    setIsCodEnabled(false);
-    setModalMode('ttn');
-    // Proactively check if widget is loaded
-    if (typeof window.NPWidget === 'undefined') {
-        retryNpWidgetLoad();
-    }
-  };
-  
-  const openTrackingModal = (order: Order) => {
-      setActiveTtnOrder(order);
-      setModalMode('track');
-      handleTrackTtn(order.novaPoshtaTtn!);
   };
 
   const handleDeleteOrder = async (orderId: string) => {
@@ -398,116 +346,6 @@ const OrdersPage: React.FC = () => {
     }
   };
     
-    const retryNpWidgetLoad = () => {
-        setNpWidgetError(null);
-        const existingScript = document.getElementById('np-widget-script');
-        if (existingScript) {
-            existingScript.remove();
-        }
-        const newScript = document.createElement('script');
-        newScript.id = 'np-widget-script';
-        newScript.src = 'https://widget.novaposhta.ua/widget/NPWidget.js';
-        newScript.async = true;
-        newScript.defer = true;
-        newScript.onload = () => console.log('NP Widget reloaded successfully.');
-        newScript.onerror = () => setNpWidgetError('Повторна спроба завантажити віджет не вдалася. Перевірте інтернет-з\'єднання.');
-        document.body.appendChild(newScript);
-    };
-    
-    const openNpWidget = () => {
-        setNpWidgetError(null);
-        if (typeof window.NPWidget === 'undefined') {
-            setNpWidgetError('Не вдалося завантажити віджет "Нової Пошти".');
-            return;
-        }
-
-        const widget = new window.NPWidget({
-            apiKey: '', // API key is optional as per documentation
-            onSelect: (data: any) => {
-                 const department: NovaPoshtaDepartment = {
-                    ref: data.ref,
-                    name: data.description,
-                    settlementName: data.city_name,
-                    departmentNumber: data.number,
-                    cityRef: data.city_ref,
-                };
-                setNpDepartment(department);
-            },
-            closeOnSelect: true,
-        });
-        widget.open();
-    };
-
-    const handleCreateTtn = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setModalError(null);
-        if (!activeTtnOrder || !npDepartment) {
-            setModalError('Будь ласка, виберіть відділення "Нової Пошти".');
-            return;
-        }
-
-        const customer = customers.find(c => c.id === activeTtnOrder.customerId);
-        if (!customer) {
-            setModalError('Не вдалося знайти дані клієнта.');
-            return;
-        }
-
-        setIsSubmitting(true);
-        try {
-            const payload = {
-                orderId: activeTtnOrder.id,
-                recipient: {
-                    name: customer.name,
-                    phone: customer.phone.replace(/[^0-9]/g, ''),
-                },
-                recipientCityRef: npDepartment.cityRef,
-                recipientAddressRef: npDepartment.ref,
-                weight: packageDetails.weight,
-                volumeGeneral: (parseFloat(packageDetails.length) * parseFloat(packageDetails.width) * parseFloat(packageDetails.height)) / 1000000,
-                description: packageDetails.description,
-                cost: activeTtnOrder.totalAmount,
-                isCodEnabled: isCodEnabled,
-            };
-            
-            const res = await authenticatedFetch(`${API_BASE_URL}/novaPoshta`, {
-                method: 'POST',
-                body: JSON.stringify(payload)
-            });
-            if (!res.ok) throw new Error((await res.json()).message);
-
-            setSuccessMessage(`ТТН успішно створено. Статус замовлення #${activeTtnOrder.id.substring(0,8)} змінено на "Відправлено".`);
-            closeModal();
-            fetchOrders(currentPage);
-        } catch (err: any) {
-            setModalError(err.message);
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-    
-    const handleTrackTtn = async (ttn: string) => {
-        setIsTrackingLoading(true);
-        setTrackingError(null);
-        setTrackingInfo(null);
-        try {
-            const res = await authenticatedFetch(`${API_BASE_URL}/novaPoshtaTracking?ttn=${ttn}`);
-            if (!res.ok) {
-                const errData = await res.json().catch(() => ({}));
-                throw new Error(errData.message || 'Не вдалося отримати інформацію про відстеження.');
-            }
-            const data: NovaPoshtaTrackingInfo = await res.json();
-            if(data.StatusCode === '3'){
-                 throw new Error(`ТТН з номером ${ttn} не знайдено.`);
-            }
-            setTrackingInfo(data);
-        } catch (err: any) {
-            setTrackingError(err.message);
-        } finally {
-            setIsTrackingLoading(false);
-        }
-    };
-
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -604,14 +442,6 @@ const OrdersPage: React.FC = () => {
                                     <button onClick={() => {openViewModal(order); setOpenActionMenu(null);}} className="w-full text-left flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"><EyeIcon className="w-4 h-4 mr-2"/> Переглянути</button>
                                     <button onClick={() => {openEditModal(order); setOpenActionMenu(null);}} className="w-full text-left flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"><PencilIcon className="w-4 h-4 mr-2"/> Редагувати</button>
                                      <hr className="my-1"/>
-                                    {order.novaPoshtaPrintUrl ? (
-                                        <a href={order.novaPoshtaPrintUrl} target="_blank" rel="noopener noreferrer" className="w-full text-left flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"><TruckIcon className="w-4 h-4 mr-2"/> Друкувати ТТН</a>
-                                    ) : (
-                                        <button onClick={() => {openTtnModal(order); setOpenActionMenu(null);}} className="w-full text-left flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"><TruckIcon className="w-4 h-4 mr-2"/> Створити ТТН</button>
-                                    )}
-                                    {order.novaPoshtaTtn && (
-                                      <button onClick={() => {openTrackingModal(order); setOpenActionMenu(null);}} className="w-full text-left flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"><MapPinIcon className="w-4 h-4 mr-2"/> Відстежити ТТН</button>
-                                    )}
                                     <a href={`/invoice/${order.id}`} target="_blank" rel="noopener noreferrer" className="w-full text-left flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"><DocumentTextIcon className="w-4 h-4 mr-2"/> Рахунок-фактура</a>
                                     <a href={`/bill-of-lading/${order.id}`} target="_blank" rel="noopener noreferrer" className="w-full text-left flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"><DocumentTextIcon className="w-4 h-4 mr-2"/> ТТН</a>
                                     <button onClick={() => {navigator.clipboard.writeText(`${window.location.origin}/#/invoice/${order.id}`); setSuccessMessage('Посилання на рахунок скопійовано!'); setOpenActionMenu(null);}} className="w-full text-left flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"><ShareIcon className="w-4 h-4 mr-2"/> Поділитися рахунком</button>
@@ -645,7 +475,7 @@ const OrdersPage: React.FC = () => {
                     </div>
                     {modalError && <div role="alert" className="m-4 p-3 bg-red-50 text-red-700 rounded-lg text-sm">{modalError}</div>}
                     <div className="flex-grow overflow-y-auto">
-                        <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-slate-700">Клієнт</label>
                                 <select name="customerId" value={activeOrderData.customerId || ''} onChange={handleFormChange} required className="mt-1 block w-full p-2.5 border-slate-300 rounded-lg">
@@ -664,10 +494,10 @@ const OrdersPage: React.FC = () => {
                                 </select>
                             </div>
                             {isAdmin && (
-                              <div className="md:col-span-3">
+                              <div>
                                 <label className="block text-sm font-medium text-slate-700">Менеджер</label>
                                 <select name="managedByUserEmail" value={activeOrderData.managedByUserEmail || ''} onChange={handleFormChange} className="mt-1 block w-full p-2.5 border-slate-300 rounded-lg">
-                                    <option value="" disabled>Призначити менеджера</option>
+                                    <option value="">Не призначено</option>
                                     {allOrderManagers.map(m => <option key={m.email} value={m.email}>{m.name}</option>)}
                                 </select>
                               </div>
@@ -786,148 +616,6 @@ const OrdersPage: React.FC = () => {
                     <button onClick={closeModal} className="bg-slate-600 text-white py-2 px-4 rounded-lg">Закрити</button>
                  </div>
              </div>
-        </div>
-      )}
-
-       {/* TTN Modal */}
-      {modalMode === 'ttn' && activeTtnOrder && (
-        <div role="dialog" aria-modal="true" className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-40 p-4">
-            <form onSubmit={handleCreateTtn}>
-                <div className="bg-white rounded-xl shadow-xl w-full max-w-lg">
-                    <div className="flex justify-between items-center p-4 border-b">
-                        <h3 className="text-xl font-semibold">Створення ТТН для замовлення #{activeTtnOrder.id.substring(0,8)}</h3>
-                        <button type="button" onClick={closeModal} disabled={isSubmitting}><XMarkIcon className="w-6 h-6"/></button>
-                    </div>
-                    {modalError && <div role="alert" className="m-4 p-3 bg-red-50 text-red-700 rounded-lg text-sm">{modalError}</div>}
-                    {npWidgetError && (
-                        <div role="alert" className="m-4 p-3 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm flex items-center justify-between">
-                            <span>{npWidgetError}</span>
-                            <button type="button" onClick={retryNpWidgetLoad} className="ml-2 text-sm font-semibold underline text-red-800 hover:text-red-900">Спробувати знову</button>
-                        </div>
-                    )}
-                    <div className="p-4 space-y-4">
-                        <div>
-                            <p className="text-sm font-medium text-slate-700">Одержувач: <span className="font-bold text-slate-900">{activeTtnOrder.customerName}</span></p>
-                        </div>
-                        
-                        <div>
-                           <label className="block text-sm font-medium text-slate-700 mb-1">Відділення "Нова Пошта"</label>
-                            <div className="flex items-center gap-4">
-                                <div className="flex-grow p-3 border border-slate-300 rounded-lg bg-slate-50 min-h-[60px]">
-                                    {npDepartment ? (
-                                        <div>
-                                            <p className="font-semibold text-slate-800">{npDepartment.name}</p>
-                                            <p className="text-sm text-slate-500">{npDepartment.settlementName}</p>
-                                        </div>
-                                    ) : (
-                                        <p className="text-slate-500">Відділення не вибрано</p>
-                                    )}
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={openNpWidget}
-                                    className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-sm transition-colors flex-shrink-0"
-                                >
-                                    Обрати
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-4 gap-4">
-                            <div className="col-span-2 sm:col-span-1">
-                                <label className="block text-sm font-medium text-slate-700">Вага, кг</label>
-                                <input type="number" value={packageDetails.weight} onChange={e => setPackageDetails(p => ({...p, weight: e.target.value}))} required className="mt-1 block w-full p-2 border-slate-300 rounded-lg" step="0.01" min="0.01"/>
-                            </div>
-                            <div className="col-span-2 sm:col-span-1">
-                                <label className="block text-sm font-medium text-slate-700">Довжина, см</label>
-                                <input type="number" value={packageDetails.length} onChange={e => setPackageDetails(p => ({...p, length: e.target.value}))} required className="mt-1 block w-full p-2 border-slate-300 rounded-lg" min="1"/>
-                            </div>
-                            <div className="col-span-2 sm:col-span-1">
-                                <label className="block text-sm font-medium text-slate-700">Ширина, см</label>
-                                <input type="number" value={packageDetails.width} onChange={e => setPackageDetails(p => ({...p, width: e.target.value}))} required className="mt-1 block w-full p-2 border-slate-300 rounded-lg" min="1"/>
-                            </div>
-                            <div className="col-span-2 sm:col-span-1">
-                                <label className="block text-sm font-medium text-slate-700">Висота, см</label>
-                                <input type="number" value={packageDetails.height} onChange={e => setPackageDetails(p => ({...p, height: e.target.value}))} required className="mt-1 block w-full p-2 border-slate-300 rounded-lg" min="1"/>
-                            </div>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700">Опис відправлення</label>
-                            <input type="text" value={packageDetails.description} onChange={e => setPackageDetails(p => ({...p, description: e.target.value}))} required className="mt-1 block w-full p-2 border-slate-300 rounded-lg"/>
-                        </div>
-                         <div>
-                            <label className="flex items-center space-x-3 cursor-pointer">
-                                <input 
-                                    type="checkbox"
-                                    checked={isCodEnabled}
-                                    onChange={(e) => setIsCodEnabled(e.target.checked)}
-                                    className="h-4 w-4 rounded border-gray-300 text-rose-600 focus:ring-rose-500"
-                                />
-                                <span className="text-sm font-medium text-slate-700">Післяплата (накладений платіж)</span>
-                            </label>
-                            {isCodEnabled && (
-                                <p className="text-xs text-slate-500 mt-1 ml-7">
-                                    Сума до сплати одержувачем: ₴{activeTtnOrder.totalAmount.toFixed(2)}
-                                </p>
-                            )}
-                        </div>
-                    </div>
-                    <div className="flex justify-end gap-3 p-4 border-t bg-slate-50">
-                        <button type="button" onClick={closeModal} className="bg-white border border-slate-300 py-2 px-4 rounded-lg" disabled={isSubmitting}>Скасувати</button>
-                        <button type="submit" disabled={isSubmitting || !npDepartment} className="bg-rose-500 hover:bg-rose-600 text-white font-semibold py-2 px-4 rounded-lg disabled:opacity-50">
-                            {isSubmitting ? 'Створення...' : 'Створити ТТН'}
-                        </button>
-                    </div>
-                </div>
-            </form>
-        </div>
-      )}
-      
-       {/* Tracking Modal */}
-      {modalMode === 'track' && activeTtnOrder && (
-        <div role="dialog" aria-modal="true" className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-40 p-4">
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-lg">
-                <div className="flex justify-between items-center p-4 border-b">
-                    <h3 className="text-xl font-semibold">Відстеження ТТН: {activeTtnOrder.novaPoshtaTtn}</h3>
-                    <button type="button" onClick={closeModal}><XMarkIcon className="w-6 h-6"/></button>
-                </div>
-                <div className="p-6">
-                    {isTrackingLoading ? (
-                        <div className="flex justify-center items-center py-10">
-                            <div className="w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full animate-spin"></div>
-                        </div>
-                    ) : trackingError ? (
-                        <div role="alert" className="p-3 bg-red-50 text-red-700 rounded-lg text-sm">{trackingError}</div>
-                    ) : trackingInfo ? (
-                        <div className="space-y-3 text-sm">
-                            <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
-                                <p className="text-sm font-semibold text-blue-800">Статус відправлення</p>
-                                <p className="text-lg font-bold text-blue-900">{trackingInfo.Status}</p>
-                            </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <div className="p-3 bg-slate-50 rounded-md">
-                                    <p className="text-xs text-slate-500">Звідки:</p>
-                                    <p className="font-semibold text-slate-700">{trackingInfo.CitySender}</p>
-                                    <p className="text-slate-600">{trackingInfo.WarehouseSender}</p>
-                                </div>
-                                <div className="p-3 bg-slate-50 rounded-md">
-                                    <p className="text-xs text-slate-500">Куди:</p>
-                                    <p className="font-semibold text-slate-700">{trackingInfo.CityRecipient}</p>
-                                    <p className="text-slate-600">{trackingInfo.WarehouseRecipient}</p>
-                                </div>
-                            </div>
-                            <div className="text-xs text-slate-500 pt-2 grid grid-cols-2 gap-3">
-                               <p><strong>Створено:</strong> {new Date(trackingInfo.DateCreated).toLocaleString('uk-UA')}</p>
-                               <p><strong>Очікується:</strong> {new Date(trackingInfo.ScheduledDeliveryDate).toLocaleDateString('uk-UA')}</p>
-                               {trackingInfo.ActualDeliveryDate && <p><strong>Доставлено:</strong> {new Date(trackingInfo.ActualDeliveryDate).toLocaleString('uk-UA')}</p>}
-                            </div>
-                        </div>
-                    ) : null}
-                </div>
-                 <div className="flex justify-end gap-3 p-4 border-t bg-slate-50">
-                    <button type="button" onClick={closeModal} className="bg-white border border-slate-300 py-2 px-4 rounded-lg">Закрити</button>
-                </div>
-            </div>
         </div>
       )}
     </div>

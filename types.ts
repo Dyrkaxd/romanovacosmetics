@@ -53,8 +53,6 @@ export interface Order {
   notes?: string;
   managedByUserEmail?: string;
   created_at?: string;
-  novaPoshtaTtn?: string;
-  novaPoshtaPrintUrl?: string;
 }
 
 export interface NavItem {
@@ -171,36 +169,4 @@ export interface DashboardData {
   }[];
   recentOrders: Pick<Order, 'id' | 'customerName' | 'totalAmount' | 'status' | 'date'>[];
   topProducts: Pick<TopProduct, 'productName' | 'totalRevenue'>[];
-}
-
-export interface NovaPoshtaDepartment {
-  ref: string;
-  name: string;
-  settlementName: string;
-  departmentNumber: string;
-  cityRef: string; // This field is required to correctly create a TTN.
-  
-  // Optional fields for future use
-  shortName?: string;
-  addressParts?: {
-    city: string;
-    street: string;
-    building: string;
-  };
-  latitude?: string;
-  longitude?: string;
-}
-
-export interface NovaPoshtaTrackingInfo {
-  Status: string;
-  StatusCode: string;
-  WarehouseSender: string;
-  WarehouseRecipient: string;
-  DateCreated: string;
-  ScheduledDeliveryDate: string;
-  RecipientDateTime: string; // Will be empty until delivered
-  CitySender: string;
-  CityRecipient: string;
-  Number: string; // TTN
-  ActualDeliveryDate: string;
 }

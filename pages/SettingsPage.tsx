@@ -1,13 +1,8 @@
-
-
-
-
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../AuthContext';
 import { ManagedUser } from '../types';
 import { Database } from '../types/supabase';
-import { PlusIcon, TrashIcon, UsersIcon, PencilIcon, XMarkIcon, CurrencyDollarIcon, KeyIcon, ClipboardIcon, CheckIcon } from '../components/Icons';
+import { PlusIcon, TrashIcon, UsersIcon, PencilIcon, XMarkIcon, CurrencyDollarIcon } from '../components/Icons';
 import { authenticatedFetch } from '../utils/api';
 
 const API_BASE_URL = '/api';
@@ -15,102 +10,6 @@ type ManagedUserRow = Database['public']['Tables']['managed_users']['Row'];
 type AdminRow = Database['public']['Tables']['admins']['Row'];
 
 const productGroups = ['BDR', 'LA', 'АГ', 'АБ', 'АР', 'без сокращений', 'АФ', 'ДС', 'м8', 'JDA', 'Faith', 'AB', 'ГФ', 'ЕС', 'ГП', 'СД', 'ATA', 'W'];
-
-const NovaPoshtaSetupHelper: React.FC = () => {
-    const [apiKey, setApiKey] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [result, setResult] = useState<any | null>(null);
-    const [copiedKey, setCopiedKey] = useState<string | null>(null);
-
-    const handleFetchKeys = async () => {
-        if (!apiKey) {
-            setError('Будь ласка, введіть ваш API ключ "Нової Пошти".');
-            return;
-        }
-        setIsLoading(true);
-        setError(null);
-        setResult(null);
-        try {
-            const res = await authenticatedFetch(`${API_BASE_URL}/novaPoshtaHelper`, {
-                method: 'POST',
-                body: JSON.stringify({ apiKey }),
-            });
-            if (!res.ok) throw new Error((await res.json()).message || 'Не вдалося отримати ключі.');
-            setResult(await res.json());
-        } catch (err: any) {
-            setError(err.message);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-    
-    const handleCopy = (text: string, keyName: string) => {
-        navigator.clipboard.writeText(text);
-        setCopiedKey(keyName);
-        setTimeout(() => setCopiedKey(null), 2000);
-    };
-
-    return (
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <h3 className="text-lg font-semibold text-slate-700 mb-1 flex items-center"><KeyIcon className="w-6 h-6 mr-2 text-blue-500"/>Помічник налаштування "Нова Пошта"</h3>
-            <p className="text-sm text-slate-500 mb-6">Введіть ваш ключ API "Нової Пошти", щоб автоматично знайти необхідні ідентифікатори (Ref) для налаштування.</p>
-            <div className="flex items-start space-x-2">
-                <input type="text" placeholder="Введіть API ключ..." value={apiKey} onChange={e => setApiKey(e.target.value)} className="block w-full max-w-md border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500 sm:text-sm p-2.5"/>
-                <button onClick={handleFetchKeys} disabled={isLoading} className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2.5 px-4 rounded-lg shadow-sm transition-colors disabled:opacity-50">
-                    {isLoading ? 'Пошук...' : 'Знайти ключі'}
-                </button>
-            </div>
-            {error && <div role="alert" className="mt-4 p-3 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm">{error}</div>}
-            {result && (
-                <div className="mt-6 space-y-3 pt-4 border-t border-slate-200">
-                    <h4 className="font-semibold">Ваші ключі:</h4>
-                    <div className="p-3 bg-slate-50 rounded-lg border">
-                        <label className="text-xs text-slate-500">NOVA_POSHTA_SENDER_REF</label>
-                        <div className="flex items-center justify-between">
-                            <p className="font-mono text-sm text-slate-700">{result.sender?.Ref}</p>
-                            <button onClick={() => handleCopy(result.sender?.Ref, 'sender')} className="p-1.5 text-slate-500 hover:text-slate-800 rounded-md">{copiedKey === 'sender' ? <CheckIcon className="w-5 h-5 text-green-600"/> : <ClipboardIcon className="w-5 h-5"/>}</button>
-                        </div>
-                    </div>
-                     <div className="p-3 bg-slate-50 rounded-lg border">
-                        <label className="text-xs text-slate-500">NOVA_POSHTA_SENDER_CONTACT_REF (основний)</label>
-                        <div className="flex items-center justify-between">
-                            <p className="font-mono text-sm text-slate-700">{result.contacts?.[0]?.Ref || 'Не знайдено'}</p>
-                            {result.contacts?.[0]?.Ref && <button onClick={() => handleCopy(result.contacts[0].Ref, 'contact')} className="p-1.5 text-slate-500 hover:text-slate-800 rounded-md">{copiedKey === 'contact' ? <CheckIcon className="w-5 h-5 text-green-600"/> : <ClipboardIcon className="w-5 h-5"/>}</button>}
-                        </div>
-                    </div>
-                     <div className="p-3 bg-slate-50 rounded-lg border">
-                        <label className="text-xs text-slate-500">NOVA_POSHTA_SENDER_ADDRESS_REF (основна)</label>
-                        <div className="flex items-center justify-between">
-                            <p className="font-mono text-sm text-slate-700">{result.addresses?.[0]?.Ref || 'Не знайдено'}</p>
-                            {result.addresses?.[0]?.Ref && <button onClick={() => handleCopy(result.addresses[0].Ref, 'address')} className="p-1.5 text-slate-500 hover:text-slate-800 rounded-md">{copiedKey === 'address' ? <CheckIcon className="w-5 h-5 text-green-600"/> : <ClipboardIcon className="w-5 h-5"/>}</button>}
-                        </div>
-                        {result.addresses?.length === 0 && <p className="text-xs text-amber-700 bg-amber-50 p-2 mt-2 rounded-md">Адресу не знайдено. <a href="https://new.novaposhta.ua/" target="_blank" rel="noopener noreferrer" className="font-semibold underline">Додайте адресу</a> у вашому кабінеті "Нової Пошти" та спробуйте знову.</p>}
-                    </div>
-                     <div className="p-3 bg-slate-50 rounded-lg border">
-                        <label className="text-xs text-slate-500">NOVA_POSHTA_SENDER_CITY_REF</label>
-                        <div className="flex items-center justify-between">
-                            <p className="font-mono text-sm text-slate-700">{result.senderCityRef || 'Не знайдено'}</p>
-                            {result.senderCityRef && <button onClick={() => handleCopy(result.senderCityRef, 'cityRef')} className="p-1.5 text-slate-500 hover:text-slate-800 rounded-md">{copiedKey === 'cityRef' ? <CheckIcon className="w-5 h-5 text-green-600"/> : <ClipboardIcon className="w-5 h-5"/>}</button>}
-                        </div>
-                        {result.senderCityRef && result.addresses?.length === 0 && (
-                            <p className="text-xs text-blue-700 bg-blue-50 p-2 mt-2 rounded-md">
-                                <strong>Зверніть увагу:</strong> цей Ref було знайдено на основі міста відправника ("{result.sender?.City}"), оскільки у вас не налаштовано конкретну адресу відправлення. Для більшості випадків цього достатньо.
-                            </p>
-                        )}
-                    </div>
-                     <div className="p-3 bg-slate-50 rounded-lg border">
-                        <label className="text-xs text-slate-500">NOVA_POSHTA_SENDER_PHONE</label>
-                         <div className="flex items-center justify-between">
-                            <p className="font-mono text-sm text-slate-700">{result.contacts?.[0]?.Phones?.replace(/[^0-9]/g, '') || 'Не знайдено'}</p>
-                            {result.contacts?.[0]?.Phones && <button onClick={() => handleCopy(result.contacts[0].Phones.replace(/[^0-9]/g, ''), 'phone')} className="p-1.5 text-slate-500 hover:text-slate-800 rounded-md">{copiedKey === 'phone' ? <CheckIcon className="w-5 h-5 text-green-600"/> : <ClipboardIcon className="w-5 h-5"/>}</button>}
-                        </div>
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-};
 
 const SettingsPage: React.FC = () => {
   const { user } = useAuth();
@@ -331,8 +230,6 @@ const SettingsPage: React.FC = () => {
 
       {isAdmin && (
         <>
-        <NovaPoshtaSetupHelper />
-
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
            <h3 className="text-lg font-semibold text-slate-700 mb-1 flex items-center"><CurrencyDollarIcon className="w-6 h-6 mr-2 text-green-600"/>Керування курсом валют</h3>
            <p className="text-sm text-slate-500 mb-6">Встановіть курс UAH/$ для всіх товарів або для окремих груп.</p>

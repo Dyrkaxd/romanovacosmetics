@@ -33,11 +33,10 @@
 # ==> Кастомні заголовки
 # Ці заголовки покращують безпеку та вирішують специфічні крос-доменні проблеми.
 [[headers]]
+  # Застосувати ці заголовки до всіх сторінок вашого сайту.
   for = "/*"
   [headers.values]
-    # Дозволяє безпечну взаємодію між головним вікном і спливаючими (наприклад, Google Sign-In)
+    # Це ключове виправлення для помилки "Cross-Origin-Opener-Policy".
+    # Воно дозволяє спливаючим вікнам, відкритим вашим сайтом (наприклад, Google Sign-In),
+    # безпечно обмінюватися даними з вашим головним вікном додатку.
     Cross-Origin-Opener-Policy = "same-origin-allow-popups"
-    Referrer-Policy = "strict-origin-when-cross-origin"
-    X-Content-Type-Options = "nosniff"
-    X-Frame-Options = "DENY"
-    Permissions-Policy = "geolocation=(), microphone=(), camera=()"
