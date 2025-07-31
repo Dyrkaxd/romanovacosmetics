@@ -22,6 +22,7 @@ const ReportsPage = React.lazy(() => import('./pages/ReportsPage.tsx'));
 const ExpensesPage = React.lazy(() => import('./pages/ExpensesPage.tsx'));
 const InvoiceViewPage = React.lazy(() => import('./pages/InvoiceViewPage.tsx'));
 const BillOfLadingViewPage = React.lazy(() => import('./pages/BillOfLadingViewPage.tsx'));
+const WarehousePage = React.lazy(() => import('./pages/WarehousePage.tsx'));
 
 
 const getPageTitle = (pathname: string): string => {
@@ -33,6 +34,8 @@ const getPageTitle = (pathname: string): string => {
       return 'Панель керування';
     case '/products':
       return 'Керування товарами';
+    case '/warehouse':
+      return 'Керування складом';
     case '/orders':
       return 'Керування замовленнями';
     case '/customers':
@@ -88,6 +91,7 @@ const MainAppLayout: React.FC = () => {
               {isAdmin && <Route path="/reports" element={<ReportsPage />} />}
               {isAdmin && <Route path="/expenses" element={<ExpensesPage />} />}
               {isAdmin && <Route path="/products" element={<ProductsPage />} />}
+              {isAdmin && <Route path="/warehouse" element={<WarehousePage />} />}
               <Route path="/orders" element={<OrdersPage />} />
               <Route path="/customers" element={<CustomersPage />} />
               <Route path="/settings" element={<SettingsPage />} />
