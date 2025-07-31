@@ -2,6 +2,8 @@
 
 
 
+
+
 import React, { useState, Suspense } from 'react';
 import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
@@ -12,7 +14,6 @@ import Header from './components/Header';
 // Lazy load all pages for code splitting
 const DashboardPage = React.lazy(() => import('./pages/DashboardPage.tsx'));
 const ProductsPage = React.lazy(() => import('./pages/ProductsPage.tsx'));
-const WarehousePage = React.lazy(() => import('./pages/WarehousePage.tsx'));
 const OrdersPage = React.lazy(() => import('./pages/OrdersPage.tsx'));
 const CustomersPage = React.lazy(() => import('./pages/CustomersPage.tsx'));
 const SettingsPage = React.lazy(() => import('./pages/SettingsPage.tsx'));
@@ -32,8 +33,6 @@ const getPageTitle = (pathname: string): string => {
       return 'Панель керування';
     case '/products':
       return 'Керування товарами';
-    case '/warehouse':
-      return 'Керування складом';
     case '/orders':
       return 'Керування замовленнями';
     case '/customers':
@@ -89,7 +88,6 @@ const MainAppLayout: React.FC = () => {
               {isAdmin && <Route path="/reports" element={<ReportsPage />} />}
               {isAdmin && <Route path="/expenses" element={<ExpensesPage />} />}
               {isAdmin && <Route path="/products" element={<ProductsPage />} />}
-              {isAdmin && <Route path="/warehouse" element={<WarehousePage />} />}
               <Route path="/orders" element={<OrdersPage />} />
               <Route path="/customers" element={<CustomersPage />} />
               <Route path="/settings" element={<SettingsPage />} />

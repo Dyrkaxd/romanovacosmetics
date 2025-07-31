@@ -2,10 +2,12 @@
 
 
 
+
+
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { NavItem } from '../types';
-import { DashboardIcon, ProductsIcon, OrdersIcon, UsersIcon, SettingsIcon, XMarkIcon, ChartBarIcon, CreditCardIcon, ArchiveBoxIcon } from './Icons';
+import { DashboardIcon, ProductsIcon, OrdersIcon, UsersIcon, SettingsIcon, XMarkIcon, ChartBarIcon, CreditCardIcon } from './Icons';
 import { logoBase64 } from '../assets/logo';
 import { useAuth } from '../AuthContext'; 
 
@@ -25,7 +27,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpenOnMobile, toggleMobileSidebar }
     isAdmin && { name: 'Витрати', path: '/expenses', icon: CreditCardIcon },
     { name: 'Замовлення', path: '/orders', icon: OrdersIcon },
     isAdmin && { name: 'Товари', path: '/products', icon: ProductsIcon },
-    isAdmin && { name: 'Склад', path: '/warehouse', icon: ArchiveBoxIcon },
     { name: 'Клієнти', path: '/customers', icon: UsersIcon },
   ].filter(Boolean) as NavItem[]; // Filter out falsy values
 

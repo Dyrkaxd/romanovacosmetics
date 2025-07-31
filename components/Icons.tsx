@@ -193,10 +193,3 @@ export const MapPinIcon: FC<SVGProps<SVGSVGElement>> = (props) => (
     <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
   </svg>
 );
-
-export const ArchiveBoxIcon: FC<SVGProps<SVGSVGElement>> = (props) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 7.5V6.108c0-1.135.845-2.098 1.976-2.192.373-.03.748-.03 1.121 0 1.131.094 1.976 1.057 1.976 2.192V7.5M8.25 7.5h7.5m-7.5 0l-1.299 1.299a1.125 1.125 0 000 1.591l.637.637a1.125 1.125 0 001.59 0l.637-.637a1.125 1.125 0 000-1.591L8.25 7.5zM15.75 7.5h.008v.008H15.75V7.5z" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 9.75h16.5a1.5 1.5 0 011.5 1.5v7.5a1.5 1.5 0 01-1.5 1.5H3.75a1.5 1.5 0 01-1.5-1.5v-7.5a1.5 1.5 0 011.5-1.5z" />
-    </svg>
-);
