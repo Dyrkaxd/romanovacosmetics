@@ -4,12 +4,20 @@
 export const authenticatedFetch = async (url: string, options: RequestInit = {}): Promise<Response> => {
   const token = sessionStorage.getItem('authToken');
 
+  // If there's no token, we cannot make an authenticated request.
+  // Redirect to login and stop the execution flow.
+  if (!token) {
+    console.error('Authentication error: No token found. Redirecting to login.');
+    sessionStorage.removeItem('authToken');
+    window.location.hash = '/login';
+    // Return a promise that never resolves to prevent the caller from continuing.
+    return new Promise<Response>(() => {});
+  }
+
   // Create a new Headers object based on existing headers or create a new one.
   const headers = new Headers(options.headers || {});
   
-  if (token) {
-    headers.set('Authorization', `Bearer ${token}`);
-  }
+  headers.set('Authorization', `Bearer ${token}`);
 
   // Ensure the Content-Type is set for methods that have a body.
   if (options.body && !headers.has('Content-Type')) {
@@ -28,6 +36,8 @@ export const authenticatedFetch = async (url: string, options: RequestInit = {})
     sessionStorage.removeItem('authToken');
     // Force a reload to redirect to the login page via the App's routing logic.
     window.location.hash = '/login';
+    // Return a promise that never resolves to prevent the caller from continuing.
+    return new Promise<Response>(() => {});
   }
 
   return response;
