@@ -1,6 +1,7 @@
 
 
 
+
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import { supabase } from '../../services/supabaseClient';
 import type { Product, PaginatedResponse } from '../../types';
@@ -50,7 +51,7 @@ const transformDbRowToProduct = (dbProduct: ProductDbRow, group: ProductGroupNam
     retailPrice: dbProduct.price,
     salonPrice: dbProduct.salon_price === null ? 0 : dbProduct.salon_price,
     exchangeRate: dbProduct.exchange_rate === null ? 0 : dbProduct.exchange_rate,
-    quantity: dbProduct.quantity === null ? 0 : dbProduct.quantity,
+    quantity: dbProduct.quanity === null ? 0 : dbProduct.quanity,
     created_at: dbProduct.created_at || undefined,
   };
 };
@@ -104,7 +105,7 @@ const handler: Handler = async (event: HandlerEvent) => {
           const allProductsPromises = Object.entries(productGroups).map(async ([group, tableName]) => {
             let query = supabase
               .from(tableName)
-              .select('id, name, price, salon_price, exchange_rate, quantity, created_at');
+              .select('id, name, price, salon_price, exchange_rate, quanity, created_at');
             
             if (search) {
               query = query.ilike('name', `%${search}%`);
@@ -156,7 +157,7 @@ const handler: Handler = async (event: HandlerEvent) => {
               price: clientData.retailPrice,
               salon_price: clientData.salonPrice,
               exchange_rate: clientData.exchangeRate,
-              quantity: clientData.quantity ?? 0,
+              quanity: clientData.quantity ?? 0,
           };
           const { data: createdData, error: createError } = await supabase
               .from(tableName)
@@ -181,7 +182,7 @@ const handler: Handler = async (event: HandlerEvent) => {
           if (clientUpdateData.retailPrice !== undefined) productDataToUpdate.price = clientUpdateData.retailPrice;
           if (clientUpdateData.salonPrice !== undefined) productDataToUpdate.salon_price = clientUpdateData.salonPrice;
           if (clientUpdateData.exchangeRate !== undefined) productDataToUpdate.exchange_rate = clientUpdateData.exchangeRate;
-          if (clientUpdateData.quantity !== undefined) productDataToUpdate.quantity = clientUpdateData.quantity;
+          if (clientUpdateData.quantity !== undefined) productDataToUpdate.quanity = clientUpdateData.quantity;
 
           const { data: updatedData, error: updateError } = await supabase
               .from(findResult.tableName)

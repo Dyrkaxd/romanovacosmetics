@@ -1,5 +1,7 @@
 
 
+
+
 import { Handler, HandlerEvent } from '@netlify/functions';
 import { supabase } from '../../services/supabaseClient';
 import type { Product, PaginatedResponse } from '../../types';
@@ -33,7 +35,7 @@ const transformDbRowToProduct = (dbProduct: ProductDbRow, group: ProductGroupNam
     retailPrice: dbProduct.price,
     salonPrice: dbProduct.salon_price ?? 0,
     exchangeRate: dbProduct.exchange_rate ?? 0,
-    quantity: dbProduct.quantity ?? 0,
+    quantity: dbProduct.quanity ?? 0,
     created_at: dbProduct.created_at || undefined,
   };
 };
@@ -72,7 +74,7 @@ const handler: Handler = async (event: HandlerEvent) => {
         const to = from + size - 1;
 
         const allProductsPromises = Object.entries(productGroups).map(async ([group, tableName]) => {
-          let query = supabase.from(tableName).select('id, name, quantity, created_at', { count: 'exact' });
+          let query = supabase.from(tableName).select('id, name, quanity, created_at', { count: 'exact' });
           if (search) {
             query = query.ilike('name', `%${search}%`);
           }
@@ -90,7 +92,7 @@ const handler: Handler = async (event: HandlerEvent) => {
             id: p.id,
             name: p.name,
             group: p.group,
-            quantity: p.quantity ?? 0,
+            quantity: p.quanity ?? 0,
             created_at: p.created_at || ''
         })));
         
@@ -124,7 +126,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
         const { data, error } = await supabase
           .from(findResult.tableName)
-          .update({ quantity: quantity })
+          .update({ quanity: quantity })
           .eq('id', resourceId)
           .select()
           .single();
