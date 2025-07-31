@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../AuthContext';
 import { ManagedUser } from '../types';
 import { Database } from '../types/supabase';
-import { PlusIcon, TrashIcon, UsersIcon, PencilIcon, XMarkIcon, CurrencyDollarIcon, ArchiveBoxIcon } from '../components/Icons';
+import { PlusIcon, TrashIcon, UsersIcon, PencilIcon, XMarkIcon, CurrencyDollarIcon } from '../components/Icons';
 import { authenticatedFetch } from '../utils/api';
 
 const API_BASE_URL = '/api';
@@ -10,20 +10,6 @@ type ManagedUserRow = Database['public']['Tables']['managed_users']['Row'];
 type AdminRow = Database['public']['Tables']['admins']['Row'];
 
 const productGroups = ['BDR', 'LA', 'АГ', 'АБ', 'АР', 'без сокращений', 'АФ', 'ДС', 'м8', 'JDA', 'Faith', 'AB', 'ГФ', 'ЕС', 'ГП', 'СД', 'ATA', 'W'];
-
-const Switch: React.FC<{ checked: boolean; onChange: (checked: boolean) => void; disabled?: boolean; }> = ({ checked, onChange, disabled }) => (
-    <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        onClick={() => onChange(!checked)}
-        disabled={disabled}
-        className={`${checked ? 'bg-indigo-600' : 'bg-slate-200'} relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 disabled:opacity-50`}
-    >
-        <span className={`${checked ? 'translate-x-5' : 'translate-x-0'} pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`}/>
-    </button>
-);
-
 
 const SettingsPage: React.FC = () => {
   const { user } = useAuth();
@@ -60,11 +46,10 @@ const SettingsPage: React.FC = () => {
     try {
       const response = await authenticatedFetch(`${API_BASE_URL}/managedUsers`);
       if (!response.ok) throw new Error((await response.json()).message || 'Failed to fetch managed users.');
-      const usersFromDb: (ManagedUserRow & { can_access_warehouse?: boolean })[] = await response.json();
+      const usersFromDb: ManagedUserRow[] = await response.json();
       setManagedUsers(usersFromDb.map(u => ({
         id: u.id, name: u.name, email: u.email,
-        notes: u.notes || undefined, dateAdded: u.created_at || new Date().toISOString(),
-        canAccessWarehouse: u.can_access_warehouse ?? false
+        notes: u.notes || undefined, dateAdded: u.created_at || new Date().toISOString()
       })));
     } catch (err: any) {
       setError(err.message);
@@ -164,24 +149,6 @@ const SettingsPage: React.FC = () => {
     } finally {
       setIsLoadingManagers(false);
     }
-  };
-  
-  const handleWarehouseAccessChange = async (managerId: string, hasAccess: boolean) => {
-      setError(null);
-      try {
-          const response = await authenticatedFetch(`${API_BASE_URL}/managedUsers/${managerId}`, {
-              method: 'PUT',
-              body: JSON.stringify({ can_access_warehouse: hasAccess })
-          });
-          if (!response.ok) throw new Error((await response.json()).message || 'Failed to update access.');
-          showSuccessMessage(`Доступ до складу оновлено.`);
-          // Optimistically update UI
-          setManagedUsers(users => users.map(u => u.id === managerId ? { ...u, canAccessWarehouse: hasAccess } : u));
-      } catch (err: any) {
-          setError(err.message);
-          // Revert optimistic update on failure
-          fetchManagedUsers();
-      }
   };
 
   const handleAddAdmin = async (e: React.FormEvent) => {
@@ -334,23 +301,6 @@ const SettingsPage: React.FC = () => {
               <PlusIcon className="w-5 h-5 mr-2" /> {isLoadingManagers ? 'Додавання...' : 'Додати менеджера'}
             </button>
           </form>
-          <div className="mb-8 pb-6 border-b border-slate-200">
-            <h4 className="text-md font-semibold text-slate-700 mb-1 flex items-center"><ArchiveBoxIcon className="w-6 h-6 mr-2 text-indigo-500"/>Доступ до Складу</h4>
-             <p className="text-sm text-slate-500 mb-4">Надайте менеджерам доступ до сторінки "Склад".</p>
-             {isLoadingManagers && managedUsers.length === 0 ? <p>Завантаження менеджерів...</p> : (
-                <ul className="space-y-3">
-                    {managedUsers.map(manager => (
-                       <li key={manager.id} className="flex justify-between items-center p-3 bg-slate-50 rounded-lg border">
-                         <div>
-                            <p className="font-medium text-slate-800">{manager.name}</p>
-                            <p className="text-sm text-slate-500">{manager.email}</p>
-                         </div>
-                         <Switch checked={manager.canAccessWarehouse ?? false} onChange={(checked) => handleWarehouseAccessChange(manager.id, checked)} />
-                       </li>
-                    ))}
-                </ul>
-             )}
-          </div>
           <h4 className="text-md font-semibold text-slate-700 mb-4">Список менеджерів ({managedUsers.length}):</h4>
           {isLoadingManagers && managedUsers.length === 0 ? <p>Завантаження...</p> : (
             <ul className="space-y-3">

@@ -1,6 +1,7 @@
 
 
 
+
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { NavItem } from '../types';
@@ -16,7 +17,6 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ isOpenOnMobile, toggleMobileSidebar }) => {
   const { user } = useAuth(); 
   const isAdmin = user?.role === 'admin';
-  const hasWarehouseAccess = user?.canAccessWarehouse ?? false;
 
   // Conditionally include admin-only nav items
   const navItems: NavItem[] = [
@@ -25,7 +25,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpenOnMobile, toggleMobileSidebar }
     isAdmin && { name: 'Витрати', path: '/expenses', icon: CreditCardIcon },
     { name: 'Замовлення', path: '/orders', icon: OrdersIcon },
     isAdmin && { name: 'Товари', path: '/products', icon: ProductsIcon },
-    (isAdmin || hasWarehouseAccess) && { name: 'Склад', path: '/warehouse', icon: ArchiveBoxIcon },
+    isAdmin && { name: 'Склад', path: '/warehouse', icon: ArchiveBoxIcon },
     { name: 'Клієнти', path: '/customers', icon: UsersIcon },
   ].filter(Boolean) as NavItem[]; // Filter out falsy values
 

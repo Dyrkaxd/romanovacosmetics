@@ -1,6 +1,7 @@
 
 
 
+
 import React, { useState, Suspense } from 'react';
 import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
@@ -65,7 +66,6 @@ const MainAppLayout: React.FC = () => {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
-  const hasWarehouseAccess = user?.canAccessWarehouse ?? false;
 
 
   const toggleMobileSidebar = () => {
@@ -89,7 +89,7 @@ const MainAppLayout: React.FC = () => {
               {isAdmin && <Route path="/reports" element={<ReportsPage />} />}
               {isAdmin && <Route path="/expenses" element={<ExpensesPage />} />}
               {isAdmin && <Route path="/products" element={<ProductsPage />} />}
-              {(isAdmin || hasWarehouseAccess) && <Route path="/warehouse" element={<WarehousePage />} />}
+              {isAdmin && <Route path="/warehouse" element={<WarehousePage />} />}
               <Route path="/orders" element={<OrdersPage />} />
               <Route path="/customers" element={<CustomersPage />} />
               <Route path="/settings" element={<SettingsPage />} />

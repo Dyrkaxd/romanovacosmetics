@@ -1,5 +1,6 @@
 
 
+
 import type { HandlerEvent } from '@netlify/functions';
 import { OAuth2Client, LoginTicket } from 'google-auth-library';
 import { supabase } from '../../services/supabaseClient';
@@ -18,7 +19,6 @@ export interface AuthenticatedUser {
   email: string;
   role: 'admin' | 'manager';
   name?: string;
-  canAccessWarehouse?: boolean;
 }
 
 /**
@@ -79,7 +79,7 @@ export const requireAuth = async (event: HandlerEvent): Promise<AuthenticatedUse
           }
         }
       });
-    return { email: userEmail, role: 'admin', name: payload.name || 'Super Admin', canAccessWarehouse: true };
+    return { email: userEmail, role: 'admin', name: payload.name || 'Super Admin' };
   }
 
   // For all other users, perform database checks.
@@ -95,13 +95,13 @@ export const requireAuth = async (event: HandlerEvent): Promise<AuthenticatedUse
         throw adminError; // A real error occurred, throw it.
     }
     if (adminRecord) {
-      return { email: userEmail, role: 'admin', name: payload.name || 'Admin', canAccessWarehouse: true };
+      return { email: userEmail, role: 'admin', name: payload.name || 'Admin' };
     }
 
     // 3. Manager Check
     const { data: managedUser, error: managerError } = await supabase
       .from('managed_users')
-      .select('id, name, can_access_warehouse')
+      .select('id, name')
       .eq('email', userEmail)
       .maybeSingle();
 
@@ -109,7 +109,7 @@ export const requireAuth = async (event: HandlerEvent): Promise<AuthenticatedUse
       throw managerError; // A real error occurred, throw it.
     }
     if (managedUser) {
-      return { email: userEmail, role: 'manager', name: payload.name || managedUser.name, canAccessWarehouse: managedUser.can_access_warehouse ?? false };
+      return { email: userEmail, role: 'manager', name: payload.name || managedUser.name };
     }
 
     // 4. If no role found, deny access.

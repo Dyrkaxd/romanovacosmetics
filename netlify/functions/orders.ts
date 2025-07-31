@@ -1,3 +1,4 @@
+
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import { supabase } from '../../services/supabaseClient'; 
 import type { Order, OrderItem, Product, Customer, PaginatedResponse } from '../../types';
@@ -40,7 +41,7 @@ const findProductById = async (id: string): Promise<Product | null> => {
           retailPrice: dbProduct.price,
           salonPrice: dbProduct.salon_price ?? 0,
           exchangeRate: dbProduct.exchange_rate ?? 0,
-          quantity: dbProduct.quantity ?? 0,
+          quantity: dbProduct.quanity ?? 0,
           created_at: dbProduct.created_at || undefined,
       };
     }
