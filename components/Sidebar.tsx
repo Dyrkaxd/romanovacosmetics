@@ -1,9 +1,4 @@
 
-
-
-
-
-
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { NavItem } from '../types';
@@ -68,7 +63,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpenOnMobile, toggleMobileSidebar }
       <div className="p-4 border-b border-slate-200 flex justify-between items-center">
         <div className="flex items-center space-x-3">
           <img src={logoBase64} alt="Romanova Cosmetics Logo" className="h-10 w-10" />
-          <span className="text-xl font-bold tracking-tight text-slate-800">ROMANOVA</span>
+          {isAdmin ? (
+            <span className="text-xl font-bold tracking-tight text-slate-800">ROMANOVA</span>
+          ) : (
+            <div>
+              <span className="text-xl font-bold tracking-tight text-slate-800">ROMANOVA</span>
+              <p className="text-[10px] font-bold tracking-widest text-rose-500 -mt-1">МЕНЕДЖЕР</p>
+            </div>
+          )}
         </div>
         <button 
           onClick={toggleMobileSidebar} 

@@ -1,0 +1,21 @@
+{
+  "short_name": "Romanova",
+  "name": "Romanova Cosmetics",
+  "icons": [
+    {
+      "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgdmlld0JveD0iMCAwIDIwMCAyMDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJsb2dvR3JhZGllbnQiIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiNFQUQzRDciLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiNDMDhFOTciLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48ZyB0cmFuc2Zvcm09InNjYWxlKDEuMikgdHJhbnNsYXRlKDE1LCAxMCkiPjxwYXRoIGQ9Ik03MCwxMTAgTDcwLDQwIEM3MCwyMCA4NSwyMCAxMDAsMzAgQzEyMCw0NSAxMjUsNzAgMTA1LDgwIEw5MCw4MCIgc3Ryb2tlPSJ1cmwoI2xvZ29HcmFkaWVudCkiIHN0cm9rZS13aWR0aD0iMTQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgZmlsbD0ibm9uZSIvPjxwYXRoIGQ9Ik05MCw4MCBMMTI1LDExNSIgc3Ryb2tlPSJ1cmwoI2xvZ29HcmFkaWVudCkiIHN0cm9rZS13aWR0aD0iMTQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgZmlsbD0ibm9uZSIvPjwvZz48L3N2Zz4=",
+      "type": "image/svg+xml",
+      "sizes": "192x192"
+    },
+    {
+      "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDIwMCAyMDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJsb2dvR3JhZGllbnQiIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiNFQUQzRDciLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiNDMDhFOTciLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48ZyB0cmFuc2Zvcm09InNjYWxlKDEuMikgdHJhbnNsYXRlKDE1LCAxMCkiPjxwYXRoIGQ9Ik03MCwxMTAgTDcwLDQwIEM3MCwyMCA4NSwyMCAxMDAsMzAgQzEyMCw0NSAxMjUsNzAgMTA1LDgwIEw5MCw4MCIgc3Ryb2tlPSJ1cmwoI2xvZ29HcmFkaWVudCkiIHN0cm9rZS13aWR0aD0iMTQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgZmlsbD0ibm9uZSIvPjxwYXRoIGQ9Ik05MCw4MCBMMTI1LDExNSIgc3Ryb2tlPSJ1cmwoI2xvZ29HcmFkaWVudCkiIHN0cm9rZS13aWR0aD0iMTQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgZmlsbD0ibm9uZSIvPjwvZz48L3N2Zz4=",
+      "type": "image/svg+xml",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#f8fafc",
+  "display": "standalone",
+  "scope": "/",
+  "theme_color": "#c08e97"
+}

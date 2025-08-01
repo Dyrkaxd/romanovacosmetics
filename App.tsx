@@ -1,10 +1,5 @@
 
-
-
-
-
-
-import React, { useState, Suspense } from 'react';
+import React, { useState, Suspense, useEffect } from 'react';
 import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider, useAuth } from './AuthContext'; 
@@ -26,13 +21,14 @@ const BillOfLadingViewPage = React.lazy(() => import('./pages/BillOfLadingViewPa
 const WarehousePage = React.lazy(() => import('./pages/WarehousePage.tsx'));
 
 
-const getPageTitle = (pathname: string): string => {
+const getPageTitle = (pathname: string, role?: 'admin' | 'manager'): string => {
   const normalizedPathname = pathname.endsWith('/') && pathname.length > 1 ? pathname.slice(0, -1) : pathname;
 
   switch (normalizedPathname) {
     case '': 
     case '/':
-      return 'Огляд'; // Generic title for both dashboards
+      if (role === 'manager') return 'Мій огляд';
+      return 'Панель керування';
     case '/products':
       return 'Керування товарами';
     case '/warehouse':
@@ -65,9 +61,9 @@ const PageLoader: React.FC = () => (
 
 const MainAppLayout: React.FC = () => {
   const location = useLocation();
-  const pageTitle = getPageTitle(location.pathname);
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const { user } = useAuth();
+  const pageTitle = getPageTitle(location.pathname, user?.role);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const isAdmin = user?.role === 'admin';
 
 
@@ -114,6 +110,14 @@ const MainAppLayout: React.FC = () => {
 
 const AppContent: React.FC = () => {
   const { user, isLoadingAuth } = useAuth();
+
+  useEffect(() => {
+    if (user) {
+        document.title = user.role === 'admin' ? 'Romanova Admin' : 'Romanova Manager';
+    } else {
+        document.title = 'Romanova Cosmetics';
+    }
+  }, [user]);
 
   if (isLoadingAuth) {
     return (
