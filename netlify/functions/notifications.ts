@@ -1,6 +1,6 @@
 import { Handler, HandlerEvent } from '@netlify/functions';
 import { supabase } from '../../services/supabaseClient';
-import { requireAuth, AuthError } from '../utils/auth';
+import { requireAuth, AuthError, isMissingTableError } from '../utils/auth';
 
 const commonHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -25,6 +25,10 @@ const handler: Handler = async (event: HandlerEvent) => {
         .order('created_at', { ascending: false })
         .limit(15);
 
+      if (isMissingTableError(error)) {
+        console.warn("Notifications table seems to be missing. Returning empty array.");
+        return { statusCode: 200, headers: commonHeaders, body: JSON.stringify([]) };
+      }
       if (error) throw error;
       return { statusCode: 200, headers: commonHeaders, body: JSON.stringify(data || []) };
     }
@@ -43,6 +47,10 @@ const handler: Handler = async (event: HandlerEvent) => {
           .in('id', ids)
           .eq('user_email', user.email);
         
+        if (isMissingTableError(error)) {
+            console.warn("Notifications table seems to be missing. Cannot mark as read.");
+            return { statusCode: 200, headers: commonHeaders, body: JSON.stringify({ message: 'No notifications to mark as read.' }) };
+        }
         if (error) throw error;
         return { statusCode: 200, headers: commonHeaders, body: JSON.stringify({ message: 'Notifications marked as read.' }) };
       }
@@ -58,6 +66,13 @@ const handler: Handler = async (event: HandlerEvent) => {
         body: JSON.stringify({ message: error.message }),
       };
     }
+    
+    if (isMissingTableError(error)) {
+        const message = `Database setup error: The 'notifications' table appears to be missing. Please run the setup SQL script in your Supabase dashboard.`;
+        console.error(message, error);
+        return { statusCode: 500, headers: commonHeaders, body: JSON.stringify({ message }) };
+    }
+
     console.error('Error in notifications function:', error);
     return {
       statusCode: 500,
