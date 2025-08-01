@@ -411,8 +411,7 @@ const OrdersPage: React.FC = () => {
           <table className="min-w-full divide-y divide-slate-200">
             <thead className="bg-slate-50">
               <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">ID Замовлення</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Клієнт</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Клієнт / ID</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider hidden md:table-cell">Дата</th>
                 {isAdmin && <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider hidden lg:table-cell">Менеджер</th>}
                 <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Сума</th>
@@ -422,12 +421,14 @@ const OrdersPage: React.FC = () => {
             </thead>
              <tbody className="bg-white divide-y divide-slate-200">
               {isLoading ? (
-                 <tr><td colSpan={isAdmin ? 7:6} className="px-6 py-10 text-center text-sm text-slate-500">Завантаження замовлень...</td></tr>
+                 <tr><td colSpan={isAdmin ? 6:5} className="px-6 py-10 text-center text-sm text-slate-500">Завантаження замовлень...</td></tr>
               ) : orders.length > 0 ? (
                 orders.map(order => (
                   <tr key={order.id} className="hover:bg-rose-50/50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-rose-600">#{order.id.substring(0, 8)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-800">{order.customerName}</td>
+                    <td className="px-6 py-4 text-sm">
+                        <div className="font-semibold text-slate-800">{order.customerName}</div>
+                        <div className="text-xs text-slate-500">ID: #{order.id.substring(0, 8)}</div>
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 hidden md:table-cell">{new Date(order.date).toLocaleDateString()}</td>
                     {isAdmin && <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 hidden lg:table-cell">{allOrderManagers.find(m => m.email === order.managedByUserEmail)?.name || order.managedByUserEmail || 'N/A'}</td>}
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-800">₴{order.totalAmount.toFixed(2)}</td>
@@ -454,7 +455,7 @@ const OrdersPage: React.FC = () => {
                   </tr>
                 ))
               ) : (
-                <tr><td colSpan={isAdmin ? 7:6} className="px-6 py-10 text-center text-sm text-slate-500">
+                <tr><td colSpan={isAdmin ? 6:5} className="px-6 py-10 text-center text-sm text-slate-500">
                   {!pageError && (totalCount === 0 && searchTerm === '' ? "Замовлень ще немає. Натисніть 'Додати замовлення', щоб почати." : "Замовлень, що відповідають вашому пошуку, не знайдено.")}
                 </td></tr>
               )}
