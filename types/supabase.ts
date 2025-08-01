@@ -330,6 +330,36 @@ export interface Database {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          id: string
+          user_email: string
+          message: string
+          link: string | null
+          type: 'NEW_ORDER' | 'STATUS_UPDATE' | 'LOW_STOCK' | 'GENERAL'
+          is_read: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_email: string
+          message: string
+          link?: string | null
+          type: 'NEW_ORDER' | 'STATUS_UPDATE' | 'LOW_STOCK' | 'GENERAL'
+          is_read?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_email?: string
+          message?: string
+          link?: string | null
+          type?: 'NEW_ORDER' | 'STATUS_UPDATE' | 'LOW_STOCK' | 'GENERAL'
+          is_read?: boolean
+          created_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: { [_ in never]: never }
     Functions: { [_ in never]: never }

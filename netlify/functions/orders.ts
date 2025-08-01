@@ -2,6 +2,8 @@
 
 
 
+
+
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import { supabase } from '../../services/supabaseClient'; 
 import type { Order, OrderItem, Product, Customer, PaginatedResponse } from '../../types';
@@ -12,6 +14,7 @@ type OrderDbRow = Database['public']['Tables']['orders']['Row'];
 type OrderItemDbRow = Database['public']['Tables']['order_items']['Row'];
 type ProductDbRow = Database['public']['Tables']['products_bdr']['Row'];
 type CustomerDbRow = Database['public']['Tables']['customers']['Row'];
+type NotificationInsert = Database['public']['Tables']['notifications']['Insert'];
 
 
 const commonHeaders = {
@@ -250,6 +253,22 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
           createdItemsDb = insertedItemsData || [];
         }
         
+        // --- Create Notifications (fire and forget) ---
+        const { data: admins } = await supabase.from('admins').select('email');
+        if (admins && admins.length > 0) {
+            const notificationsToInsert: NotificationInsert[] = admins.map(admin => ({
+                user_email: admin.email,
+                message: `Нове замовлення №${createdOrderDbRow.id.substring(0, 8)} від ${customerData?.name || 'N/A'}.`,
+                link: '/orders',
+                type: 'NEW_ORDER'
+            }));
+            const { error: notificationError } = await supabase.from('notifications').insert(notificationsToInsert);
+            if (notificationError) {
+                console.error("Failed to create notifications for new order:", notificationError);
+            }
+        }
+        // --- End Notification ---
+
         const completeClientOrder = dbOrderToClientOrder({ ...createdOrderDbRow, customers: { name: customerData?.name || 'N/A' } }, createdItemsDb);
         return { statusCode: 201, headers: commonHeaders, body: JSON.stringify(completeClientOrder) };
       }
