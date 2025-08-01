@@ -20,16 +20,22 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpenOnMobile, toggleMobileSidebar }
   const { user } = useAuth(); 
   const isAdmin = user?.role === 'admin';
 
-  // Conditionally include admin-only nav items
+  // Conditionally include nav items based on role
   const navItems: NavItem[] = [
+    // Admin-only items
     isAdmin && { name: 'Панель керування', path: '/', icon: DashboardIcon },
     isAdmin && { name: 'Звіти', path: '/reports', icon: ChartBarIcon },
     isAdmin && { name: 'Витрати', path: '/expenses', icon: CreditCardIcon },
-    { name: 'Замовлення', path: '/orders', icon: OrdersIcon },
     isAdmin && { name: 'Товари', path: '/products', icon: ProductsIcon },
     isAdmin && { name: 'Склад', path: '/warehouse', icon: ArchiveBoxIcon },
+    
+    // Manager-only items
+    !isAdmin && { name: 'Мій огляд', path: '/', icon: DashboardIcon },
+
+    // Shared items
+    { name: 'Замовлення', path: '/orders', icon: OrdersIcon },
     { name: 'Клієнти', path: '/customers', icon: UsersIcon },
-  ].filter(Boolean) as NavItem[]; // Filter out falsy values
+  ].filter(Boolean) as NavItem[]; // Filter out falsy values (from isAdmin checks)
 
   const bottomNavItems: NavItem[] = [
     { name: 'Налаштування', path: '/settings', icon: SettingsIcon },

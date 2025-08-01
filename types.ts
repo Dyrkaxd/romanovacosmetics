@@ -1,3 +1,4 @@
+
 import type { FC, SVGProps } from 'react';
 
 export interface Product {
@@ -180,4 +181,29 @@ export interface DashboardData {
   }[];
   recentOrders: Pick<Order, 'id' | 'customerName' | 'totalAmount' | 'status' | 'date'>[];
   topProducts: Pick<TopProduct, 'productName' | 'totalRevenue'>[];
+}
+
+// Types for new features
+export interface GlobalSearchResult {
+  type: 'order' | 'customer' | 'product';
+  id: string;
+  title: string;
+  description: string;
+  url: string;
+}
+
+export interface AIInsight {
+  type: 'low_stock' | 'inactive_customer' | 'general';
+  message: string;
+  severity: 'warning' | 'info' | 'success';
+}
+
+export interface ManagerDashboardData {
+  kpis: {
+    totalSales: KPI;
+    totalProfit: KPI;
+    totalOrders: KPI;
+  };
+  topProducts: Pick<TopProduct, 'productName' | 'totalRevenue'>[];
+  recentOrders: Pick<Order, 'id' | 'customerName' | 'totalAmount' | 'status' | 'date'>[];
 }

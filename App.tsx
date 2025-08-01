@@ -13,6 +13,7 @@ import Header from './components/Header';
 
 // Lazy load all pages for code splitting
 const DashboardPage = React.lazy(() => import('./pages/DashboardPage.tsx'));
+const ManagerDashboardPage = React.lazy(() => import('./pages/ManagerDashboardPage.tsx'));
 const ProductsPage = React.lazy(() => import('./pages/ProductsPage.tsx'));
 const OrdersPage = React.lazy(() => import('./pages/OrdersPage.tsx'));
 const CustomersPage = React.lazy(() => import('./pages/CustomersPage.tsx'));
@@ -31,7 +32,7 @@ const getPageTitle = (pathname: string): string => {
   switch (normalizedPathname) {
     case '': 
     case '/':
-      return 'Панель керування';
+      return 'Огляд'; // Generic title for both dashboards
     case '/products':
       return 'Керування товарами';
     case '/warehouse':
@@ -85,8 +86,7 @@ const MainAppLayout: React.FC = () => {
               {isAdmin ? (
                 <Route path="/" element={<DashboardPage />} />
               ) : (
-                // For managers, redirect root to the default page which is orders
-                <Route path="/" element={<Navigate to="/orders" replace />} />
+                <Route path="/" element={<ManagerDashboardPage />} />
               )}
               {isAdmin && <Route path="/reports" element={<ReportsPage />} />}
               {isAdmin && <Route path="/expenses" element={<ExpensesPage />} />}

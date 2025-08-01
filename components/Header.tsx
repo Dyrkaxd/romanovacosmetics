@@ -4,9 +4,9 @@ import React, { useState, useRef, useEffect, useCallback, FC, SVGProps } from 'r
 import { useNavigate } from 'react-router-dom';
 import { SearchIcon, BellIcon, ChevronDownIcon, XMarkIcon, Bars3Icon, OrdersIcon } from './Icons';
 import { useAuth } from '../AuthContext'; 
-import { Notification } from '../types';
+import { Notification, GlobalSearchResult } from '../types';
 import { authenticatedFetch } from '../utils/api';
-
+import GlobalSearchResults from './GlobalSearchResults';
 
 interface HeaderProps {
   title: string;
@@ -41,6 +41,18 @@ const NotificationIcon: FC<{ type: Notification['type'], props?: SVGProps<SVGSVG
     }
 };
 
+const useDebounce = (value: string, delay: number) => {
+    const [debouncedValue, setDebouncedValue] = useState(value);
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedValue(value);
+        }, delay);
+        return () => clearTimeout(handler);
+    }, [value, delay]);
+    return debouncedValue;
+};
+
+
 const Header: React.FC<HeaderProps> = ({ title, onToggleMobileSidebar }) => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
@@ -52,6 +64,14 @@ const Header: React.FC<HeaderProps> = ({ title, onToggleMobileSidebar }) => {
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const notificationsRef = useRef<HTMLDivElement>(null);
+  
+  // Global Search State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<GlobalSearchResult[]>([]);
+  const [isSearchLoading, setIsSearchLoading] = useState(false);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
+  const debouncedSearchQuery = useDebounce(searchQuery, 400);
 
   const fetchNotifications = useCallback(async () => {
     if (!user) return;
@@ -66,6 +86,33 @@ const Header: React.FC<HeaderProps> = ({ title, onToggleMobileSidebar }) => {
         console.error("Failed to fetch notifications:", error);
     }
   }, [user]);
+  
+  // Global Search Effect
+  useEffect(() => {
+    if (debouncedSearchQuery.length > 2) {
+      const performSearch = async () => {
+        setIsSearchLoading(true);
+        try {
+          const response = await authenticatedFetch(`/api/globalSearch?query=${encodeURIComponent(debouncedSearchQuery)}`);
+          if (response.ok) {
+            const data = await response.json();
+            setSearchResults(data);
+          } else {
+            setSearchResults([]);
+          }
+        } catch (error) {
+          console.error("Global search failed:", error);
+          setSearchResults([]);
+        } finally {
+          setIsSearchLoading(false);
+        }
+      };
+      performSearch();
+    } else {
+      setSearchResults([]);
+    }
+  }, [debouncedSearchQuery]);
+
 
   useEffect(() => {
     fetchNotifications();
@@ -110,6 +157,9 @@ const Header: React.FC<HeaderProps> = ({ title, onToggleMobileSidebar }) => {
       if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) {
         setNotificationsOpen(false);
       }
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setIsSearchFocused(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -119,9 +169,15 @@ const Header: React.FC<HeaderProps> = ({ title, onToggleMobileSidebar }) => {
     signOut();
     setDropdownOpen(false); 
   };
+  
+  const handleSearchResultClick = () => {
+    setIsSearchFocused(false);
+    setSearchQuery('');
+    setSearchResults([]);
+  };
 
   return (
-    <header className="bg-slate-50 p-4 sm:px-6 lg:px-8 sticky top-0 z-20 border-b border-slate-200">
+    <header className="bg-slate-50 p-4 sm:px-6 lg:px-8 sticky top-0 z-30 border-b border-slate-200">
       <div className="flex items-center justify-between">
         <div className="flex items-center">
           <button 
@@ -134,14 +190,25 @@ const Header: React.FC<HeaderProps> = ({ title, onToggleMobileSidebar }) => {
           <h1 className="text-2xl font-bold text-slate-800 tracking-tight">{title}</h1>
         </div>
         <div className="flex items-center space-x-3 sm:space-x-5">
-          <div className="relative hidden sm:block">
+          <div className="relative hidden sm:block" ref={searchRef}>
             <SearchIcon className="w-5 h-5 text-slate-400 absolute top-1/2 left-3 transform -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Пошук..."
-              className="pl-10 pr-4 py-2 text-sm border bg-white border-slate-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 transition-colors w-40 lg:w-64"
-              aria-label="Пошук вмісту"
+              placeholder="AI-пошук: замовлення, товари..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => setIsSearchFocused(true)}
+              className="pl-10 pr-4 py-2 text-sm border bg-white border-slate-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 transition-colors w-40 lg:w-96"
+              aria-label="Глобальний пошук"
             />
+             {isSearchFocused && (searchQuery.length > 0 || isSearchLoading) && (
+              <GlobalSearchResults 
+                results={searchResults} 
+                isLoading={isSearchLoading} 
+                query={debouncedSearchQuery}
+                onResultClick={handleSearchResultClick}
+              />
+            )}
           </div>
            <div className="relative" ref={notificationsRef}>
              <button onClick={handleToggleNotifications} className="text-slate-500 hover:text-rose-600 relative p-2 rounded-full hover:bg-slate-100" aria-label="Сповіщення">

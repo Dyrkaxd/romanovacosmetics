@@ -1,6 +1,7 @@
 
+
 import React, { useState, useEffect, useCallback, useMemo, FC, SVGProps, useRef } from 'react';
-import { DashboardData, Order, TopProduct } from '../types';
+import { DashboardData, AIInsight, Order } from '../types';
 import { OrdersIcon, UsersIcon, CurrencyDollarIcon, LightBulbIcon, ArrowPathIcon, ArrowTrendingUpIcon, ArrowTrendingDownIcon } from '../components/Icons'; 
 import { authenticatedFetch } from '../utils/api';
 import { useAuth } from '../AuthContext';
@@ -165,60 +166,74 @@ const TopProducts: FC<{ products: DashboardData['topProducts']; isLoading: boole
 };
 
 
-const AISummaryCard: React.FC<{ onRegenerate: () => void; }> = ({ onRegenerate }) => {
-  const [summary, setSummary] = useState<string>('');
+const AIInsights: React.FC = () => {
+  const [insights, setInsights] = useState<AIInsight[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchSummary = useCallback(async () => {
+  const fetchInsights = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await authenticatedFetch(`/api/dashboardSummary`);
+      const response = await authenticatedFetch(`/api/aiInsights`);
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Failed to fetch AI summary.' }));
+        const errorData = await response.json().catch(() => ({ message: 'Failed to fetch AI insights.' }));
         throw new Error(errorData.message);
       }
       const data = await response.json();
-      setSummary(data.summary);
+      setInsights(data.insights);
     } catch (err: any) {
-      setError(err.message || 'Could not load AI summary.');
+      setError(err.message || 'Could not load AI insights.');
     } finally {
       setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchSummary();
-  }, [fetchSummary]);
+    fetchInsights();
+  }, [fetchInsights]);
 
 
   return (
-    <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex space-x-4">
-      <div className="p-3 rounded-full bg-amber-50 h-fit">
-        <LightBulbIcon className="w-7 h-7 text-amber-500" />
-      </div>
-      <div className="flex-1">
-        <div className="flex justify-between items-center mb-1">
-            <p className="text-sm text-slate-500 font-medium">AI-аналітика продажів</p>
-            <button
-              onClick={fetchSummary}
-              disabled={isLoading}
-              className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors disabled:opacity-50 disabled:cursor-wait"
-              aria-label="Оновити AI-аналітику"
-            >
-              <ArrowPathIcon className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-            </button>
+    <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+      <div className="flex justify-between items-center mb-4">
+        <div className="flex items-center space-x-3">
+          <div className="p-3 rounded-full bg-amber-50 h-fit">
+            <LightBulbIcon className="w-7 h-7 text-amber-500" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-slate-800">AI Поради</h3>
+            <p className="text-sm text-slate-500">Проактивні поради для вашого бізнесу</p>
+          </div>
         </div>
+        <button
+          onClick={fetchInsights}
+          disabled={isLoading}
+          className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors disabled:opacity-50 disabled:cursor-wait"
+          aria-label="Оновити AI-поради"
+        >
+          <ArrowPathIcon className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+        </button>
+      </div>
+
+      <div className="space-y-3">
         {isLoading ? (
           <div className="space-y-2 mt-2">
-            <div className="h-4 bg-slate-200 rounded w-5/6 animate-pulse"></div>
-            <div className="h-4 bg-slate-200 rounded w-4/6 animate-pulse"></div>
+            {[...Array(2)].map((_, i) => (
+              <div key={i} className="h-10 bg-slate-200 rounded w-full animate-pulse"></div>
+            ))}
           </div>
         ) : error ? (
           <p className="text-sm text-red-600 bg-red-50 p-3 rounded-md">{error}</p>
+        ) : insights.length === 0 ? (
+          <p className="text-sm text-slate-500 text-center py-4">Нових порад від AI немає. Все добре!</p>
         ) : (
-          <p className="text-slate-700 font-medium leading-relaxed">{summary}</p>
+          insights.map((insight, index) => (
+            <div key={index} className={`p-3 rounded-lg border flex items-start space-x-3 ${insight.severity === 'warning' ? 'bg-red-50/50 border-red-200' : 'bg-sky-50/50 border-sky-200'}`}>
+                <span className="text-xl">{insight.severity === 'warning' ? '⚠️' : '📈'}</span>
+                <p className="text-sm text-slate-700 font-medium leading-relaxed">{insight.message}</p>
+            </div>
+          ))
         )}
       </div>
     </div>
@@ -302,9 +317,9 @@ const DashboardPage: React.FC = () => {
             <SalesProfitChart data={data?.chartData || []} isLoading={isLoading}/>
           </div>
           
-          {/* AI Summary and Recent Orders */}
+          {/* AI Insights and Recent Orders */}
           <div className="lg:col-span-2 space-y-6">
-             <AISummaryCard onRegenerate={() => {}}/>
+             <AIInsights />
              <RecentOrders orders={data?.recentOrders || []} isLoading={isLoading}/>
           </div>
           
