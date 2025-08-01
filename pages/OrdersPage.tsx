@@ -484,11 +484,14 @@ const OrdersPage: React.FC = () => {
                                     </button>
                                     {openActionMenu === order.id && (
                                         <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl py-1 z-10 ring-1 ring-black ring-opacity-5">
-                                            {/* Simplified actions for mobile */}
                                             <button onClick={() => {openViewModal(order); setOpenActionMenu(null);}} className="w-full text-left flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"><EyeIcon className="w-4 h-4 mr-2"/> Переглянути</button>
                                             <button onClick={() => {openEditModal(order); setOpenActionMenu(null);}} className="w-full text-left flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"><PencilIcon className="w-4 h-4 mr-2"/> Редагувати</button>
-                                            <hr/>
-                                            <button onClick={() => {handleDeleteOrder(order.id); setOpenActionMenu(null);}} className="w-full text-left flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50"><TrashIcon className="w-4 h-4 mr-2"/> Видалити</button>
+                                             <hr className="my-1"/>
+                                            <a href={`/#/invoice/${order.id}`} target="_blank" rel="noopener noreferrer" className="w-full text-left flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"><DocumentTextIcon className="w-4 h-4 mr-2"/> Рахунок-фактура</a>
+                                            <a href={`/#/bill-of-lading/${order.id}`} target="_blank" rel="noopener noreferrer" className="w-full text-left flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"><DocumentTextIcon className="w-4 h-4 mr-2"/> ТТН</a>
+                                            <button onClick={() => {navigator.clipboard.writeText(`${window.location.origin}/#/invoice/${order.id}`); setSuccessMessage('Посилання на рахунок скопійовано!'); setOpenActionMenu(null);}} className="w-full text-left flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"><ShareIcon className="w-4 h-4 mr-2"/> Поділитися рахунком</button>
+                                            <hr className="my-1"/>
+                                            <button onClick={() => {handleDeleteOrder(order.id); setOpenActionMenu(null);}} className="w-full text-left flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700"><TrashIcon className="w-4 h-4 mr-2"/> Видалити</button>
                                         </div>
                                     )}
                                 </div>
