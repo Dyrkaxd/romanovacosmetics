@@ -68,6 +68,7 @@ const CustomersPage: React.FC = () => {
   const [customerOrders, setCustomerOrders] = useState<Order[]>([]);
   const [isCustomerOrdersLoading, setIsCustomerOrdersLoading] = useState(false);
   const [customerOrdersError, setCustomerOrdersError] = useState<string | null>(null);
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
 
 
   const API_BASE_URL = '/api';
@@ -246,6 +247,7 @@ const CustomersPage: React.FC = () => {
     setModalError(null);
     setCustomerOrders([]);
     setCustomerOrdersError(null);
+    setExpandedOrderId(null);
   };
 
   const handleDeleteCustomer = async (customerId: string) => {
@@ -273,6 +275,10 @@ const CustomersPage: React.FC = () => {
         setIsLoading(false);
       }
     }
+  };
+
+  const handleToggleOrderDetails = (orderId: string) => {
+    setExpandedOrderId(prevId => (prevId === orderId ? null : orderId));
   };
 
   return (
@@ -483,12 +489,37 @@ const CustomersPage: React.FC = () => {
                             </thead>
                             <tbody className="bg-white divide-y divide-slate-200">
                                 {customerOrders.map(order => (
-                                    <tr key={order.id}>
-                                        <td className="px-4 py-2 whitespace-nowrap font-semibold text-rose-600">#{order.id.substring(0, 6)}</td>
-                                        <td className="px-4 py-2 whitespace-nowrap">{new Date(order.date).toLocaleDateString()}</td>
-                                        <td className="px-4 py-2 whitespace-nowrap"><StatusPill status={order.status} /></td>
-                                        <td className="px-4 py-2 whitespace-nowrap text-right font-medium">₴{order.totalAmount.toFixed(2)}</td>
-                                    </tr>
+                                    <React.Fragment key={order.id}>
+                                        <tr onClick={() => handleToggleOrderDetails(order.id)} className="cursor-pointer hover:bg-slate-50 transition-colors">
+                                            <td className="px-4 py-2 whitespace-nowrap font-semibold text-rose-600">#{order.id.substring(0, 6)}</td>
+                                            <td className="px-4 py-2 whitespace-nowrap">{new Date(order.date).toLocaleDateString()}</td>
+                                            <td className="px-4 py-2 whitespace-nowrap"><StatusPill status={order.status} /></td>
+                                            <td className="px-4 py-2 whitespace-nowrap text-right font-medium">₴{order.totalAmount.toFixed(2)}</td>
+                                        </tr>
+                                        {expandedOrderId === order.id && (
+                                            <tr className="bg-slate-50/70">
+                                                <td colSpan={4} className="p-3">
+                                                    <h5 className="font-semibold text-sm text-slate-700 mb-2">Товари в замовленні:</h5>
+                                                    <ul className="divide-y divide-slate-200 border border-slate-200 rounded-md bg-white text-xs">
+                                                        <li className="grid grid-cols-5 gap-2 px-2 py-1 font-semibold text-slate-500">
+                                                            <span className="col-span-2">Назва</span>
+                                                            <span className="text-center">К-сть</span>
+                                                            <span className="text-right">Ціна</span>
+                                                            <span className="text-right">Всього</span>
+                                                        </li>
+                                                        {order.items.map((item, itemIdx) => (
+                                                            <li key={item.id || itemIdx} className="grid grid-cols-5 gap-2 px-2 py-1.5 items-center">
+                                                                <span className="col-span-2 text-slate-800">{item.productName}</span>
+                                                                <span className="text-center text-slate-600">{item.quantity}</span>
+                                                                <span className="text-right text-slate-600">₴{item.price.toFixed(2)}</span>
+                                                                <span className="text-right text-slate-800 font-medium">₴{(item.quantity * item.price * (1 - (item.discount || 0)/100)).toFixed(2)}</span>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </React.Fragment>
                                 ))}
                             </tbody>
                         </table>
