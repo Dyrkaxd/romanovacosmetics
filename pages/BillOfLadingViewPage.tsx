@@ -96,17 +96,17 @@ const BillOfLadingViewPage: React.FC = () => {
     }
 
     return (
-        <div className="bg-slate-100 min-h-screen py-12 px-4 sm:px-6 lg:px-8 printable-area">
-            <div className="max-w-3xl mx-auto bg-white shadow-lg rounded-lg">
-                <div className="p-8 sm:p-12 break-words">
-                    <header className="flex justify-between items-start pb-8 border-b border-slate-200">
+        <div className="bg-slate-100 min-h-screen py-6 sm:py-12 px-2 sm:px-6 lg:px-8 printable-area">
+            <div className="max-w-4xl mx-auto bg-white shadow-lg rounded-lg">
+                <div className="p-4 sm:p-8 lg:p-12 break-words">
+                    <header className="flex flex-col sm:flex-row justify-between items-start pb-8 border-b border-slate-200">
                         <div>
                             <img src={logoBase64} alt="Romanova Cosmetics Logo" className="h-16 w-16 mb-4" />
                             <h1 className="text-2xl font-bold text-slate-800">ROMANOVA</h1>
                             <p className="text-slate-500">Cosmetics</p>
                         </div>
-                        <div className="text-right">
-                             <h2 className="text-2xl font-bold text-slate-700 uppercase tracking-wider">Товарно-транспортна накладна (ТТН)</h2>
+                        <div className="text-left sm:text-right mt-4 sm:mt-0">
+                             <h2 className="text-xl sm:text-2xl font-bold text-slate-700 uppercase tracking-wider">Товарно-транспортна накладна (ТТН)</h2>
                              <p className="text-slate-500 mt-2">до замовлення #{order.id.substring(0,8)}</p>
                              <p className="text-slate-500">від {new Date(order.date).toLocaleDateString('uk-UA')}</p>
                         </div>
@@ -125,7 +125,7 @@ const BillOfLadingViewPage: React.FC = () => {
                             <p className="text-slate-600">{customer.address.city}, {customer.address.state} {customer.address.zip}</p>
                         </div>
                     </section>
-                    <section>
+                    <section className="overflow-x-auto">
                          <h3 className="text-lg font-semibold text-slate-800 mb-4">Відомості про вантаж</h3>
                         <table className="w-full text-left">
                             <thead className="bg-slate-50">
@@ -156,7 +156,7 @@ const BillOfLadingViewPage: React.FC = () => {
                             </tfoot>
                         </table>
                     </section>
-                    <footer className="grid grid-cols-2 gap-8 pt-12 mt-12 border-t border-slate-200 text-sm">
+                    <footer className="grid grid-cols-1 sm:grid-cols-2 gap-8 pt-12 mt-12 border-t border-slate-200 text-sm">
                         <div>
                             <p className="text-slate-800">Здав (підпис відправника)</p>
                             <div className="mt-12 border-b border-slate-400"></div>

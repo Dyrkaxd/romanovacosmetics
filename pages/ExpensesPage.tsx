@@ -152,14 +152,15 @@ const ExpensesPage: React.FC = () => {
             {pageError && <div role="alert" className="p-4 bg-red-50 text-red-700 rounded-lg">{pageError}</div>}
             
             <div className="bg-white shadow-sm rounded-xl border border-slate-200">
-                <div className="overflow-x-auto">
+                {/* Desktop Table View */}
+                <div className="overflow-x-auto hidden md:block">
                     <table className="min-w-full divide-y divide-slate-200">
                         <thead className="bg-slate-50">
                             <tr>
                                 <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500">Назва</th>
                                 <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500">Сума</th>
                                 <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500">Дата</th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 hidden md:table-cell">Нотатки</th>
+                                <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500">Нотатки</th>
                                 <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500">Дії</th>
                             </tr>
                         </thead>
@@ -172,7 +173,7 @@ const ExpensesPage: React.FC = () => {
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-800">{exp.name}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-red-600">₴{exp.amount.toFixed(2)}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{new Date(exp.date).toLocaleDateString()}</td>
-                                        <td className="px-6 py-4 text-sm text-slate-600 hidden md:table-cell truncate max-w-sm">{exp.notes}</td>
+                                        <td className="px-6 py-4 text-sm text-slate-600 truncate max-w-sm">{exp.notes}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-1">
                                             <button onClick={() => openEditModal(exp)} className="p-2 text-slate-500 hover:text-rose-600"><PencilIcon className="w-5 h-5"/></button>
                                             <button onClick={() => handleDelete(exp.id)} className="p-2 text-slate-500 hover:text-red-600"><TrashIcon className="w-5 h-5"/></button>
@@ -185,6 +186,37 @@ const ExpensesPage: React.FC = () => {
                         </tbody>
                     </table>
                 </div>
+
+                {/* Mobile Card View */}
+                <div className="md:hidden">
+                    {isLoading ? (
+                        <div className="p-6 text-center text-sm text-slate-500">Завантаження...</div>
+                    ) : expenses.length > 0 ? (
+                        <ul className="divide-y divide-slate-200">
+                            {expenses.map(exp => (
+                                <li key={exp.id} className="p-4 space-y-3">
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <p className="font-semibold text-slate-800 pr-4">{exp.name}</p>
+                                            <p className="text-sm font-bold text-red-500">₴{exp.amount.toFixed(2)}</p>
+                                        </div>
+                                        <div className="flex-shrink-0 flex items-center space-x-1">
+                                            <button onClick={() => openEditModal(exp)} className="p-2 text-slate-500 hover:text-rose-600 rounded-md hover:bg-rose-50"><PencilIcon className="w-5 h-5"/></button>
+                                            <button onClick={() => handleDelete(exp.id)} className="p-2 text-slate-500 hover:text-red-600 rounded-md hover:bg-red-50"><TrashIcon className="w-5 h-5"/></button>
+                                        </div>
+                                    </div>
+                                    <div className="text-sm text-slate-600 space-y-1 pt-3 border-t">
+                                        <p><span className="font-medium">Дата:</span> {new Date(exp.date).toLocaleDateString()}</p>
+                                        {exp.notes && <p><span className="font-medium">Нотатки:</span> {exp.notes}</p>}
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <div className="px-6 py-10 text-center text-sm text-slate-500">Витрат не знайдено.</div>
+                    )}
+                </div>
+
                 {totalCount > 0 && <Pagination currentPage={currentPage} totalCount={totalCount} pageSize={pageSize} onPageChange={handlePageChange} onPageSizeChange={handlePageSizeChange} isLoading={isLoading} />}
             </div>
 

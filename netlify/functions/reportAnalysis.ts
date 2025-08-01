@@ -1,7 +1,7 @@
 
 
 import { Handler } from '@netlify/functions';
-import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
+import { GoogleGenAI, GenerateContentResponse, Type } from "@google/genai";
 import { requireAuth } from '../utils/auth';
 import type { ReportData } from '../../types';
 
@@ -46,18 +46,22 @@ const handler: Handler = async (event) => {
             top_revenue_group: reportData.revenueByGroup.length > 0 ? reportData.revenueByGroup[0].group : 'N/A'
         };
 
-        const prompt = `Ти досвідчений бізнес-аналітик для компанії косметики. Проаналізуй наступні зведені дані звіту про продажі. Надай короткий, але глибокий аналіз (2-3 речення, українською мовою). Твій аналіз повинен оцінити чисту прибутковість, враховуючи доходи та витрати. Виділи ключові моменти та запропонуй одну дієву пораду для збільшення чистого прибутку.
+        const prompt = `You are an expert business analyst for a cosmetics company. Analyze the following summary sales report data. Provide a brief but insightful analysis (2-3 sentences, in Ukrainian). Your analysis should assess profitability considering revenue and expenses. Highlight key takeaways and offer one actionable piece of advice to increase net profit.
 
-Зведені дані звіту:
+Summary Report Data:
 ${JSON.stringify(compactData, null, 2)}
 
-Твій AI-аналіз звіту:`;
+Your AI report analysis:`;
 
         const ai = new GoogleGenAI({ apiKey });
-
+        
         const response: GenerateContentResponse = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: prompt
+            contents: prompt,
+            config: {
+                // Ensure a simple text response
+                responseMimeType: "text/plain",
+            }
         });
 
         const summaryText = response.text;

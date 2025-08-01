@@ -98,16 +98,16 @@ const InvoiceViewPage: React.FC = () => {
     const totalDiscount = subtotal - order.totalAmount;
 
     return (
-        <div className="bg-slate-100 min-h-screen py-12 px-4 sm:px-6 lg:px-8 printable-area">
-            <div className="max-w-3xl mx-auto bg-white shadow-lg rounded-lg">
-                <div className="p-8 sm:p-12 break-words">
-                    <header className="flex justify-between items-start pb-8 border-b border-slate-200">
+        <div className="bg-slate-100 min-h-screen py-6 sm:py-12 px-2 sm:px-6 lg:px-8 printable-area">
+            <div className="max-w-4xl mx-auto bg-white shadow-lg rounded-lg">
+                <div className="p-4 sm:p-8 lg:p-12 break-words">
+                    <header className="flex flex-col sm:flex-row justify-between items-start pb-8 border-b border-slate-200">
                         <div>
                             <img src={logoBase64} alt="Romanova Cosmetics Logo" className="h-16 w-16 mb-4" />
                             <h1 className="text-3xl font-bold text-slate-800">ROMANOVA</h1>
                             <p className="text-slate-500">Cosmetics</p>
                         </div>
-                        <div className="text-right">
+                        <div className="text-left sm:text-right mt-4 sm:mt-0">
                              <h2 className="text-3xl font-bold text-rose-600 uppercase tracking-wider">Рахунок</h2>
                              <p className="text-slate-500 mt-2">#{order.id.substring(0,8)}</p>
                         </div>
@@ -125,7 +125,7 @@ const InvoiceViewPage: React.FC = () => {
                              <p className="mt-2 text-slate-700">{new Date(order.date).toLocaleDateString('uk-UA', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
                         </div>
                     </section>
-                    <section>
+                    <section className="overflow-x-auto">
                         <table className="w-full text-left">
                             <thead className="bg-slate-50">
                                 <tr>

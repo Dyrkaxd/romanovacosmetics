@@ -406,14 +406,15 @@ const OrdersPage: React.FC = () => {
         )}
       </div>
 
-      {/* Orders Table */}
+      {/* Orders List */}
       <div className="bg-white shadow-sm rounded-xl overflow-hidden border border-slate-200">
-        <div className="overflow-x-auto">
+        {/* Desktop Table View */}
+        <div className="overflow-x-auto hidden md:block">
           <table className="min-w-full divide-y divide-slate-200">
             <thead className="bg-slate-50">
               <tr>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Клієнт / ID</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider hidden md:table-cell">Дата</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Дата</th>
                 {isAdmin && <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider hidden lg:table-cell">Менеджер</th>}
                 <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Сума</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Статус</th>
@@ -430,7 +431,7 @@ const OrdersPage: React.FC = () => {
                         <div className="font-semibold text-slate-800">{order.customerName}</div>
                         <div className="text-xs text-slate-500">ID: #{order.id.substring(0, 8)}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 hidden md:table-cell">{new Date(order.date).toLocaleDateString()}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{new Date(order.date).toLocaleDateString()}</td>
                     {isAdmin && <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 hidden lg:table-cell">{allOrderManagers.find(m => m.email === order.managedByUserEmail)?.name || order.managedByUserEmail || 'N/A'}</td>}
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-800">₴{order.totalAmount.toFixed(2)}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm"><StatusPill status={order.status}/></td>
@@ -462,6 +463,51 @@ const OrdersPage: React.FC = () => {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Card View */}
+        <div className="md:hidden">
+            {isLoading ? (
+                 <div className="px-6 py-10 text-center text-sm text-slate-500">Завантаження замовлень...</div>
+            ) : orders.length > 0 ? (
+                <ul className="divide-y divide-slate-200">
+                    {orders.map(order => (
+                        <li key={order.id} className="p-4 space-y-3">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <p className="font-semibold text-slate-800">{order.customerName}</p>
+                                    <p className="text-xs text-slate-500">ID: #{order.id.substring(0, 8)}</p>
+                                </div>
+                                 <div className="relative" ref={el => { actionMenuRefs.current[order.id] = el; }}>
+                                    <button onClick={() => setOpenActionMenu(openActionMenu === order.id ? null : order.id)} className="p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-full">
+                                        <EllipsisVerticalIcon className="w-5 h-5"/>
+                                    </button>
+                                    {openActionMenu === order.id && (
+                                        <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl py-1 z-10 ring-1 ring-black ring-opacity-5">
+                                            {/* Simplified actions for mobile */}
+                                            <button onClick={() => {openViewModal(order); setOpenActionMenu(null);}} className="w-full text-left flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"><EyeIcon className="w-4 h-4 mr-2"/> Переглянути</button>
+                                            <button onClick={() => {openEditModal(order); setOpenActionMenu(null);}} className="w-full text-left flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"><PencilIcon className="w-4 h-4 mr-2"/> Редагувати</button>
+                                            <hr/>
+                                            <button onClick={() => {handleDeleteOrder(order.id); setOpenActionMenu(null);}} className="w-full text-left flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50"><TrashIcon className="w-4 h-4 mr-2"/> Видалити</button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="flex justify-between items-center text-sm pt-3 border-t">
+                                <StatusPill status={order.status} />
+                                <div className="text-right">
+                                    <p className="font-bold text-slate-800">₴{order.totalAmount.toFixed(2)}</p>
+                                    <p className="text-xs text-slate-500">{new Date(order.date).toLocaleDateString()}</p>
+                                </div>
+                            </div>
+                        </li>
+                    ))}
+                </ul>
+            ) : (
+                <div className="px-6 py-10 text-center text-sm text-slate-500">
+                  {!pageError && (totalCount === 0 && searchTerm === '' ? "Замовлень ще немає." : "Замовлень не знайдено.")}
+                </div>
+            )}
         </div>
         {totalCount > 0 && <Pagination currentPage={currentPage} totalCount={totalCount} pageSize={pageSize} onPageChange={handlePageChange} onPageSizeChange={handlePageSizeChange} isLoading={isLoading} />}
       </div>

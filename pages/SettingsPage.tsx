@@ -235,8 +235,8 @@ const SettingsPage: React.FC = () => {
            <p className="text-sm text-slate-500 mb-6">Встановіть курс UAH/$ для всіх товарів або для окремих груп.</p>
            <div className="space-y-4 mb-8 pb-6 border-b border-slate-200">
               <h4 className="text-md font-semibold text-slate-700">Глобальне оновлення</h4>
-              <div className="flex items-center space-x-2">
-                <input type="number" placeholder="Наприклад, 40.55" value={globalRate} onChange={(e) => setGlobalRate(e.target.value)} min="0" step="0.01" className="block w-full max-w-xs border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500 sm:text-sm p-2.5" disabled={isRateLoading.global}/>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                <input type="number" placeholder="Наприклад, 40.55" value={globalRate} onChange={(e) => setGlobalRate(e.target.value)} min="0" step="0.01" className="block w-full sm:max-w-xs border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500 sm:text-sm p-2.5" disabled={isRateLoading.global}/>
                 <button onClick={() => handleExchangeRateUpdate()} disabled={isRateLoading.global || !globalRate} className="bg-rose-500 hover:bg-rose-600 text-white font-semibold py-2.5 px-4 rounded-lg shadow-sm transition-colors disabled:opacity-50">
                   {isRateLoading.global ? 'Оновлення...' : 'Зберегти для всіх'}
                 </button>
@@ -261,12 +261,12 @@ const SettingsPage: React.FC = () => {
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
           <h3 className="text-lg font-semibold text-slate-700 mb-1 flex items-center"><UsersIcon className="w-6 h-6 mr-2 text-rose-500"/>Керування адміністраторами</h3>
           <p className="text-sm text-slate-500 mb-6">Додавайте та видаляйте користувачів з правами адміністратора.</p>
-          <form onSubmit={handleAddAdmin} className="flex items-end space-x-2 mb-8 pb-6 border-b border-slate-200">
+          <form onSubmit={handleAddAdmin} className="flex flex-col sm:flex-row sm:items-end gap-2 mb-8 pb-6 border-b border-slate-200">
               <div className="flex-grow">
                 <label htmlFor="adminEmail" className="block text-sm font-medium text-slate-700 mb-1">Email нового адміністратора</label>
                 <input type="email" id="adminEmail" value={newAdminEmail} onChange={(e) => setNewAdminEmail(e.target.value)} className="block w-full border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500 sm:text-sm p-2.5" placeholder="admin@example.com" required disabled={isLoadingAdmins}/>
               </div>
-              <button type="submit" className="flex items-center bg-rose-500 hover:bg-rose-600 text-white font-semibold py-2.5 px-4 rounded-lg shadow-sm transition-colors disabled:opacity-50" disabled={isLoadingAdmins || !newAdminEmail}>
+              <button type="submit" className="flex-shrink-0 w-full sm:w-auto flex items-center justify-center bg-rose-500 hover:bg-rose-600 text-white font-semibold py-2.5 px-4 rounded-lg shadow-sm transition-colors disabled:opacity-50" disabled={isLoadingAdmins || !newAdminEmail}>
                 <PlusIcon className="w-5 h-5 mr-2" /> Додати
               </button>
           </form>
@@ -274,12 +274,12 @@ const SettingsPage: React.FC = () => {
           {isLoadingAdmins ? <p>Завантаження...</p> : (
             <ul className="space-y-2">
               {admins.map(admin => (
-                <li key={admin.email} className="flex justify-between items-center p-3 bg-slate-50 rounded-lg border">
+                <li key={admin.email} className="flex flex-col sm:flex-row justify-between sm:items-center p-3 bg-slate-50 rounded-lg border gap-2">
                   <div>
-                    <p className="font-medium text-slate-800">{admin.email}</p>
+                    <p className="font-medium text-slate-800 break-all">{admin.email}</p>
                     <p className="text-xs text-slate-500">Додано: {new Date(admin.created_at).toLocaleDateString()}</p>
                   </div>
-                  <button onClick={() => handleRemoveAdmin(admin.email)} disabled={isLoadingAdmins || admin.email === user?.email} className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-md disabled:opacity-50 disabled:cursor-not-allowed" title={admin.email === user?.email ? "Ви не можете видалити себе" : "Видалити адміністратора"}>
+                  <button onClick={() => handleRemoveAdmin(admin.email)} disabled={isLoadingAdmins || admin.email === user?.email} className="self-end sm:self-center p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-md disabled:opacity-50 disabled:cursor-not-allowed" title={admin.email === user?.email ? "Ви не можете видалити себе" : "Видалити адміністратора"}>
                       <TrashIcon className="w-5 h-5"/>
                   </button>
                 </li>
@@ -311,7 +311,7 @@ const SettingsPage: React.FC = () => {
                           <p className="font-semibold text-slate-800">{manager.name}</p>
                           <p className="text-sm text-slate-500">{manager.email}</p>
                       </div>
-                      <div className="flex items-center space-x-2 mt-3 sm:mt-0">
+                      <div className="flex items-center space-x-2 mt-3 sm:mt-0 self-end sm:self-center">
                           <button onClick={() => openEditModal(manager)} className="text-slate-500 hover:text-indigo-600 p-2 hover:bg-indigo-50 rounded-md" aria-label={`Редагувати ${manager.name}`}><PencilIcon className="w-5 h-5"/></button>
                           <button onClick={() => handleRemoveManager(manager.id)} className="text-slate-500 hover:text-red-600 p-2 hover:bg-red-50 rounded-md" aria-label={`Видалити ${manager.name}`}><TrashIcon className="w-5 h-5"/></button>
                       </div>

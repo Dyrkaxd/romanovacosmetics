@@ -134,7 +134,8 @@ const WarehousePage: React.FC = () => {
             </div>
 
             <div className="bg-white shadow-sm rounded-xl border border-slate-200">
-                <div className="overflow-x-auto">
+                {/* Desktop Table View */}
+                <div className="overflow-x-auto hidden md:block">
                     <table className="min-w-full divide-y divide-slate-200">
                         <thead className="bg-slate-50">
                             <tr>
@@ -190,6 +191,55 @@ const WarehousePage: React.FC = () => {
                             )}
                         </tbody>
                     </table>
+                </div>
+
+                {/* Mobile Card View */}
+                <div className="md:hidden">
+                    {isLoading ? (
+                        <div className="p-6 text-center text-sm text-slate-500">Завантаження даних складу...</div>
+                    ) : filteredProducts.length > 0 ? (
+                         <ul className="divide-y divide-slate-200">
+                            {filteredProducts.map(product => {
+                                const isEditing = editingQuantities[product.id] !== undefined;
+                                const currentValue = isEditing ? editingQuantities[product.id] : product.quantity;
+                                const isSaving = savingStates[product.id];
+                                return (
+                                    <li key={product.id} className={`p-4 space-y-3 transition-colors ${isEditing ? 'bg-amber-50' : 'bg-white'}`}>
+                                        <div className="flex justify-between items-start">
+                                            <p className="font-semibold text-slate-800 pr-4">{product.name}</p>
+                                            <span className="font-medium text-rose-600 bg-rose-50 px-2.5 py-0.5 rounded-full text-xs inline-block flex-shrink-0">{product.group}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2 pt-3 border-t">
+                                            <label htmlFor={`quantity-${product.id}`} className="text-sm font-medium text-slate-700">К-сть:</label>
+                                            <input
+                                                type="number"
+                                                id={`quantity-${product.id}`}
+                                                value={currentValue}
+                                                onChange={(e) => handleQuantityChange(product.id, e.target.value)}
+                                                onKeyDown={(e) => e.key === 'Enter' && handleSaveQuantity(product.id)}
+                                                min="0"
+                                                className="w-24 p-2 border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500"
+                                                disabled={isSaving}
+                                            />
+                                            {isEditing && (
+                                                <button
+                                                    onClick={() => handleSaveQuantity(product.id)}
+                                                    disabled={isSaving}
+                                                    className="px-3 py-2 bg-rose-500 hover:bg-rose-600 text-white font-semibold text-xs rounded-lg shadow-sm transition-colors disabled:opacity-50"
+                                                >
+                                                    {isSaving ? '...' : 'Зберегти'}
+                                                </button>
+                                            )}
+                                        </div>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    ) : (
+                        <div className="px-6 py-10 text-center text-sm text-slate-500">
+                            {products.length === 0 ? "На складі немає товарів." : "Товарів, що відповідають фільтрам, не знайдено."}
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
