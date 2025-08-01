@@ -547,7 +547,15 @@ const OrdersPage: React.FC = () => {
                                             </div>
                                             <div className="col-span-4 md:col-span-2">
                                                 <label className="md:hidden text-xs font-medium text-slate-600 mb-1 block">Ціна</label>
-                                                <input type="number" value={item.price} onChange={e => handleItemChange(index, 'price', parseFloat(e.target.value) || 0)} step="0.01" min="0" className="w-full text-center p-2 border-slate-300 rounded-lg"/>
+                                                <input 
+                                                    type="number" 
+                                                    value={item.price.toFixed(2)} 
+                                                    readOnly 
+                                                    step="0.01" 
+                                                    min="0"
+                                                    aria-label="Ціна товару (автоматично)" 
+                                                    className="w-full text-center p-2 border-slate-300 rounded-lg bg-slate-100 cursor-not-allowed focus:ring-0 focus:border-slate-300"
+                                                />
                                             </div>
                                             <div className="col-span-4 md:col-span-2">
                                                  <label className="md:hidden text-xs font-medium text-slate-600 mb-1 block">Знижка</label>
