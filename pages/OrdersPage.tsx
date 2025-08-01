@@ -294,6 +294,7 @@ const OrdersPage: React.FC = () => {
     itemToUpdate.exchangeRate = product.exchangeRate;
     items[index] = itemToUpdate;
     recalculateTotal(items);
+    setOpenProductDropdown(null);
   };
 
 
@@ -520,18 +521,28 @@ const OrdersPage: React.FC = () => {
                                         <div className="grid grid-cols-12 gap-x-4 gap-y-2 items-start">
                                             <div className="col-span-12 md:col-span-5 relative" ref={el => { productDropdownRefs.current[index] = el; }}>
                                                 <label className="md:hidden text-xs font-medium text-slate-600 mb-1 block">Товар</label>
-                                                <input type="text" placeholder="Пошук товару..." 
-                                                    defaultValue={item.productName}
-                                                    onFocus={() => { setOpenProductDropdown(index); setProductSearchTerm(item.productName || ''); setProductSearchResults([]); }}
-                                                    onChange={e => setProductSearchTerm(e.target.value)}
-                                                    className="w-full p-2 border-slate-300 rounded-lg"/>
+                                                <input
+                                                  type="text"
+                                                  placeholder="Пошук товару..."
+                                                  value={item.productName || ''}
+                                                  onFocus={() => {
+                                                    setOpenProductDropdown(index);
+                                                    setProductSearchTerm(item.productName || '');
+                                                    setProductSearchResults([]);
+                                                  }}
+                                                  onChange={e => {
+                                                    handleItemChange(index, 'productName', e.target.value);
+                                                    setProductSearchTerm(e.target.value);
+                                                  }}
+                                                  className="w-full p-2 border-slate-300 rounded-lg"
+                                                />
                                                 {openProductDropdown === index && (
                                                     <div className="absolute top-full left-0 w-full max-h-60 overflow-y-auto bg-white border shadow-lg z-20 rounded-b-lg">
                                                         {isProductSearching ? (
                                                             <div className="p-2 text-sm text-slate-500">Пошук...</div>
                                                         ) : productSearchResults.length > 0 ? (
                                                             productSearchResults.map(p => (
-                                                                <div key={p.id} onClick={() => { handleProductSelect(index, p); setOpenProductDropdown(null); }} className="p-2 hover:bg-rose-100 cursor-pointer text-sm">
+                                                                <div key={p.id} onClick={() => { handleProductSelect(index, p); }} className="p-2 hover:bg-rose-100 cursor-pointer text-sm">
                                                                     {p.name}
                                                                 </div>
                                                             ))

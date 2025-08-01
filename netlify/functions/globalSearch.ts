@@ -69,7 +69,7 @@ const searchProducts = async (filters: any): Promise<GlobalSearchResult[]> => {
     if (tablesToSearch.length === 0) tablesToSearch = Object.values(productGroupsMap);
 
     for (const tableName of tablesToSearch) {
-        let query = supabase.from(tableName).select('id, name, quanity, group:name').limit(5); // Add group name
+        let query = supabase.from(tableName).select('id, name, quanity').limit(5);
         if (filters.name) {
             query.ilike('name', `%${filters.name}%`);
         }

@@ -1,8 +1,6 @@
-
-
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import { supabase } from '../../services/supabaseClient';
-import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
+import { GoogleGenAI, GenerateContentResponse, Type } from "@google/genai";
 import { requireAuth, AuthError } from '../utils/auth';
 import type { AIInsight } from '../../types';
 
@@ -97,30 +95,60 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       return { statusCode: 200, headers: commonHeaders, body: JSON.stringify({ insights: [] }) };
     }
 
-    // 3. Generate human-readable insights with Gemini
+    // 3. Generate human-readable insights with Gemini using a JSON schema
     const ai = new GoogleGenAI({ apiKey });
-    const prompt = `Ти - помічник з бізнес-аналітики для косметичної компанії. Проаналізуй наступні сирі дані та перетвори їх на короткі, дієві поради для власника бізнесу. Відповідай українською мовою. Використовуй емодзі, щоб привернути увагу.
 
-Сирі дані:
+    const aiInsightSchema = {
+      type: Type.ARRAY,
+      items: {
+          type: Type.OBJECT,
+          properties: {
+              message: {
+                  type: Type.STRING,
+                  description: "The human-readable insight or warning message in Ukrainian, including relevant emojis.",
+              },
+              severity: {
+                  type: Type.STRING,
+                  enum: ["warning", "info"],
+                  description: "'warning' for critical issues like low stock, 'info' for opportunities like inactive customers.",
+              },
+          },
+          required: ["message", "severity"],
+      },
+    };
+
+    const prompt = `You are a business intelligence assistant for a cosmetics company. Analyze the following raw data points and convert them into a JSON array of short, actionable insights for the business owner. Respond ONLY with the JSON array that matches the provided schema. Use Ukrainian language for the messages. Use emojis to draw attention.
+
+- For 'low_stock' items, create a 'warning' insight. Example: "⚠️ Увага: запаси товару 'Product Name' закінчуються. Залишилось X шт."
+- For 'inactive_customer' items, create an 'info' insight. Example: "📈 Можливість: Клієнт 'Customer Name' не робив замовлень вже X днів. Варто запропонувати знижку."
+
+Raw Data:
 ${JSON.stringify(rawInsights.slice(0, 5), null, 2)} 
 
-Твої відформатовані поради:`;
+Your JSON response:`;
 
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
-        contents: prompt
+        contents: prompt,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: aiInsightSchema,
+        },
     });
 
-    const text = response.text;
-    if (!text) {
-        throw new Error('AI service failed to generate insights.');
+    let insightsArray: { message: string; severity: 'warning' | 'info' }[] = [];
+    try {
+        insightsArray = JSON.parse(response.text);
+    } catch (e) {
+        console.error("Failed to parse JSON response from Gemini:", response.text);
+        throw new Error("AI service returned an invalid response.");
     }
-
-    const generatedInsights: AIInsight[] = text.trim().split('\n').map(line => {
-        const message = line.replace(/(\*|⚠️|📈)/g, '').trim();
-        const severity = line.includes('⚠️') || line.toLowerCase().includes('увага') ? 'warning' : 'info';
-        return { type: 'general', message, severity };
-    });
+    
+    // Add the 'type' property which is not part of the AI response for simplicity
+    const generatedInsights: AIInsight[] = insightsArray.map((insight) => ({
+        ...insight,
+        type: insight.severity === 'warning' ? 'low_stock' : 'inactive_customer',
+    }));
     
     return { statusCode: 200, headers: commonHeaders, body: JSON.stringify({ insights: generatedInsights }) };
 

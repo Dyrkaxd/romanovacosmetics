@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useCallback, useMemo, FC, SVGProps, useRef } from 'react';
 import { DashboardData, AIInsight, Order } from '../types';
 import { OrdersIcon, UsersIcon, CurrencyDollarIcon, LightBulbIcon, ArrowPathIcon, ArrowTrendingUpIcon, ArrowTrendingDownIcon } from '../components/Icons'; 
@@ -175,7 +173,7 @@ const AIInsights: React.FC = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await authenticatedFetch(`/api/aiInsights`);
+      const response = await authenticatedFetch(`/api/dashboardSummary`);
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: 'Failed to fetch AI insights.' }));
         throw new Error(errorData.message);
