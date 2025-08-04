@@ -3,7 +3,7 @@ import { Order, OrderItem, Customer, Product, ManagedUser, PaginatedResponse } f
 import { EyeIcon, XMarkIcon, PlusIcon, TrashIcon, PencilIcon, DocumentTextIcon, FilterIcon, DownloadIcon, ChevronDownIcon, ShareIcon, LightBulbIcon } from '../components/Icons';
 import { authenticatedFetch } from '../utils/api';
 import Pagination from '../components/Pagination';
-import { useAuth } from '../utils/auth';
+import { useAuth } from '../AuthContext';
 import { useNavigate } from 'react-router-dom';
 
 const orderStatusValues: Order['status'][] = ['Ordered', 'Shipped', 'Received', 'Calculation', 'AwaitingApproval', 'PaidByClient', 'WrittenOff', 'ReadyForPickup'];
