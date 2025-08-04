@@ -59,6 +59,7 @@ const CustomersPage: React.FC = () => {
   const [modalError, setModalError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [filter, setFilter] = useState('default');
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -73,7 +74,7 @@ const CustomersPage: React.FC = () => {
 
   const API_BASE_URL = '/api';
 
-  const fetchCustomers = useCallback(async (page = 1, size = pageSize, search = searchTerm) => {
+  const fetchCustomers = useCallback(async (page = 1, size = pageSize, search = searchTerm, sort = filter) => {
     setIsLoading(true);
     setPageError(null);
     setCurrentPage(page);
@@ -82,6 +83,7 @@ const CustomersPage: React.FC = () => {
           page: String(page),
           pageSize: String(size),
           search: search,
+          sort: sort,
       });
       const response = await authenticatedFetch(`${API_BASE_URL}/customers?${query.toString()}`);
       if (!response.ok) {
@@ -104,11 +106,16 @@ const CustomersPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [pageSize, searchTerm]);
+  }, [pageSize, searchTerm, filter]);
 
   useEffect(() => {
-    fetchCustomers(1, pageSize, searchTerm);
-  }, [fetchCustomers, pageSize, searchTerm]);
+    fetchCustomers(currentPage, pageSize, searchTerm, filter);
+  }, [fetchCustomers, currentPage, pageSize, searchTerm, filter]);
+  
+  const handleFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setFilter(e.target.value);
+    setCurrentPage(1); // Reset to first page on new filter
+  };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
@@ -116,13 +123,12 @@ const CustomersPage: React.FC = () => {
   };
   
   const handlePageChange = (page: number) => {
-      fetchCustomers(page, pageSize, searchTerm);
+      setCurrentPage(page);
   };
   
   const handlePageSizeChange = (size: number) => {
       setPageSize(size);
       setCurrentPage(1); // Reset to first page
-      fetchCustomers(1, size, searchTerm);
   };
 
 
@@ -267,7 +273,7 @@ const CustomersPage: React.FC = () => {
         const newTotalCount = totalCount - 1;
         const newTotalPages = Math.ceil(newTotalCount / pageSize);
         const newCurrentPage = (currentPage > newTotalPages && newTotalPages > 0) ? newTotalPages : currentPage;
-        fetchCustomers(newCurrentPage);
+        setCurrentPage(newCurrentPage);
       } catch (err: any) {
         console.error("Failed to delete customer:", err);
         setPageError(err.message || 'Could not delete customer. Please try again.');
@@ -297,14 +303,27 @@ const CustomersPage: React.FC = () => {
         )}
       </div>
 
-      <input
-        type="search"
-        aria-label="Пошук клієнтів"
-        placeholder="Пошук за ім'ям, email, або телефоном..."
-        className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
-        value={searchTerm}
-        onChange={handleSearchChange}
-      />
+      <div className="flex flex-col md:flex-row gap-4">
+        <input
+            type="search"
+            aria-label="Пошук клієнтів"
+            placeholder="Пошук за ім'ям, email, або телефоном..."
+            className="flex-grow p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
+            value={searchTerm}
+            onChange={handleSearchChange}
+        />
+        <select 
+            value={filter} 
+            onChange={handleFilterChange} 
+            className="p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 w-full md:w-auto"
+            aria-label="Фільтрувати клієнтів"
+        >
+            <option value="default">За замовчуванням</option>
+            <option value="vip">VIP Клієнти (за витратами)</option>
+            <option value="inactive">Неактивні клієнти</option>
+        </select>
+      </div>
+
       {pageError && <div role="alert" className="p-4 bg-red-50 text-red-700 border border-red-200 rounded-lg">{pageError}</div>}
       
       <div className="bg-white shadow-sm rounded-xl overflow-hidden border border-slate-200">

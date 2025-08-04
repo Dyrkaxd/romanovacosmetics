@@ -1,4 +1,5 @@
 
+
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import { supabase } from '../../services/supabaseClient'; 
 import type { Customer, PaginatedResponse } from '../../types';
@@ -59,36 +60,75 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
           const customer = transformDbRowToCustomer(dbData as CustomerDbRow);
           return { statusCode: 200, headers: commonHeaders, body: JSON.stringify(customer) };
         } else {
-          // Server-side pagination
-          const { search = '', page = '1', pageSize = '20' } = event.queryStringParameters || {};
+          const { search = '', page = '1', pageSize = '20', sort = 'default' } = event.queryStringParameters || {};
           const currentPage = parseInt(page, 10);
           const size = parseInt(pageSize, 10);
           const from = (currentPage - 1) * size;
           const to = from + size - 1;
-          
-          const query = supabase
-            .from('customers')
-            .select('*', { count: 'exact' });
 
-          if (search) {
-             query.or(`name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%`);
+          let customerData: CustomerDbRow[] = [];
+          let totalCount = 0;
+
+          if (sort === 'vip' || sort === 'inactive') {
+              const { data: allOrders, error: ordersError } = await supabase.from('orders').select('customer_id, total_amount, date');
+              if (ordersError) throw ordersError;
+
+              const customerMetrics: { [key: string]: { totalSpent: number; lastOrder: string } } = {};
+              for (const order of allOrders || []) {
+                  if (!customerMetrics[order.customer_id]) {
+                      customerMetrics[order.customer_id] = { totalSpent: 0, lastOrder: '1970-01-01' };
+                  }
+                  customerMetrics[order.customer_id].totalSpent += order.total_amount;
+                  if (order.date > customerMetrics[order.customer_id].lastOrder) {
+                      customerMetrics[order.customer_id].lastOrder = order.date;
+                  }
+              }
+              
+              let rankedCustomerIds: string[] = [];
+              if (sort === 'vip') {
+                  rankedCustomerIds = Object.keys(customerMetrics).sort((a, b) => customerMetrics[b].totalSpent - customerMetrics[a].totalSpent);
+              } else { // inactive
+                  const ninetyDaysAgo = new Date();
+                  ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+                  
+                  const inactiveWithOrdersIds = Object.keys(customerMetrics).filter(id => new Date(customerMetrics[id].lastOrder) < ninetyDaysAgo);
+                  
+                  const { data: allCustomers, error: customersError } = await supabase.from('customers').select('id');
+                  if (customersError) throw customersError;
+
+                  const customersWithOrders = new Set(Object.keys(customerMetrics));
+                  const customersWithNoOrders = (allCustomers || []).filter(c => !customersWithOrders.has(c.id)).map(c => c.id);
+                  
+                  const allInactiveIds = [...inactiveWithOrdersIds, ...customersWithNoOrders];
+                  rankedCustomerIds = allInactiveIds.sort((a, b) => {
+                      const lastOrderA = customerMetrics[a]?.lastOrder || '1970-01-01';
+                      const lastOrderB = customerMetrics[b]?.lastOrder || '1970-01-01';
+                      return new Date(lastOrderA).getTime() - new Date(lastOrderB).getTime();
+                  });
+              }
+
+              totalCount = rankedCustomerIds.length;
+              const paginatedIds = rankedCustomerIds.slice(from, to + 1);
+
+              if (paginatedIds.length > 0) {
+                  const { data: dbData, error } = await supabase.from('customers').select('*').in('id', paginatedIds);
+                  if (error) throw error;
+                  customerData = paginatedIds.map(id => (dbData || []).find(c => c.id === id)).filter(Boolean) as CustomerDbRow[];
+              }
+
+          } else {
+              const query = supabase.from('customers').select('*', { count: 'exact' });
+              if (search) {
+                  query.or(`name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%`);
+              }
+              const { data, error, count } = await query.order('created_at', { ascending: false }).range(from, to);
+              if (error) throw error;
+              customerData = data || [];
+              totalCount = count || 0;
           }
-
-          const { data: dbData, error, count } = await query
-            .order('created_at', { ascending: false })
-            .range(from, to);
-
-          if (error) throw error;
-
-          const customers = (dbData as CustomerDbRow[] || []).map(transformDbRowToCustomer);
           
-          const response: PaginatedResponse<Customer> = {
-            data: customers,
-            totalCount: count || 0,
-            currentPage: currentPage,
-            pageSize: size
-          };
-
+          const customers = customerData.map(transformDbRowToCustomer);
+          const response: PaginatedResponse<Customer> = { data: customers, totalCount, currentPage, pageSize: size };
           return { statusCode: 200, headers: commonHeaders, body: JSON.stringify(response) };
         }
 

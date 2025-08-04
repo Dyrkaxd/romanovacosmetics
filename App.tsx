@@ -1,4 +1,5 @@
 
+
 import React, { useState, Suspense, useEffect } from 'react';
 import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
@@ -15,10 +16,12 @@ const CustomersPage = React.lazy(() => import('./pages/CustomersPage.tsx'));
 const SettingsPage = React.lazy(() => import('./pages/SettingsPage.tsx'));
 const LoginPage = React.lazy(() => import('./pages/LoginPage.tsx'));
 const ReportsPage = React.lazy(() => import('./pages/ReportsPage.tsx'));
+const ManagerReportPage = React.lazy(() => import('./pages/ManagerReportPage.tsx'));
 const ExpensesPage = React.lazy(() => import('./pages/ExpensesPage.tsx'));
 const InvoiceViewPage = React.lazy(() => import('./pages/InvoiceViewPage.tsx'));
 const BillOfLadingViewPage = React.lazy(() => import('./pages/BillOfLadingViewPage.tsx'));
 const WarehousePage = React.lazy(() => import('./pages/WarehousePage.tsx'));
+const HelpPage = React.lazy(() => import('./pages/HelpPage.tsx'));
 
 
 const getPageTitle = (pathname: string, role?: 'admin' | 'manager'): string => {
@@ -39,10 +42,14 @@ const getPageTitle = (pathname: string, role?: 'admin' | 'manager'): string => {
       return 'Керування клієнтами';
     case '/reports':
       return 'Звіти';
+    case '/reports/managers':
+      return 'Звіт по менеджерах';
     case '/expenses':
       return 'Керування витратами';
     case '/settings':
       return 'Налаштування';
+    case '/help':
+      return 'Довідка';
     default:
       if (normalizedPathname.startsWith('/orders/')) return 'Деталі замовлення';
       if (normalizedPathname.startsWith('/products/')) return 'Деталі товару';
@@ -85,12 +92,14 @@ const MainAppLayout: React.FC = () => {
                 <Route path="/" element={<ManagerDashboardPage />} />
               )}
               {isAdmin && <Route path="/reports" element={<ReportsPage />} />}
+              {isAdmin && <Route path="/reports/managers" element={<ManagerReportPage />} />}
               {isAdmin && <Route path="/expenses" element={<ExpensesPage />} />}
               {isAdmin && <Route path="/products" element={<ProductsPage />} />}
               {isAdmin && <Route path="/warehouse" element={<WarehousePage />} />}
               <Route path="/orders" element={<OrdersPage />} />
               <Route path="/customers" element={<CustomersPage />} />
               <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/help" element={<HelpPage />} />
               {/* Redirect any unknown paths to the user's appropriate home page */}
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

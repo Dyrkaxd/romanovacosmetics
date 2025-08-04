@@ -1,8 +1,9 @@
 
+
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { NavItem } from '../types';
-import { DashboardIcon, ProductsIcon, OrdersIcon, UsersIcon, SettingsIcon, XMarkIcon, ChartBarIcon, CreditCardIcon, ArchiveBoxIcon } from './Icons';
+import { DashboardIcon, ProductsIcon, OrdersIcon, UsersIcon, SettingsIcon, XMarkIcon, ChartBarIcon, CreditCardIcon, ArchiveBoxIcon, InformationCircleIcon } from './Icons';
 import { logoBase64 } from '../assets/logo';
 import { useAuth } from '../AuthContext'; 
 
@@ -20,6 +21,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpenOnMobile, toggleMobileSidebar }
     // Admin-only items
     isAdmin && { name: 'Панель керування', path: '/', icon: DashboardIcon },
     isAdmin && { name: 'Звіти', path: '/reports', icon: ChartBarIcon },
+    isAdmin && { name: 'Звіт по менеджерах', path: '/reports/managers', icon: UsersIcon },
     isAdmin && { name: 'Витрати', path: '/expenses', icon: CreditCardIcon },
     isAdmin && { name: 'Товари', path: '/products', icon: ProductsIcon },
     isAdmin && { name: 'Склад', path: '/warehouse', icon: ArchiveBoxIcon },
@@ -34,6 +36,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpenOnMobile, toggleMobileSidebar }
 
   const bottomNavItems: NavItem[] = [
     { name: 'Налаштування', path: '/settings', icon: SettingsIcon },
+    { name: 'Довідка', path: '/help', icon: InformationCircleIcon },
   ];
 
   const NavLinkItem: React.FC<{ item: NavItem }> = ({ item }) => (

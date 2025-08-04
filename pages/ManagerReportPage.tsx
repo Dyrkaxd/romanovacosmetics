@@ -1,0 +1,149 @@
+
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { ManagerStats } from '../types';
+import { authenticatedFetch } from '../utils/api';
+import { UsersIcon, CurrencyDollarIcon, OrdersIcon } from '../components/Icons';
+
+type SortKey = keyof ManagerStats | 'name';
+type SortOrder = 'asc' | 'desc';
+
+const SortableHeader: React.FC<{
+  title: string;
+  sortKey: SortKey;
+  currentSortKey: SortKey;
+  sortOrder: SortOrder;
+  setSortConfig: (config: { key: SortKey; order: SortOrder }) => void;
+}> = ({ title, sortKey, currentSortKey, sortOrder, setSortConfig }) => {
+  const isSorting = currentSortKey === sortKey;
+  const newSortOrder = isSorting && sortOrder === 'asc' ? 'desc' : 'asc';
+
+  return (
+    <th
+      scope="col"
+      className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+      onClick={() => setSortConfig({ key: sortKey, order: newSortOrder })}
+    >
+      <div className="flex items-center">
+        <span>{title}</span>
+        {isSorting && (
+          <svg className="w-4 h-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            {sortOrder === 'asc' ? (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+            ) : (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            )}
+          </svg>
+        )}
+      </div>
+    </th>
+  );
+};
+
+
+const ManagerReportPage: React.FC = () => {
+  const [stats, setStats] = useState<ManagerStats[]>([]);
+  const [totalProfit, setTotalProfit] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [sortConfig, setSortConfig] = useState<{ key: SortKey, order: SortOrder }>({ key: 'totalProfit', order: 'desc' });
+
+  const fetchStats = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await authenticatedFetch('/api/dashboardStats');
+      if (!response.ok) {
+        throw new Error((await response.json()).message || 'Failed to fetch manager stats.');
+      }
+      const data = await response.json();
+      setStats(data.managerReport || []);
+      setTotalProfit(data.totalProfit || 0);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
+  
+  const sortedStats = useMemo(() => {
+    let sortableItems = [...stats];
+    sortableItems.sort((a, b) => {
+        const aValue = a[sortConfig.key];
+        const bValue = b[sortConfig.key];
+
+        if (typeof aValue === 'string' && typeof bValue === 'string') {
+            return sortConfig.order === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+        }
+        if (typeof aValue === 'number' && typeof bValue === 'number') {
+            return sortConfig.order === 'asc' ? aValue - bValue : bValue - aValue;
+        }
+        return 0;
+    });
+    return sortableItems;
+  }, [stats, sortConfig]);
+
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Звіт по ефективності менеджерів</h2>
+      
+      {error && <div role="alert" className="p-4 bg-red-50 text-red-700 border border-red-200 rounded-lg">{error}</div>}
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+            <div className="flex justify-between items-center"><p className="text-sm font-semibold text-slate-500">Загальний прибуток</p><CurrencyDollarIcon className="w-7 h-7 text-green-500" /></div>
+            {isLoading ? <div className="h-9 w-3/4 bg-slate-200 rounded-md mt-1 animate-pulse"></div> : <p className="text-3xl font-bold mt-1 text-green-600">₴{totalProfit.toLocaleString('uk-UA', { minimumFractionDigits: 2 })}</p>}
+        </div>
+        <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+            <div className="flex justify-between items-center"><p className="text-sm font-semibold text-slate-500">Загальна кількість замовлень</p><OrdersIcon className="w-7 h-7 text-blue-500" /></div>
+            {isLoading ? <div className="h-9 w-2/4 bg-slate-200 rounded-md mt-1 animate-pulse"></div> : <p className="text-3xl font-bold mt-1 text-blue-600">{stats.reduce((acc, s) => acc + s.totalOrders, 0)}</p>}
+        </div>
+        <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+            <div className="flex justify-between items-center"><p className="text-sm font-semibold text-slate-500">Кількість менеджерів</p><UsersIcon className="w-7 h-7 text-indigo-500" /></div>
+            {isLoading ? <div className="h-9 w-1/4 bg-slate-200 rounded-md mt-1 animate-pulse"></div> : <p className="text-3xl font-bold mt-1 text-indigo-600">{stats.length}</p>}
+        </div>
+      </div>
+      
+      <div className="bg-white shadow-sm rounded-xl overflow-hidden border border-slate-200">
+         <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-slate-200">
+            <thead className="bg-slate-50">
+              <tr>
+                <SortableHeader title="Ім'я" sortKey="name" currentSortKey={sortConfig.key} sortOrder={sortConfig.order} setSortConfig={setSortConfig} />
+                <SortableHeader title="Email" sortKey="email" currentSortKey={sortConfig.key} sortOrder={sortConfig.order} setSortConfig={setSortConfig} />
+                <SortableHeader title="К-сть замовлень" sortKey="totalOrders" currentSortKey={sortConfig.key} sortOrder={sortConfig.order} setSortConfig={setSortConfig} />
+                <SortableHeader title="Загальні продажі" sortKey="totalSales" currentSortKey={sortConfig.key} sortOrder={sortConfig.order} setSortConfig={setSortConfig} />
+                <SortableHeader title="Загальний прибуток" sortKey="totalProfit" currentSortKey={sortConfig.key} sortOrder={sortConfig.order} setSortConfig={setSortConfig} />
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-slate-200">
+              {isLoading ? (
+                 <tr><td colSpan={5} className="px-6 py-10 text-center text-sm text-slate-500">Завантаження...</td></tr>
+              ) : sortedStats.length > 0 ? (
+                sortedStats.map((manager) => (
+                  <tr key={manager.email} className="hover:bg-rose-50/50 transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-800">{manager.name}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{manager.email}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-700">{manager.totalOrders}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-700">₴{manager.totalSales.toLocaleString('uk-UA', { minimumFractionDigits: 2 })}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-green-600">₴{manager.totalProfit.toLocaleString('uk-UA', { minimumFractionDigits: 2 })}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr><td colSpan={5} className="px-6 py-10 text-center text-sm text-slate-500">
+                  Дані про ефективність менеджерів відсутні.
+                </td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ManagerReportPage;
