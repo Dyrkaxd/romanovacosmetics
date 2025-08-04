@@ -181,7 +181,8 @@ const InvoiceViewPage: React.FC = () => {
                         </div>
                     </section>
                     <footer className="text-center pt-8 mt-8 border-t border-slate-200">
-                       <p className="text-slate-500 text-sm">Дякуємо за ваш бізнес!</p>
+                       <p className="text-slate-500 text-sm">Ваша краса - наше натхнення. Дякуємо за довіру!</p>
+                       <p className="text-sm font-semibold text-slate-600 mt-1">ROMANOVA Cosmetics</p>
                     </footer>
                 </div>
             </div>
