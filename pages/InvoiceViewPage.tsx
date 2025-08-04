@@ -1,6 +1,3 @@
-
-
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import type { Order, Customer } from '../types';
@@ -85,19 +82,19 @@ const InvoiceViewPage: React.FC = () => {
 
     if (isLoading) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-screen bg-slate-100">
+            <div className="flex flex-col items-center justify-center min-h-screen bg-slate-100 dark:bg-slate-950">
                 <div className="w-12 h-12 border-4 border-rose-500 border-t-transparent rounded-full animate-spin"></div>
-                <p className="text-slate-600 text-lg mt-4 font-medium">Завантаження рахунку...</p>
+                <p className="text-slate-600 dark:text-slate-300 text-lg mt-4 font-medium">Завантаження рахунку...</p>
             </div>
         );
     }
 
     if (error) {
         return (
-             <div className="flex flex-col items-center justify-center min-h-screen bg-slate-100 p-4">
-                <div className="bg-white p-8 rounded-lg shadow-md text-center">
+             <div className="flex flex-col items-center justify-center min-h-screen bg-slate-100 dark:bg-slate-950 p-4">
+                <div className="bg-white dark:bg-slate-800 p-8 rounded-lg shadow-md text-center">
                     <h2 className="text-2xl font-bold text-red-600">Помилка</h2>
-                    <p className="text-slate-600 mt-2">{error}</p>
+                    <p className="text-slate-600 dark:text-slate-300 mt-2">{error}</p>
                 </div>
             </div>
         );
@@ -105,8 +102,8 @@ const InvoiceViewPage: React.FC = () => {
     
     if (!order || !customer) {
         return (
-             <div className="flex flex-col items-center justify-center min-h-screen bg-slate-100">
-                <p className="text-slate-600 text-lg font-medium">Рахунок не знайдено.</p>
+             <div className="flex flex-col items-center justify-center min-h-screen bg-slate-100 dark:bg-slate-950">
+                <p className="text-slate-600 dark:text-slate-300 text-lg font-medium">Рахунок не знайдено.</p>
             </div>
         );
     }
@@ -115,8 +112,8 @@ const InvoiceViewPage: React.FC = () => {
     const totalDiscount = subtotal - order.totalAmount;
 
     return (
-        <div className="bg-slate-100 min-h-screen py-6 sm:py-12 px-2 sm:px-6 lg:px-8 printable-area">
-            <div className="max-w-4xl mx-auto bg-white shadow-lg rounded-lg">
+        <div className="bg-slate-100 dark:bg-slate-900 min-h-screen py-6 sm:py-12 px-2 sm:px-6 lg:px-8">
+            <div className="max-w-4xl mx-auto bg-white shadow-lg rounded-lg printable-area">
                 <div className="p-4 sm:p-8 lg:p-12 break-words">
                     <header className="flex flex-col sm:flex-row justify-between items-start pb-8 border-b border-slate-200">
                         <div>

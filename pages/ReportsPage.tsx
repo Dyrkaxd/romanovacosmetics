@@ -1,7 +1,3 @@
-
-
-
-
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { authenticatedFetch } from '../utils/api';
 import { ReportData, SalesDataPoint, TopProduct, TopCustomer, RevenueByGroup, Expense } from '../types';
@@ -11,21 +7,21 @@ import { ChartBarIcon, CurrencyDollarIcon, UsersIcon, DownloadIcon, LightBulbIco
 // Helper to format date as YYYY-MM-DD
 const toYYYYMMDD = (date: Date) => date.toISOString().split('T')[0];
 
-const StatCard: React.FC<{ title: string; value: string; subValue?: string, isLoading: boolean; colorClass?: string, tooltipText?: string }> = ({ title, value, subValue, isLoading, colorClass = 'text-slate-800', tooltipText }) => (
-    <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 relative group">
+const StatCard: React.FC<{ title: string; value: string; subValue?: string, isLoading: boolean; colorClass?: string, tooltipText?: string }> = ({ title, value, subValue, isLoading, colorClass = 'text-slate-800 dark:text-slate-100', tooltipText }) => (
+    <div className="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 relative group">
         {tooltipText && (
             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-slate-800 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
                 {tooltipText}
                 <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-x-8 border-x-transparent border-t-8 border-t-slate-800"></div>
             </div>
         )}
-        <p className="text-sm font-medium text-slate-500">{title}</p>
+        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{title}</p>
         {isLoading ? (
-            <div className="h-9 w-3/4 bg-slate-200 rounded-md mt-1 animate-pulse"></div>
+            <div className="h-9 w-3/4 bg-slate-200 dark:bg-slate-700 rounded-md mt-1 animate-pulse"></div>
         ) : (
             <p className={`text-3xl font-bold mt-1 ${colorClass}`}>{value}</p>
         )}
-        {subValue && !isLoading && <p className="text-xs text-slate-400 mt-1">{subValue}</p>}
+        {subValue && !isLoading && <p className="text-xs text-slate-400 dark:text-slate-400 mt-1">{subValue}</p>}
     </div>
 );
 
@@ -76,26 +72,26 @@ const ReportSalesProfitChart: React.FC<{ data: SalesDataPoint[], isLoading: bool
         });
     };
 
-    if (isLoading) return <div className="h-80 w-full bg-white rounded-lg animate-pulse"></div>;
+    if (isLoading) return <div className="h-80 w-full bg-white dark:bg-slate-800 rounded-lg animate-pulse"></div>;
 
     const noData = data.every(d => d.totalSales === 0 && d.totalProfit === 0);
     if (noData) {
-        return <div className="h-80 flex items-center justify-center text-center py-10 text-slate-500 bg-white rounded-lg">Дані про продажі та прибуток за цей період відсутні.</div>;
+        return <div className="h-80 flex items-center justify-center text-center py-10 text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 rounded-lg">Дані про продажі та прибуток за цей період відсутні.</div>;
     }
     
     return (
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 h-full">
-            <h3 className="text-lg font-semibold text-slate-800 mb-4">Динаміка продажів і валового прибутку</h3>
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 h-full">
+            <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4">Динаміка продажів і валового прибутку</h3>
             <div className="relative h-80" onMouseLeave={() => setTooltip(null)}>
                 <svg ref={chartRef} viewBox="0 0 100 105" className="w-full h-full" preserveAspectRatio="none" onMouseMove={handleMouseMove}>
                     {/* Grid lines */}
                     {[0, 25, 50, 75, 100].map(y => (
-                       <line key={y} x1="0" x2="100" y1={y} y2={y} stroke="#f1f5f9" strokeWidth="0.3"/>
+                       <line key={y} x1="0" x2="100" y1={y} y2={y} stroke="currentColor" className="text-slate-100 dark:text-slate-700" strokeWidth="0.3"/>
                     ))}
                     <path d={chartMetrics.salesPath} fill="none" stroke="#f43f5e" strokeWidth="0.7" strokeLinejoin="round" strokeLinecap="round" />
                     <path d={chartMetrics.profitPath} fill="none" stroke="#16a34a" strokeWidth="0.7" strokeLinejoin="round" strokeLinecap="round" />
                     
-                    {tooltip && chartRef.current && <line x1={tooltip.x / chartRef.current.getBoundingClientRect().width * 100} y1="0" x2={tooltip.x / chartRef.current.getBoundingClientRect().width * 100} y2="100" stroke="#94a3b8" strokeWidth="0.3" strokeDasharray="2"/>}
+                    {tooltip && chartRef.current && <line x1={tooltip.x / chartRef.current.getBoundingClientRect().width * 100} y1="0" x2={tooltip.x / chartRef.current.getBoundingClientRect().width * 100} y2="100" stroke="currentColor" className="text-slate-300 dark:text-slate-600" strokeWidth="0.3" strokeDasharray="2"/>}
                 </svg>
                 {tooltip && (
                     <div className="absolute p-2 bg-slate-800 text-white text-xs rounded-md shadow-lg pointer-events-none" style={{ left: tooltip.x, top: tooltip.y, transform: `translate(-50%, -120%)` }}>
@@ -103,7 +99,7 @@ const ReportSalesProfitChart: React.FC<{ data: SalesDataPoint[], isLoading: bool
                     </div>
                 )}
             </div>
-             <div className="flex justify-center space-x-4 mt-4 text-sm font-medium">
+             <div className="flex justify-center space-x-4 mt-4 text-sm font-medium text-slate-600 dark:text-slate-300">
                 <span className="flex items-center"><span className="w-3 h-3 bg-rose-500 rounded-full mr-2"></span>Дохід</span>
                 <span className="flex items-center"><span className="w-3 h-3 bg-green-500 rounded-full mr-2"></span>Валовий прибуток</span>
             </div>
@@ -143,10 +139,10 @@ const RevenueDonutChart: React.FC<{ data: RevenueByGroup[], isLoading: boolean }
     }, [data]);
 
     if (isLoading) {
-        return <div className="h-80 bg-white rounded-lg animate-pulse"></div>;
+        return <div className="h-80 bg-white dark:bg-slate-800 rounded-lg animate-pulse"></div>;
     }
     if (data.length === 0 || chartData.length === 0) {
-        return <div className="h-80 flex items-center justify-center text-center py-10 text-slate-500 bg-white rounded-lg">Дані по групах товарів відсутні.</div>;
+        return <div className="h-80 flex items-center justify-center text-center py-10 text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 rounded-lg">Дані по групах товарів відсутні.</div>;
     }
     
     const activeSegment = hoveredIndex !== undefined ? chartData.find(d => d.index === hoveredIndex) : null;
@@ -160,12 +156,12 @@ const RevenueDonutChart: React.FC<{ data: RevenueByGroup[], isLoading: boolean }
                 >
                 </div>
                 {/* Center text overlay */}
-                <div className="absolute w-32 h-32 bg-white rounded-full flex flex-col items-center justify-center text-center p-2 shadow-inner">
-                     <span className="font-bold text-slate-800 text-lg">
+                <div className="absolute w-32 h-32 bg-white dark:bg-slate-800 rounded-full flex flex-col items-center justify-center text-center p-2 shadow-inner">
+                     <span className="font-bold text-slate-800 dark:text-slate-100 text-lg">
                         {activeSegment ? `${(activeSegment.percentage * 100).toFixed(1)}%` : 'Дохід'}
                      </span>
                      {activeSegment && (
-                        <span className="text-slate-500 text-sm truncate">
+                        <span className="text-slate-500 dark:text-slate-400 text-sm truncate">
                             {activeSegment.group}
                         </span>
                      )}
@@ -184,9 +180,9 @@ const RevenueDonutChart: React.FC<{ data: RevenueByGroup[], isLoading: boolean }
                     >
                         <div className="flex items-center truncate">
                             <span className="w-3 h-3 rounded-full mr-2 flex-shrink-0" style={{ backgroundColor: segment.color }} />
-                            <span className="font-medium text-slate-700 truncate">{segment.group}</span>
+                            <span className="font-medium text-slate-700 dark:text-slate-200 truncate">{segment.group}</span>
                         </div>
-                        <span className="font-semibold text-slate-800 ml-2 flex-shrink-0">{(segment.percentage * 100).toFixed(1)}%</span>
+                        <span className="font-semibold text-slate-800 dark:text-slate-100 ml-2 flex-shrink-0">{(segment.percentage * 100).toFixed(1)}%</span>
                     </li>
                 ))}
             </ul>
@@ -205,8 +201,8 @@ const TopList: React.FC<{ items: (TopProduct | TopCustomer)[], type: 'product' |
             <div className="space-y-4">
                 {[...Array(5)].map((_, i) => (
                     <div key={i}>
-                        <div className="h-4 bg-slate-200 rounded-md w-3/4 mb-2 animate-pulse"></div>
-                        <div className="h-2 bg-slate-200 rounded-full animate-pulse"></div>
+                        <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded-md w-3/4 mb-2 animate-pulse"></div>
+                        <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full animate-pulse"></div>
                     </div>
                 ))}
             </div>
@@ -214,7 +210,7 @@ const TopList: React.FC<{ items: (TopProduct | TopCustomer)[], type: 'product' |
     }
     
     if (items.length === 0) {
-        return <div className="h-full flex items-center justify-center text-center py-10 text-slate-500 bg-slate-50 rounded-lg">Дані відсутні.</div>;
+        return <div className="h-full flex items-center justify-center text-center py-10 text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-700/50 rounded-lg">Дані відсутні.</div>;
     }
 
     return (
@@ -228,10 +224,10 @@ const TopList: React.FC<{ items: (TopProduct | TopCustomer)[], type: 'product' |
                 return (
                     <li key={key}>
                         <div className="flex justify-between items-center mb-1.5">
-                            <p className="text-sm font-medium text-slate-700 truncate pr-4">{name}</p>
-                            <p className="font-semibold text-slate-800 flex-shrink-0 text-sm">₴{value.toFixed(2)}</p>
+                            <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate pr-4">{name}</p>
+                            <p className="font-semibold text-slate-800 dark:text-slate-100 flex-shrink-0 text-sm">₴{value.toFixed(2)}</p>
                         </div>
-                        <div className="w-full bg-slate-100 rounded-full h-2">
+                        <div className="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-2">
                             <div className="bg-rose-400 h-2 rounded-full" style={{ width: `${barWidth}%` }}></div>
                         </div>
                     </li>
@@ -243,27 +239,27 @@ const TopList: React.FC<{ items: (TopProduct | TopCustomer)[], type: 'product' |
 
 const AIAnalysisCard: React.FC<{ analysis: string | null; isLoading: boolean; error: string | null; onRegenerate: () => void; }> = ({ analysis, isLoading, error, onRegenerate }) => {
     return (
-        <div className="bg-gradient-to-br from-amber-50 to-rose-50 p-6 rounded-xl shadow-sm border border-slate-200 flex space-x-4">
-            <div className="p-3 rounded-full bg-white/70 h-fit">
+        <div className="bg-gradient-to-br from-amber-50 to-rose-50 dark:from-slate-800 dark:to-slate-850 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex space-x-4">
+            <div className="p-3 rounded-full bg-white/70 dark:bg-slate-700/50 h-fit">
                 <LightBulbIcon className="w-7 h-7 text-amber-500" />
             </div>
             <div className="flex-1">
                 <div className="flex justify-between items-center mb-1">
-                    <p className="text-sm text-slate-500 font-medium">AI-Аналіз Звіту</p>
-                    <button onClick={onRegenerate} disabled={isLoading} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100/50 rounded-full transition-colors disabled:opacity-50 disabled:cursor-wait" aria-label="Оновити AI-аналітику">
+                    <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">AI-Аналіз Звіту</p>
+                    <button onClick={onRegenerate} disabled={isLoading} className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100/50 dark:hover:bg-slate-700 rounded-full transition-colors disabled:opacity-50 disabled:cursor-wait" aria-label="Оновити AI-аналітику">
                         <svg className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0 0 11.667 0l3.181-3.183m-11.667 0l-3.181 3.183m0 0l-3.181-3.183m11.667 0l3.181-3.183" /></svg>
                     </button>
                 </div>
                 {isLoading ? (
                     <div className="space-y-2 mt-2">
-                        <div className="h-4 bg-slate-200 rounded w-5/6 animate-pulse"></div>
-                        <div className="h-4 bg-slate-200 rounded w-4/6 animate-pulse"></div>
-                        <div className="h-4 bg-slate-200 rounded w-3/4 animate-pulse"></div>
+                        <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-5/6 animate-pulse"></div>
+                        <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-4/6 animate-pulse"></div>
+                        <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-3/4 animate-pulse"></div>
                     </div>
                 ) : error ? (
-                    <p className="text-sm text-red-600 bg-red-100 p-3 rounded-md">{error}</p>
+                    <p className="text-sm text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-500/10 p-3 rounded-md">{error}</p>
                 ) : (
-                    <p className="text-slate-700 font-medium leading-relaxed">{analysis}</p>
+                    <p className="text-slate-700 dark:text-slate-300 font-medium leading-relaxed">{analysis}</p>
                 )}
             </div>
         </div>
@@ -273,12 +269,12 @@ const AIAnalysisCard: React.FC<{ analysis: string | null; isLoading: boolean; er
 const ExpensesTable: React.FC<{ expenses: Expense[], isLoading: boolean }> = ({ expenses, isLoading }) => {
     if (isLoading) {
         return (
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                <div className="h-8 w-1/3 bg-slate-200 rounded-md mb-4 animate-pulse"></div>
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                <div className="h-8 w-1/3 bg-slate-200 dark:bg-slate-700 rounded-md mb-4 animate-pulse"></div>
                 <div className="space-y-2">
-                    <div className="h-10 bg-slate-50 rounded-lg animate-pulse"></div>
-                    <div className="h-10 bg-slate-50 rounded-lg animate-pulse"></div>
-                    <div className="h-10 bg-slate-50 rounded-lg animate-pulse"></div>
+                    <div className="h-10 bg-slate-50 dark:bg-slate-700/50 rounded-lg animate-pulse"></div>
+                    <div className="h-10 bg-slate-50 dark:bg-slate-700/50 rounded-lg animate-pulse"></div>
+                    <div className="h-10 bg-slate-50 dark:bg-slate-700/50 rounded-lg animate-pulse"></div>
                 </div>
             </div>
         );
@@ -286,32 +282,32 @@ const ExpensesTable: React.FC<{ expenses: Expense[], isLoading: boolean }> = ({ 
 
     if (expenses.length === 0) {
         return (
-             <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                <h3 className="text-lg font-semibold text-slate-800 mb-4">Витрати за період</h3>
-                <div className="h-full flex items-center justify-center text-center py-10 text-slate-500 bg-slate-50 rounded-lg">Витрат за цей період не знайдено.</div>
+             <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4">Витрати за період</h3>
+                <div className="h-full flex items-center justify-center text-center py-10 text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-700/50 rounded-lg">Витрат за цей період не знайдено.</div>
             </div>
         );
     }
     
     return (
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <h3 className="text-lg font-semibold text-slate-800 mb-4">Витрати за період</h3>
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+            <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4">Витрати за період</h3>
             <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-slate-200">
-                    <thead className="bg-slate-50">
+                <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+                    <thead className="bg-slate-50 dark:bg-slate-700/50">
                         <tr>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Дата</th>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Назва</th>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider hidden md:table-cell">Нотатки</th>
-                            <th scope="col" className="px-6 py-3 text-right text-xs font-semibold text-slate-500 tracking-wider">Сума</th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-300 tracking-wider">Дата</th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-300 tracking-wider">Назва</th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-300 tracking-wider hidden md:table-cell">Нотатки</th>
+                            <th scope="col" className="px-6 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-300 tracking-wider">Сума</th>
                         </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-slate-200">
+                    <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
                         {expenses.map((expense) => (
                             <tr key={expense.id}>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{new Date(expense.date).toLocaleDateString()}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-800">{expense.name}</td>
-                                <td className="px-6 py-4 text-sm text-slate-600 hidden md:table-cell truncate max-w-sm">{expense.notes || '-'}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300">{new Date(expense.date).toLocaleDateString()}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-800 dark:text-slate-100">{expense.name}</td>
+                                <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300 hidden md:table-cell truncate max-w-sm">{expense.notes || '-'}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-red-600">₴{expense.amount.toFixed(2)}</td>
                             </tr>
                         ))}
@@ -436,23 +432,23 @@ const ReportsPage: React.FC = () => {
     };
 
     if (error) {
-        return <div role="alert" className="p-4 bg-red-50 text-red-700 border border-red-200 rounded-lg">{error}</div>;
+        return <div role="alert" className="p-4 bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-500/20 rounded-lg">{error}</div>;
     }
 
     return (
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <h2 className="text-2xl font-bold text-slate-800 tracking-tight flex-shrink-0">Звіти</h2>
+                <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100 tracking-tight flex-shrink-0">Звіти</h2>
                 <div className="w-full flex flex-col sm:flex-row items-center justify-end gap-2 flex-wrap">
                     {[7, 30, 90].map(days => (
-                        <button key={days} onClick={() => handleSetPreset(days)} className={`px-3 py-1.5 text-sm font-semibold rounded-md transition-colors ${activePreset === days ? 'bg-white text-rose-600 shadow-sm ring-1 ring-inset ring-slate-200' : 'text-slate-600 hover:bg-slate-100'}`}>
+                        <button key={days} onClick={() => handleSetPreset(days)} className={`px-3 py-1.5 text-sm font-semibold rounded-md transition-colors ${activePreset === days ? 'bg-white dark:bg-slate-800 text-rose-600 dark:text-rose-400 shadow-sm ring-1 ring-inset ring-slate-200 dark:ring-slate-700' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
                             Ост. {days} днів
                         </button>
                     ))}
                     <div className="flex items-center gap-2">
-                        <input type="date" value={startDate} onChange={e => handleDateChange('start', e.target.value)} className="p-1.5 border border-slate-300 rounded-md text-sm"/>
-                        <span className="text-slate-500">-</span>
-                        <input type="date" value={endDate} onChange={e => handleDateChange('end', e.target.value)} max={toYYYYMMDD(new Date())} className="p-1.5 border border-slate-300 rounded-md text-sm"/>
+                        <input type="date" value={startDate} onChange={e => handleDateChange('start', e.target.value)} className="p-1.5 border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 rounded-md text-sm"/>
+                        <span className="text-slate-500 dark:text-slate-400">-</span>
+                        <input type="date" value={endDate} onChange={e => handleDateChange('end', e.target.value)} max={toYYYYMMDD(new Date())} className="p-1.5 border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 rounded-md text-sm"/>
                     </div>
                     <button onClick={handleDownloadPdf} disabled={isPdfLoading || isLoading} className="flex items-center bg-rose-500 hover:bg-rose-600 text-white font-semibold py-2 px-4 rounded-lg shadow-sm transition-colors disabled:opacity-70 disabled:cursor-wait">
                         <DownloadIcon className="w-5 h-5 mr-2" />
@@ -461,10 +457,10 @@ const ReportsPage: React.FC = () => {
                 </div>
             </div>
             
-            <div id="report-content-wrapper" ref={reportContentRef} className="bg-slate-50 p-4 sm:p-6 rounded-2xl">
+            <div id="report-content-wrapper" ref={reportContentRef} className="bg-slate-50 dark:bg-slate-900 p-4 sm:p-6 rounded-2xl">
                 <div className="text-center mb-6">
-                    <h2 className="text-2xl font-bold text-slate-800">Звіт про прибутки та збитки</h2>
-                    <p className="text-slate-500">
+                    <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Звіт про прибутки та збитки</h2>
+                    <p className="text-slate-500 dark:text-slate-400">
                         за період з {new Date(startDate).toLocaleDateString('uk-UA')} по {new Date(endDate).toLocaleDateString('uk-UA')}
                     </p>
                 </div>
@@ -481,50 +477,4 @@ const ReportsPage: React.FC = () => {
                         <StatCard 
                             title="Валовий прибуток" 
                             value={`₴${(reportData?.grossProfit ?? 0).toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} 
-                            isLoading={isLoading} 
-                            colorClass="text-indigo-600"
-                            tooltipText="Різниця між доходом від проданих товарів та їхньою собівартістю (ціна салону). Розраховується для замовлень зі статусом 'Отримано'."
-                        />
-                        <StatCard 
-                            title="Витрати" 
-                            value={`₴${(reportData?.totalExpenses ?? 0).toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} 
-                            isLoading={isLoading} 
-                            colorClass="text-red-600"
-                            tooltipText="Загальна сума всіх зафіксованих витрат (наприклад, оренда, маркетинг, зарплати) протягом вибраного періоду."
-                        />
-                        <StatCard 
-                            title="Чистий прибуток" 
-                            value={`₴${(reportData?.totalProfit ?? 0).toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} 
-                            isLoading={isLoading} 
-                            colorClass="text-green-600"
-                            tooltipText="Фінальний прибуток після вирахування всіх витрат з доходу. Розраховується як (Дохід - Витрати)."
-                        />
-                    </div>
-
-                    <AIAnalysisCard analysis={aiAnalysis} isLoading={isAiLoading} error={aiError} onRegenerate={() => reportData && fetchAiAnalysis(reportData)} />
-                    
-                    <ReportSalesProfitChart data={reportData?.salesByDay || []} isLoading={isLoading} />
-
-                    <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-                        <div className="lg:col-span-3 bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                             <h3 className="text-lg font-semibold text-slate-800 mb-4">Топ-10 товарів (з отриманих замовлень)</h3>
-                             <TopList items={reportData?.topProducts || []} type="product" isLoading={isLoading} />
-                        </div>
-                        <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                             <h3 className="text-lg font-semibold text-slate-800 mb-4">Розподіл доходу за групами товарів</h3>
-                             <RevenueDonutChart data={reportData?.revenueByGroup || []} isLoading={isLoading} />
-                        </div>
-                    </div>
-                     <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                        <h3 className="text-lg font-semibold text-slate-800 mb-4">Топ-10 клієнтів (з отриманих замовлень)</h3>
-                        <TopList items={reportData?.topCustomers || []} type="customer" isLoading={isLoading} />
-                    </div>
-                    
-                    <ExpensesTable expenses={reportData?.expenses || []} isLoading={isLoading} />
-                </div>
-            </div>
-        </div>
-    );
-};
-
-export default ReportsPage;
+                            

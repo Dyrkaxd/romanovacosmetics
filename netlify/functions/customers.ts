@@ -135,13 +135,6 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       case 'POST':
       case 'PUT':
       case 'DELETE':
-        if (user.role !== 'admin') {
-          return {
-            statusCode: 403,
-            headers: commonHeaders,
-            body: JSON.stringify({ message: 'Forbidden: Only administrators can modify customers.' }),
-          };
-        }
         if (event.httpMethod === 'POST') {
             const newCustomerClientData = JSON.parse(event.body || '{}');
             const { address, joinDate, instagramHandle, viberNumber, ...restOfCustomerData } = newCustomerClientData;

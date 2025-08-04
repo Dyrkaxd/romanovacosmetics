@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 
 interface PaginationProps {
@@ -37,15 +38,15 @@ const Pagination: React.FC<PaginationProps> = ({ currentPage, totalCount, pageSi
   const endItem = Math.min(currentPage * pageSize, totalCount);
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between bg-white px-4 py-3 sm:px-6 border-t border-slate-200 rounded-b-xl">
+    <div className="flex flex-col sm:flex-row items-center justify-between bg-white dark:bg-slate-800 px-4 py-3 sm:px-6 border-t border-slate-200 dark:border-slate-700 rounded-b-xl">
       <div className="flex items-center space-x-2 mb-3 sm:mb-0">
-        <label htmlFor="pageSize" className="text-sm font-medium text-slate-700">Рядків на сторінці:</label>
+        <label htmlFor="pageSize" className="text-sm font-medium text-slate-700 dark:text-slate-300">Рядків на сторінці:</label>
         <select
           id="pageSize"
           value={pageSize}
           onChange={handlePageSizeChange}
           disabled={isLoading}
-          className="block w-full rounded-md border-0 py-1.5 pl-3 pr-8 text-slate-900 ring-1 ring-inset ring-slate-300 focus:ring-2 focus:ring-rose-600 sm:text-sm sm:leading-6 disabled:opacity-50"
+          className="block w-full rounded-md border-0 py-1.5 pl-3 pr-8 text-slate-900 dark:text-slate-200 dark:bg-slate-700 ring-1 ring-inset ring-slate-300 dark:ring-slate-600 focus:ring-2 focus:ring-rose-600 sm:text-sm sm:leading-6 disabled:opacity-50"
         >
           <option value={20}>20</option>
           <option value={50}>50</option>
@@ -54,7 +55,7 @@ const Pagination: React.FC<PaginationProps> = ({ currentPage, totalCount, pageSi
       </div>
       
       <div className="flex items-center space-x-4">
-        <p className="text-sm text-slate-700">
+        <p className="text-sm text-slate-700 dark:text-slate-300">
           <span className="font-medium">{startItem}</span>
           -
           <span className="font-medium">{endItem}</span>
@@ -66,7 +67,7 @@ const Pagination: React.FC<PaginationProps> = ({ currentPage, totalCount, pageSi
           <button
             onClick={handlePreviousPage}
             disabled={currentPage === 1 || isLoading}
-            className="relative inline-flex items-center rounded-l-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="relative inline-flex items-center rounded-l-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 dark:ring-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <span className="sr-only">Previous</span>
             <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -74,14 +75,14 @@ const Pagination: React.FC<PaginationProps> = ({ currentPage, totalCount, pageSi
             </svg>
           </button>
           
-           <span className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-slate-700 ring-1 ring-inset ring-slate-300">
+           <span className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 ring-1 ring-inset ring-slate-300 dark:ring-slate-600">
              Сторінка {currentPage} з {totalPages}
            </span>
 
           <button
             onClick={handleNextPage}
             disabled={currentPage === totalPages || isLoading}
-            className="relative inline-flex items-center rounded-r-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="relative inline-flex items-center rounded-r-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 dark:ring-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <span className="sr-only">Next</span>
             <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">

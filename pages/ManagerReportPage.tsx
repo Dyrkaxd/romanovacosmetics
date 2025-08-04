@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ManagerStats } from '../types';
 import { authenticatedFetch } from '../utils/api';
@@ -20,7 +19,7 @@ const SortableHeader: React.FC<{
   return (
     <th
       scope="col"
-      className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+      className="px-6 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-300 tracking-wider cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
       onClick={() => setSortConfig({ key: sortKey, order: newSortOrder })}
     >
       <div className="flex items-center">
@@ -89,29 +88,29 @@ const ManagerReportPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Звіт по ефективності менеджерів</h2>
+      <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">Звіт по ефективності менеджерів</h2>
       
-      {error && <div role="alert" className="p-4 bg-red-50 text-red-700 border border-red-200 rounded-lg">{error}</div>}
+      {error && <div role="alert" className="p-4 bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-500/20 rounded-lg">{error}</div>}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-            <div className="flex justify-between items-center"><p className="text-sm font-semibold text-slate-500">Загальний прибуток</p><CurrencyDollarIcon className="w-7 h-7 text-green-500" /></div>
-            {isLoading ? <div className="h-9 w-3/4 bg-slate-200 rounded-md mt-1 animate-pulse"></div> : <p className="text-3xl font-bold mt-1 text-green-600">₴{totalProfit.toLocaleString('uk-UA', { minimumFractionDigits: 2 })}</p>}
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
+            <div className="flex justify-between items-center"><p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Загальний прибуток</p><CurrencyDollarIcon className="w-7 h-7 text-green-500" /></div>
+            {isLoading ? <div className="h-9 w-3/4 bg-slate-200 dark:bg-slate-700 rounded-md mt-1 animate-pulse"></div> : <p className="text-3xl font-bold mt-1 text-green-600">₴{totalProfit.toLocaleString('uk-UA', { minimumFractionDigits: 2 })}</p>}
         </div>
-        <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-            <div className="flex justify-between items-center"><p className="text-sm font-semibold text-slate-500">Загальна кількість замовлень</p><OrdersIcon className="w-7 h-7 text-blue-500" /></div>
-            {isLoading ? <div className="h-9 w-2/4 bg-slate-200 rounded-md mt-1 animate-pulse"></div> : <p className="text-3xl font-bold mt-1 text-blue-600">{stats.reduce((acc, s) => acc + s.totalOrders, 0)}</p>}
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
+            <div className="flex justify-between items-center"><p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Загальна кількість замовлень</p><OrdersIcon className="w-7 h-7 text-blue-500" /></div>
+            {isLoading ? <div className="h-9 w-2/4 bg-slate-200 dark:bg-slate-700 rounded-md mt-1 animate-pulse"></div> : <p className="text-3xl font-bold mt-1 text-blue-600">{stats.reduce((acc, s) => acc + s.totalOrders, 0)}</p>}
         </div>
-        <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-            <div className="flex justify-between items-center"><p className="text-sm font-semibold text-slate-500">Кількість менеджерів</p><UsersIcon className="w-7 h-7 text-indigo-500" /></div>
-            {isLoading ? <div className="h-9 w-1/4 bg-slate-200 rounded-md mt-1 animate-pulse"></div> : <p className="text-3xl font-bold mt-1 text-indigo-600">{stats.length}</p>}
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
+            <div className="flex justify-between items-center"><p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Кількість менеджерів</p><UsersIcon className="w-7 h-7 text-indigo-500" /></div>
+            {isLoading ? <div className="h-9 w-1/4 bg-slate-200 dark:bg-slate-700 rounded-md mt-1 animate-pulse"></div> : <p className="text-3xl font-bold mt-1 text-indigo-600">{stats.length}</p>}
         </div>
       </div>
       
-      <div className="bg-white shadow-sm rounded-xl overflow-hidden border border-slate-200">
+      <div className="bg-white dark:bg-slate-800 shadow-sm rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700">
          <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-200">
-            <thead className="bg-slate-50">
+          <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+            <thead className="bg-slate-50 dark:bg-slate-700/50">
               <tr>
                 <SortableHeader title="Ім'я" sortKey="name" currentSortKey={sortConfig.key} sortOrder={sortConfig.order} setSortConfig={setSortConfig} />
                 <SortableHeader title="Email" sortKey="email" currentSortKey={sortConfig.key} sortOrder={sortConfig.order} setSortConfig={setSortConfig} />
@@ -120,21 +119,21 @@ const ManagerReportPage: React.FC = () => {
                 <SortableHeader title="Загальний прибуток" sortKey="totalProfit" currentSortKey={sortConfig.key} sortOrder={sortConfig.order} setSortConfig={setSortConfig} />
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-slate-200">
+            <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
               {isLoading ? (
-                 <tr><td colSpan={5} className="px-6 py-10 text-center text-sm text-slate-500">Завантаження...</td></tr>
+                 <tr><td colSpan={5} className="px-6 py-10 text-center text-sm text-slate-500 dark:text-slate-400">Завантаження...</td></tr>
               ) : sortedStats.length > 0 ? (
                 sortedStats.map((manager) => (
-                  <tr key={manager.email} className="hover:bg-rose-50/50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-800">{manager.name}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{manager.email}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-700">{manager.totalOrders}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-700">₴{manager.totalSales.toLocaleString('uk-UA', { minimumFractionDigits: 2 })}</td>
+                  <tr key={manager.email} className="hover:bg-rose-50/50 dark:hover:bg-slate-700/50 transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-800 dark:text-slate-100">{manager.name}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300">{manager.email}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-700 dark:text-slate-200">{manager.totalOrders}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-700 dark:text-slate-200">₴{manager.totalSales.toLocaleString('uk-UA', { minimumFractionDigits: 2 })}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-green-600">₴{manager.totalProfit.toLocaleString('uk-UA', { minimumFractionDigits: 2 })}</td>
                   </tr>
                 ))
               ) : (
-                <tr><td colSpan={5} className="px-6 py-10 text-center text-sm text-slate-500">
+                <tr><td colSpan={5} className="px-6 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
                   Дані про ефективність менеджерів відсутні.
                 </td></tr>
               )}

@@ -8,12 +8,12 @@ import type { FC, SVGProps, ReactNode } from 'react';
 
 // A simple helper component for consistent section styling
 const HelpSection: FC<{ title: string; icon: FC<SVGProps<SVGSVGElement>>; children: ReactNode }> = ({ title, icon: Icon, children }) => (
-    <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+    <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
         <div className="flex items-center mb-4">
             <Icon className="w-6 h-6 mr-3 text-rose-500" />
-            <h3 className="text-xl font-bold text-slate-800">{title}</h3>
+            <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">{title}</h3>
         </div>
-        <div className="space-y-3 text-slate-600">
+        <div className="space-y-3 text-slate-600 dark:text-slate-300">
             {children}
         </div>
     </div>
@@ -94,7 +94,7 @@ const AdminHelpContent: FC = () => (
         <HelpSection title="Клієнти" icon={UsersIcon}>
              <p>Ведення клієнтської бази, аналіз та сегментація.</p>
               <ul className="list-disc list-inside space-y-2 pl-2">
-                 <li><strong>Додавання/Редагування:</strong> Створюйте нові картки клієнтів з усією необхідною контактною інформацією.</li>
+                 <li><strong>Керування даними:</strong> Додавайте, редагуйте та видаляйте клієнтів. Менеджери мають повний доступ до керування клієнтською базою.</li>
                  <li><strong>Історія замовлень:</strong> Переглядайте повну історію покупок для кожного клієнта.</li>
                  <li><strong>Сегментація:</strong> Використовуйте фільтри для миттєвого відбору <strong>VIP-клієнтів</strong> (за сумою витрат) або <strong>Неактивних клієнтів</strong> для запуску маркетингових кампаній.</li>
              </ul>
@@ -103,6 +103,7 @@ const AdminHelpContent: FC = () => (
         <HelpSection title="Налаштування" icon={SettingsIcon}>
             <p>Керування доступом та глобальними параметрами системи.</p>
              <ul className="list-disc list-inside space-y-2 pl-2">
+                <li><strong>Тема оформлення:</strong> Перемикайтеся між світлою та темною темою інтерфейсу.</li>
                 <li><strong>Керування курсом валют:</strong> Встановлюйте курс UAH/$ глобально для всіх товарів або індивідуально для кожної групи.</li>
                 <li><strong>Керування адміністраторами:</strong> Надавайте або забирайте права адміністратора іншим користувачам.</li>
                 <li><strong>Керування менеджерами:</strong> Додавайте, редагуйте нотатки або видаляйте облікові записи менеджерів.</li>
@@ -133,17 +134,18 @@ const ManagerHelpContent: FC = () => (
         </HelpSection>
 
         <HelpSection title="Клієнти" icon={UsersIcon}>
-            <p>Ваша клієнтська база. Ви можете переглядати інформацію та додавати нових клієнтів.</p>
+            <p>Повноцінне керування вашою клієнтською базою. Тут ви можете додавати, редагувати, видаляти та аналізувати інформацію про клієнтів.</p>
              <ul className="list-disc list-inside space-y-2 pl-2">
-                <li><strong>Додавання нових клієнтів:</strong> При створенні нового замовлення ви можете додати нового клієнта.</li>
-                <li><strong>Перегляд інформації:</strong> Ви можете переглядати контактні дані та історію замовлень будь-якого клієнта в системі.</li>
+                <li><strong>Керування даними:</strong> Додавайте нових клієнтів, оновлюйте їх контактну інформацію та видаляйте застарілі профілі.</li>
+                <li><strong>Історія замовлень:</strong> Переглядайте повну історію покупок для кожного клієнта, щоб краще розуміти їхні потреби.</li>
                 <li><strong>Сегментація:</strong> Використовуйте фільтри, щоб побачити VIP-клієнтів або тих, хто давно не робив замовлень, для проактивної роботи.</li>
             </ul>
         </HelpSection>
         
         <HelpSection title="Налаштування" icon={SettingsIcon}>
-            <p>На цій сторінці ви можете переглянути інформацію про свій обліковий запис.</p>
+            <p>На цій сторінці ви можете переглянути інформацію про свій обліковий запис та налаштувати вигляд панелі.</p>
              <ul className="list-disc list-inside space-y-2 pl-2">
+                <li><strong>Тема оформлення:</strong> Перемикайтеся між світлою та темною темою для комфортної роботи.</li>
                 <li><strong>Мій профіль:</strong> Відображається ваше ім'я, email та роль в системі ("Менеджер").</li>
             </ul>
         </HelpSection>
@@ -158,8 +160,8 @@ const HelpPage: React.FC = () => {
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Довідковий центр</h2>
-                    <p className="text-slate-500">Детальний опис функціоналу для вашої ролі: <strong className="text-rose-600">{isAdmin ? 'Адміністратор' : 'Менеджер'}</strong></p>
+                    <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">Довідковий центр</h2>
+                    <p className="text-slate-500 dark:text-slate-400">Детальний опис функціоналу для вашої ролі: <strong className="text-rose-600 dark:text-rose-400">{isAdmin ? 'Адміністратор' : 'Менеджер'}</strong></p>
                 </div>
             </div>
             
