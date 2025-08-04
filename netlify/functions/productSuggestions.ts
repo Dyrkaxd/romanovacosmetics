@@ -76,7 +76,7 @@ Your JSON response:`;
 
     let suggestedNames: string[] = [];
     try {
-        suggestedNames = JSON.parse(response.text.trim() || '[]');
+        suggestedNames = JSON.parse(String(response.text || '[]').trim());
     } catch(e: any) {
         console.error("Failed to parse Gemini JSON. Response text:", response.text, "Error:", e.message || String(e));
         return { statusCode: 200, headers: commonHeaders, body: JSON.stringify([]) };

@@ -161,7 +161,7 @@ const handler: Handler = async (event) => {
             },
         });
         
-        const aiResponse = JSON.parse(response.text);
+        const aiResponse = JSON.parse(String(response.text || '{}').trim());
         const { intent, filters } = aiResponse;
         
         switch (intent) {

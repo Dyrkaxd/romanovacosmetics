@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, Suspense, useEffect } from 'react';
 import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
@@ -19,7 +20,6 @@ const ReportsPage = React.lazy(() => import('./pages/ReportsPage.tsx'));
 const ManagerReportPage = React.lazy(() => import('./pages/ManagerReportPage.tsx'));
 const ExpensesPage = React.lazy(() => import('./pages/ExpensesPage.tsx'));
 const InvoiceViewPage = React.lazy(() => import('./pages/InvoiceViewPage.tsx'));
-const BillOfLadingViewPage = React.lazy(() => import('./pages/BillOfLadingViewPage.tsx'));
 const WarehousePage = React.lazy(() => import('./pages/WarehousePage.tsx'));
 const HelpPage = React.lazy(() => import('./pages/HelpPage.tsx'));
 
@@ -55,7 +55,6 @@ const getPageTitle = (pathname: string, role?: 'admin' | 'manager'): string => {
       if (normalizedPathname.startsWith('/products/')) return 'Деталі товару';
       if (normalizedPathname.startsWith('/customers/')) return 'Деталі клієнта';
       if (normalizedPathname.startsWith('/invoice/')) return 'Рахунок-фактура';
-      if (normalizedPathname.startsWith('/bill-of-lading/')) return 'Товарно-транспортна накладна';
       return 'Менеджер ел. комерції';
   }
 };
@@ -148,7 +147,6 @@ const AppContent: React.FC = () => {
     <Suspense fallback={<CenteredPageLoader />}>
       <Routes>
         <Route path="/invoice/:orderId" element={<InvoiceViewPage />} />
-        <Route path="/bill-of-lading/:orderId" element={<BillOfLadingViewPage />} />
         {user ? (
           // User is authenticated, show main app layout
           <Route path="/*" element={<MainAppLayout />} />

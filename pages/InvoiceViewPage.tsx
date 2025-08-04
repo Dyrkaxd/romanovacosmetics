@@ -1,17 +1,20 @@
 
 
+
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import type { Order, Customer } from '../types';
-import { PrinterIcon } from '../components/Icons';
+import { PrinterIcon, ShareIcon, ArrowLeftIcon } from '../components/Icons';
 import { logoBase64 } from '../assets/logo';
 
 const InvoiceViewPage: React.FC = () => {
     const { orderId } = useParams<{ orderId: string }>();
+    const navigate = useNavigate();
     const [order, setOrder] = useState<Order | null>(null);
     const [customer, setCustomer] = useState<Customer | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [isCopied, setIsCopied] = useState(false);
 
     useEffect(() => {
         const fetchOrderData = async () => {
@@ -64,6 +67,20 @@ const InvoiceViewPage: React.FC = () => {
 
         // A timeout fallback for browsers that might not fire 'afterprint' reliably
         setTimeout(restoreTitle, 500);
+    };
+
+    const handleBack = () => {
+        navigate(-1); // Go back to the previous page (likely the orders list)
+    };
+
+    const handleCopyLink = () => {
+        navigator.clipboard.writeText(window.location.href).then(() => {
+            setIsCopied(true);
+            setTimeout(() => setIsCopied(false), 2500); // Reset after 2.5 seconds
+        }, (err) => {
+            console.error('Could not copy link: ', err);
+            alert('Не вдалося скопіювати посилання.');
+        });
     };
 
     if (isLoading) {
@@ -171,13 +188,27 @@ const InvoiceViewPage: React.FC = () => {
                     </footer>
                 </div>
             </div>
-            <div className="p-4 flex justify-center no-print mt-8">
+            <div className="p-4 flex flex-col sm:flex-row justify-center items-center gap-4 no-print mt-8">
                 <button
+                    onClick={handleBack}
+                    className="flex items-center justify-center bg-slate-500 hover:bg-slate-600 text-white font-semibold py-2 px-6 rounded-lg shadow-sm transition-colors w-full sm:w-auto"
+                >
+                    <ArrowLeftIcon className="w-5 h-5 mr-2" />
+                    Назад
+                </button>
+                <button
+                    onClick={handleCopyLink}
+                    className="flex items-center justify-center bg-sky-500 hover:bg-sky-600 text-white font-semibold py-2 px-6 rounded-lg shadow-sm transition-colors w-full sm:w-auto"
+                >
+                    <ShareIcon className="w-5 h-5 mr-2" />
+                    {isCopied ? 'Скопійовано!' : 'Копіювати посилання'}
+                </button>
+                 <button
                     onClick={handlePrint}
-                    className="flex items-center bg-rose-500 hover:bg-rose-600 text-white font-semibold py-2 px-6 rounded-lg shadow-sm transition-colors"
+                    className="flex items-center justify-center bg-rose-500 hover:bg-rose-600 text-white font-semibold py-2 px-6 rounded-lg shadow-sm transition-colors w-full sm:w-auto"
                 >
                     <PrinterIcon className="w-5 h-5 mr-2" />
-                    Роздрукувати / Зберегти як PDF
+                    Друк / PDF
                 </button>
             </div>
         </div>

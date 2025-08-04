@@ -64,7 +64,7 @@ Your AI report analysis:`;
             }
         });
 
-        const summaryText = response.text;
+        const summaryText = String(response.text || '');
 
         if (!summaryText) {
             console.error('Gemini API returned no text for report analysis.');

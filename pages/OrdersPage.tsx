@@ -440,7 +440,6 @@ const OrdersPage: React.FC = () => {
                                                 <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl z-10 ring-1 ring-black ring-opacity-5">
                                                     <div className="py-1">
                                                         <button onClick={() => navigate(`/invoice/${order.id}`)} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"><DocumentTextIcon className="w-5 h-5"/> Рахунок-фактура</button>
-                                                        <button onClick={() => navigate(`/bill-of-lading/${order.id}`)} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"><TruckIcon className="w-5 h-5"/> Товарно-транспортна накл.</button>
                                                     </div>
                                                 </div>
                                             )}
