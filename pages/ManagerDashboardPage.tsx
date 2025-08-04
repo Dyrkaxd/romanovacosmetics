@@ -121,7 +121,6 @@ const ManagerDashboardPage: React.FC = () => {
       const formatCurrency = (value: number) => `₴${(value || 0).toLocaleString('uk-UA', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
       return [
         { title: 'Мої продажі', value: formatCurrency(data?.kpis.totalSales.value ?? 0), change: data?.kpis.totalSales.change ?? 0, icon: CurrencyDollarIcon },
-        { title: 'Мій прибуток', value: formatCurrency(data?.kpis.totalProfit.value ?? 0), change: data?.kpis.totalProfit.change ?? 0, icon: CurrencyDollarIcon },
         { title: 'Мої замовлення', value: (data?.kpis.totalOrders.value ?? 0).toString(), change: data?.kpis.totalOrders.change ?? 0, icon: OrdersIcon },
     ];
   }, [data]);
@@ -148,12 +147,12 @@ const ManagerDashboardPage: React.FC = () => {
 
       {error && <div role="alert" className="p-4 bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-500/20 rounded-lg">{error}</div>}
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* KPIs */}
           {kpis.map(kpi => <StatCard key={kpi.title} {...kpi} isLoading={isLoading} />)}
 
           {/* Recent Orders */}
-          <div className="md:col-span-2 lg:col-span-2">
+          <div className="md:col-span-2 lg:col-span-1">
             <RecentOrdersList orders={data?.recentOrders || []} isLoading={isLoading}/>
           </div>
           

@@ -1,4 +1,5 @@
 
+
 import type { FC, SVGProps } from 'react';
 
 export interface Product {
@@ -201,7 +202,6 @@ export interface AIInsight {
 export interface ManagerDashboardData {
   kpis: {
     totalSales: KPI;
-    totalProfit: KPI;
     totalOrders: KPI;
   };
   topProducts: Pick<TopProduct, 'productName' | 'totalRevenue'>[];

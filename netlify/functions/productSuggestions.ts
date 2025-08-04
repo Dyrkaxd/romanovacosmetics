@@ -76,11 +76,12 @@ Your JSON response:`;
 
     let suggestedNames: string[] = [];
     try {
-        // Force conversion to a primitive string to avoid type issues before parsing.
-        const responseText = String(response.text ?? '');
-        suggestedNames = JSON.parse(responseText.trim() || '[]');
-    } catch(e) {
-        console.error("Failed to parse Gemini JSON. Response text:", response.text, "Error:", e);
+        const responseText = response.text;
+        if (typeof responseText === 'string') {
+            suggestedNames = JSON.parse(responseText.trim() || '[]');
+        }
+    } catch (e) {
+        console.error("Failed to parse Gemini JSON. Response text:", response.text, "Original error:", e);
         return { statusCode: 200, headers: commonHeaders, body: JSON.stringify([]) };
     }
 

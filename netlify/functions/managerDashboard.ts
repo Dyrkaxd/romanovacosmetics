@@ -16,20 +16,10 @@ type OrderWithItems = (Database['public']['Tables']['orders']['Row'] & {
     items: Database['public']['Tables']['order_items']['Row'][];
 });
 
-const calculateProfit = (order: OrderWithItems): number => {
-    return (order.items || []).reduce((profit, item) => {
-        const retailPriceUAH = item.price * (1 - (item.discount || 0) / 100);
-        const costUAH = (item.salon_price_usd || 0) * (item.exchange_rate || 0);
-        return profit + ((retailPriceUAH - costUAH) * item.quantity);
-    }, 0);
-};
-
-const getKPIs = (orders: OrderWithItems[]): { sales: number, profit: number, orders: number } => {
+const getKPIs = (orders: OrderWithItems[]): { sales: number, orders: number } => {
     const sales = orders.reduce((sum, order) => sum + order.total_amount, 0);
-    const profit = orders.reduce((sum, order) => sum + calculateProfit(order), 0);
     return {
         sales,
-        profit,
         orders: orders.length,
     };
 };
@@ -80,7 +70,6 @@ const handler: Handler = async (event) => {
 
     const kpis: ManagerDashboardData['kpis'] = {
       totalSales: { value: currentKPIs.sales, change: calculateChange(currentKPIs.sales, previousKPIs.sales) },
-      totalProfit: { value: currentKPIs.profit, change: calculateChange(currentKPIs.profit, previousKPIs.profit) },
       totalOrders: { value: currentKPIs.orders, change: calculateChange(currentKPIs.orders, previousKPIs.orders) }
     };
     
