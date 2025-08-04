@@ -477,4 +477,57 @@ const ReportsPage: React.FC = () => {
                         <StatCard 
                             title="Валовий прибуток" 
                             value={`₴${(reportData?.grossProfit ?? 0).toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} 
-                            
+                            isLoading={isLoading} 
+                            colorClass="text-blue-600 dark:text-blue-400"
+                            tooltipText="Дохід мінус собівартість проданих товарів (ціна салону). Цей показник демонструє прибутковість основної діяльності до врахування операційних витрат."
+                        />
+                        <StatCard 
+                            title="Витрати" 
+                            value={`₴${(reportData?.totalExpenses ?? 0).toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} 
+                            isLoading={isLoading} 
+                            colorClass="text-red-600 dark:text-red-500"
+                            tooltipText="Сума всіх операційних витрат, зафіксованих у системі за вибраний період. Включає оренду, маркетинг, зарплати тощо."
+                        />
+                        <StatCard 
+                            title="Чистий прибуток" 
+                            value={`₴${(reportData?.totalProfit ?? 0).toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} 
+                            isLoading={isLoading} 
+                            colorClass="text-green-600 dark:text-green-500"
+                            tooltipText="Фінальний фінансовий результат. Розраховується як Дохід мінус Витрати. Це гроші, які ви заробили."
+                        />
+                    </div>
+
+                    <AIAnalysisCard 
+                        analysis={aiAnalysis} 
+                        isLoading={isAiLoading} 
+                        error={aiError} 
+                        onRegenerate={() => reportData && fetchAiAnalysis(reportData)}
+                    />
+                    
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <ReportSalesProfitChart data={reportData?.salesByDay || []} isLoading={isLoading} />
+                        <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                             <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4">Розподіл доходу за групами</h3>
+                             <RevenueDonutChart data={reportData?.revenueByGroup || []} isLoading={isLoading}/>
+                        </div>
+                    </div>
+                    
+                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                             <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4">Топ-10 товарів за доходом</h3>
+                             <TopList items={reportData?.topProducts || []} type="product" isLoading={isLoading} />
+                        </div>
+                         <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                             <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4">Топ-10 клієнтів за витратами</h3>
+                             <TopList items={reportData?.topCustomers || []} type="customer" isLoading={isLoading} />
+                        </div>
+                    </div>
+
+                    <ExpensesTable expenses={reportData?.expenses || []} isLoading={isLoading} />
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default ReportsPage;
