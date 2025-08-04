@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
 import { useAuth } from '../AuthContext';
@@ -39,24 +40,24 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-slate-50 p-4">
-      <div className="p-8 sm:p-10 bg-white shadow-lg rounded-2xl text-center max-w-md w-full border border-slate-200">
+    <div className="flex items-center justify-center min-h-screen bg-slate-100 dark:bg-slate-950 p-4">
+      <div className="p-8 sm:p-10 bg-white dark:bg-slate-900 shadow-lg rounded-2xl text-center max-w-md w-full border border-slate-200 dark:border-slate-800">
         <div className="mb-8">
            <img src={logoBase64} alt="Romanova Cosmetics Logo" className="w-24 h-24 mx-auto" />
-           <h1 className="text-3xl font-bold tracking-tight text-slate-800 mt-4">ROMANOVA</h1>
-           <p className="text-slate-500 tracking-widest text-sm uppercase font-medium">Cosmetics</p>
-           <p className="text-slate-600 mt-6 text-base">Увійдіть, щоб продовжити до панелі керування</p>
+           <h1 className="text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-100 mt-4">ROMANOVA</h1>
+           <p className="text-slate-500 dark:text-slate-400 tracking-widest text-sm uppercase font-medium">Cosmetics</p>
+           <p className="text-slate-600 dark:text-slate-300 mt-6 text-base">Увійдіть, щоб продовжити до панелі керування</p>
         </div>
         
         {loginError && (
-          <div className="mb-4 p-3 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm" role="alert">
+          <div className="mb-4 p-3 bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-500/20 rounded-lg text-sm" role="alert">
             {loginError}
           </div>
         )}
 
         <div className="flex justify-center">
             {isLoadingAuth ? (
-              <div className="h-[40px] flex items-center justify-center text-slate-500">Завантаження...</div>
+              <div className="h-[40px] flex items-center justify-center text-slate-500 dark:text-slate-400">Завантаження...</div>
             ) : (
               <GoogleLogin
                 onSuccess={handleLoginSuccess}
@@ -70,11 +71,11 @@ const LoginPage: React.FC = () => {
             )}
         </div>
         
-        <div className="mt-6 text-xs text-slate-500 bg-slate-100 p-3 rounded-lg text-left">
+        <div className="mt-6 text-xs text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 p-3 rounded-lg text-left">
             <p><span className="font-semibold">Проблеми з входом?</span> Вхід відбувається у спливаючому вікні. Переконайтеся, що ваш браузер не блокує спливаючі вікна для цього сайту.</p>
         </div>
 
-        <p className="text-xs text-slate-400 mt-8">
+        <p className="text-xs text-slate-400 dark:text-slate-500 mt-8">
           Використовуючи цей сервіс, ви погоджуєтеся з Умовами використання та Політикою конфіденційності Google.
         </p>
       </div>

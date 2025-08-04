@@ -8,7 +8,14 @@ export default {
   ],
   darkMode: 'class',
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        slate: {
+          850: '#172033',
+          950: '#0b111e'
+        }
+      }
+    },
   },
   plugins: [],
 }

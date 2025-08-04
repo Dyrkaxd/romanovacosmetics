@@ -80,8 +80,8 @@ Your JSON response:`;
         if (typeof jsonStr === 'string') {
             suggestedNames = JSON.parse(jsonStr.trim() || '[]');
         }
-    } catch(e: any) {
-        console.error("Failed to parse Gemini JSON. Response text:", response.text, "Error:", e.message || String(e));
+    } catch(e) {
+        console.error("Failed to parse Gemini JSON. Response text:", response.text, "Error:", e);
         return { statusCode: 200, headers: commonHeaders, body: JSON.stringify([]) };
     }
 

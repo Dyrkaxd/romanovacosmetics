@@ -1,6 +1,7 @@
 
 
 
+
 import React, { useState, useRef, useEffect, useCallback, FC, SVGProps } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SearchIcon, BellIcon, ChevronDownIcon, XMarkIcon, Bars3Icon, OrdersIcon } from './Icons';
@@ -178,7 +179,7 @@ const Header: React.FC<HeaderProps> = ({ title, onToggleMobileSidebar }) => {
   };
 
   return (
-    <header className="bg-slate-50 dark:bg-slate-900 p-4 sm:px-6 lg:px-8 sticky top-0 z-30 border-b border-slate-200 dark:border-slate-700">
+    <header className="bg-white dark:bg-slate-900 p-4 sm:px-6 lg:px-8 sticky top-0 z-30 border-b border-slate-200 dark:border-slate-800">
       <div className="flex items-center justify-between">
         <div className="flex items-center">
           <button 
@@ -199,7 +200,7 @@ const Header: React.FC<HeaderProps> = ({ title, onToggleMobileSidebar }) => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onFocus={() => setIsSearchFocused(true)}
-              className="pl-10 pr-4 py-2 text-sm border bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 dark:text-slate-200 dark:placeholder-slate-400 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 transition-colors w-40 lg:w-96"
+              className="pl-10 pr-4 py-2 text-sm border bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 dark:text-slate-200 dark:placeholder-slate-400 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 transition-colors w-40 lg:w-96"
               aria-label="Глобальний пошук"
             />
              {isSearchFocused && (searchQuery.length > 0 || isSearchLoading) && (
@@ -212,12 +213,12 @@ const Header: React.FC<HeaderProps> = ({ title, onToggleMobileSidebar }) => {
             )}
           </div>
            <div className="relative" ref={notificationsRef}>
-             <button onClick={handleToggleNotifications} className="text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-500 relative p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700" aria-label="Сповіщення">
+             <button onClick={handleToggleNotifications} className="text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-500 relative p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Сповіщення">
                 <BellIcon className="w-6 h-6" />
-                {unreadCount > 0 && <span className="absolute top-1 right-1 block h-2.5 w-2.5 rounded-full bg-rose-500 ring-2 ring-slate-50 dark:ring-slate-900" />}
+                {unreadCount > 0 && <span className="absolute top-1 right-1 block h-2.5 w-2.5 rounded-full bg-rose-500 ring-2 ring-white dark:ring-slate-900" />}
             </button>
              {notificationsOpen && (
-                <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-800 rounded-lg shadow-xl z-30 ring-1 ring-black dark:ring-slate-700 ring-opacity-5">
+                <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-850 rounded-lg shadow-xl z-30 ring-1 ring-black dark:ring-slate-700 ring-opacity-5">
                     <div className="p-3 border-b border-slate-200 dark:border-slate-700">
                         <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Сповіщення</h4>
                     </div>
@@ -225,7 +226,7 @@ const Header: React.FC<HeaderProps> = ({ title, onToggleMobileSidebar }) => {
                         {notifications.length > 0 ? (
                             notifications.map(notification => (
                                 <li key={notification.id}
-                                    className={`flex items-start p-3 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer ${!notification.is_read ? 'bg-rose-50/50 dark:bg-rose-500/10' : ''}`}
+                                    className={`flex items-start p-3 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer ${!notification.is_read ? 'bg-rose-50/50 dark:bg-rose-500/10' : ''}`}
                                     onClick={() => {
                                         if (notification.link) navigate(notification.link);
                                         setNotificationsOpen(false);
@@ -255,7 +256,7 @@ const Header: React.FC<HeaderProps> = ({ title, onToggleMobileSidebar }) => {
             <div className="relative" ref={dropdownRef}>
               <button 
                 onClick={() => setDropdownOpen(!dropdownOpen)} 
-                className="flex items-center space-x-2 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 rounded-full"
+                className="flex items-center space-x-2 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 dark:focus:ring-offset-slate-900 rounded-full"
                 aria-expanded={dropdownOpen}
                 aria-haspopup="true"
                 aria-label="Меню користувача"
@@ -273,7 +274,7 @@ const Header: React.FC<HeaderProps> = ({ title, onToggleMobileSidebar }) => {
                 </div>
               </button>
               {dropdownOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-800 rounded-lg shadow-xl py-1 z-30 ring-1 ring-black dark:ring-slate-700 ring-opacity-5">
+                <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-850 rounded-lg shadow-xl py-1 z-30 ring-1 ring-black dark:ring-slate-700 ring-opacity-5">
                   <div className="px-4 py-3">
                     <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{user.name || 'Користувач'}</p>
                     <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{user.email}</p>
