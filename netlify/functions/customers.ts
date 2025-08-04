@@ -150,7 +150,12 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
                 address_country: address?.country || null,
             };
             const { data: createdDbData, error: createError } = await supabase.from('customers').insert(customerToInsert).select().single();
-            if (createError) throw createError;
+            if (createError) {
+                if (createError.code === '23505') { // unique_violation on email
+                    return { statusCode: 409, headers: commonHeaders, body: JSON.stringify({ message: 'Клієнт з таким email вже існує.' }) };
+                }
+                throw createError;
+            }
             
             const createdCustomer = transformDbRowToCustomer(createdDbData as CustomerDbRow);
             return { statusCode: 201, headers: commonHeaders, body: JSON.stringify(createdCustomer) };
@@ -181,7 +186,12 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         if (event.httpMethod === 'DELETE') {
             if (!resourceId) return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: 'Customer ID required' }) };
             const { error: deleteError } = await supabase.from('customers').delete().eq('id', resourceId);
-            if (deleteError) throw deleteError;
+            if (deleteError) {
+                if (deleteError.code === '23503') { // foreign_key_violation
+                    return { statusCode: 409, headers: commonHeaders, body: JSON.stringify({ message: 'Неможливо видалити клієнта, оскільки у нього є існуючі замовлення.' }) };
+                }
+                throw deleteError;
+            }
             return { statusCode: 204, headers: commonHeaders, body: '' };
         }
         break; 
