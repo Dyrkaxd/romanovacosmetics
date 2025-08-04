@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, FC, SVGProps } from 'react';
 import { Order, OrderItem, Customer, Product, ManagedUser, PaginatedResponse } from '../types';
-import { EyeIcon, XMarkIcon, PlusIcon, TrashIcon, PencilIcon, DocumentTextIcon, FilterIcon, DownloadIcon, ChevronDownIcon, ShareIcon, EllipsisVerticalIcon, TruckIcon, MapPinIcon, ArrowPathIcon, LightBulbIcon } from '../components/Icons';
+import { EyeIcon, XMarkIcon, PlusIcon, TrashIcon, PencilIcon, DocumentTextIcon, FilterIcon, DownloadIcon, ChevronDownIcon, ShareIcon, LightBulbIcon } from '../components/Icons';
 import { authenticatedFetch } from '../utils/api';
 import Pagination from '../components/Pagination';
 import { useAuth } from '../AuthContext';
@@ -95,21 +95,15 @@ const OrdersPage: React.FC = () => {
   const [showAiSuggestions, setShowAiSuggestions] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
 
-  const [openActionMenu, setOpenActionMenu] = useState<string | null>(null);
-  const actionMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
-
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (openProductDropdown !== null && productDropdownRefs.current[openProductDropdown] && !productDropdownRefs.current[openProductDropdown]!.contains(event.target as Node)) {
         setOpenProductDropdown(null);
       }
-      if (openActionMenu && actionMenuRefs.current[openActionMenu] && !actionMenuRefs.current[openActionMenu]!.contains(event.target as Node)) {
-        setOpenActionMenu(null);
-      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [openProductDropdown, openActionMenu]);
+  }, [openProductDropdown]);
 
   useEffect(() => {
     if (successMessage) {
@@ -261,6 +255,16 @@ const OrdersPage: React.FC = () => {
               setIsLoading(false);
           }
       }
+  };
+
+  const handleCopyInvoiceLink = (orderId: string) => {
+    const url = `${window.location.origin}/#/invoice/${orderId}`;
+    navigator.clipboard.writeText(url).then(() => {
+        setSuccessMessage('Посилання на рахунок скопійовано!');
+    }, (err) => {
+        setPageError('Не вдалося скопіювати посилання.');
+        console.error('Copy failed', err);
+    });
   };
 
   const handleItemChange = (index: number, field: keyof OrderItem, value: any) => {
@@ -437,19 +441,11 @@ const OrdersPage: React.FC = () => {
                                     <td className="px-6 py-4"><StatusPill status={order.status} /></td>
                                     <td className="px-6 py-4 font-semibold text-slate-800">₴{order.totalAmount.toFixed(2)}</td>
                                     <td className="px-6 py-4 space-x-1">
-                                        <button onClick={() => openViewModal(order)} className="p-2 text-slate-500 hover:text-sky-600"><EyeIcon className="w-5 h-5"/></button>
-                                        <button onClick={() => openEditModal(order)} className="p-2 text-slate-500 hover:text-rose-600"><PencilIcon className="w-5 h-5"/></button>
-                                        <button onClick={() => handleDeleteOrder(order.id)} className="p-2 text-slate-500 hover:text-red-600"><TrashIcon className="w-5 h-5"/></button>
-                                        <div className="relative inline-block" ref={el => { if (el) actionMenuRefs.current[order.id] = el; }}>
-                                            <button onClick={() => setOpenActionMenu(openActionMenu === order.id ? null : order.id)} className="p-2 text-slate-500 hover:text-slate-800"><EllipsisVerticalIcon className="w-5 h-5"/></button>
-                                            {openActionMenu === order.id && (
-                                                <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl z-10 ring-1 ring-black ring-opacity-5">
-                                                    <div className="py-1">
-                                                        <button onClick={() => navigate(`/invoice/${order.id}`)} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"><DocumentTextIcon className="w-5 h-5"/> Рахунок-фактура</button>
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
+                                        <button onClick={() => openViewModal(order)} className="p-2 text-slate-500 hover:text-sky-600 rounded-md hover:bg-sky-50" title="Переглянути"><EyeIcon className="w-5 h-5"/></button>
+                                        <button onClick={() => navigate(`/invoice/${order.id}`)} className="p-2 text-slate-500 hover:text-gray-600 rounded-md hover:bg-gray-50" title="Рахунок-фактура"><DocumentTextIcon className="w-5 h-5"/></button>
+                                        <button onClick={() => handleCopyInvoiceLink(order.id)} className="p-2 text-slate-500 hover:text-blue-600 rounded-md hover:bg-blue-50" title="Копіювати посилання на рахунок"><ShareIcon className="w-5 h-5"/></button>
+                                        <button onClick={() => openEditModal(order)} className="p-2 text-slate-500 hover:text-rose-600 rounded-md hover:bg-rose-50" title="Редагувати"><PencilIcon className="w-5 h-5"/></button>
+                                        <button onClick={() => handleDeleteOrder(order.id)} className="p-2 text-slate-500 hover:text-red-600 rounded-md hover:bg-red-50" title="Видалити"><TrashIcon className="w-5 h-5"/></button>
                                     </td>
                                 </tr>
                             )) : <tr><td colSpan={6} className="text-center py-10 text-slate-500">Замовлень, що відповідають фільтрам, не знайдено.</td></tr>}
@@ -477,6 +473,8 @@ const OrdersPage: React.FC = () => {
                                     </div>
                                     <div className="flex space-x-1">
                                       <button onClick={() => openViewModal(order)} className="p-2 text-slate-500 hover:bg-sky-50 rounded-md"><EyeIcon className="w-5 h-5"/></button>
+                                      <button onClick={() => navigate(`/invoice/${order.id}`)} className="p-2 text-slate-500 hover:bg-gray-50 rounded-md"><DocumentTextIcon className="w-5 h-5"/></button>
+                                      <button onClick={() => handleCopyInvoiceLink(order.id)} className="p-2 text-slate-500 hover:bg-blue-50 rounded-md"><ShareIcon className="w-5 h-5"/></button>
                                       <button onClick={() => openEditModal(order)} className="p-2 text-slate-500 hover:bg-rose-50 rounded-md"><PencilIcon className="w-5 h-5"/></button>
                                       <button onClick={() => handleDeleteOrder(order.id)} className="p-2 text-slate-500 hover:bg-red-50 rounded-md"><TrashIcon className="w-5 h-5"/></button>
                                     </div>
@@ -522,15 +520,26 @@ const OrdersPage: React.FC = () => {
                                         {orderStatusValues.map(s => <option key={s} value={s}>{orderStatusTranslations[s]}</option>)}
                                     </select>
                                 </div>
-                                {isAdmin && (
-                                    <div>
-                                        <label htmlFor="managedByUserEmail" className="block text-sm font-medium text-slate-700">Менеджер</label>
-                                        <select id="managedByUserEmail" value={activeOrderData.managedByUserEmail || ''} onChange={e => setActiveOrderData(prev => ({...prev, managedByUserEmail: e.target.value}))} className="mt-1 block w-full p-2.5 border-slate-300 rounded-lg">
+                                
+                                <div>
+                                    <label htmlFor="managedByUserEmail" className="block text-sm font-medium text-slate-700">Менеджер</label>
+                                    <select 
+                                        id="managedByUserEmail" 
+                                        value={activeOrderData.managedByUserEmail || ''} 
+                                        onChange={e => setActiveOrderData(prev => ({...prev, managedByUserEmail: e.target.value}))} 
+                                        className="mt-1 block w-full p-2.5 border-slate-300 rounded-lg disabled:bg-slate-100 disabled:cursor-not-allowed"
+                                        disabled={!isAdmin}
+                                    >
+                                        {isAdmin ? (
+                                          <>
                                             <option value="">Не призначено</option>
                                             {allOrderManagers.map(m => <option key={m.email} value={m.email}>{m.name}</option>)}
-                                        </select>
-                                    </div>
-                                )}
+                                          </>
+                                        ) : (
+                                          <option value={user?.email}>{user?.name || user?.email}</option>
+                                        )}
+                                    </select>
+                                </div>
                             </div>
                             
                             <div className="pt-4 mt-4 border-t">
@@ -595,7 +604,7 @@ const OrdersPage: React.FC = () => {
                                             </div>
                                             <div className="col-span-4 md:col-span-2">
                                                 <label className="text-xs font-medium text-slate-600">Ціна (₴)</label>
-                                                <input type="number" value={item.price} onChange={e => handleItemChange(index, 'price', parseFloat(e.target.value) || 0)} min="0" step="0.01" required className="w-full mt-1 p-2 border-slate-300 rounded-md"/>
+                                                <input type="number" value={item.price} onChange={e => handleItemChange(index, 'price', parseFloat(e.target.value) || 0)} min="0" step="0.01" required className="w-full mt-1 p-2 border-slate-300 rounded-md disabled:bg-slate-100 disabled:cursor-not-allowed" disabled={!isAdmin}/>
                                             </div>
                                             <div className="col-span-3 md:col-span-2">
                                                 <label className="text-xs font-medium text-slate-600">Знижка (%)</label>
