@@ -3,7 +3,7 @@ import { Order, OrderItem, Customer, Product, ManagedUser, PaginatedResponse } f
 import { EyeIcon, XMarkIcon, PlusIcon, TrashIcon, PencilIcon, DocumentTextIcon, FilterIcon, DownloadIcon, ChevronDownIcon, ShareIcon, LightBulbIcon } from '../components/Icons';
 import { authenticatedFetch } from '../utils/api';
 import Pagination from '../components/Pagination';
-import { useAuth } from '../AuthContext';
+import { useAuth } from '../utils/auth';
 import { useNavigate } from 'react-router-dom';
 
 const orderStatusValues: Order['status'][] = ['Ordered', 'Shipped', 'Received', 'Calculation', 'AwaitingApproval', 'PaidByClient', 'WrittenOff', 'ReadyForPickup'];
@@ -83,6 +83,12 @@ const OrdersPage: React.FC = () => {
   const [pageSize, setPageSize] = useState(20);
   const [totalCount, setTotalCount] = useState(0);
 
+  // State for searchable customer dropdown in modal
+  const [isCustomerDropdownOpen, setIsCustomerDropdownOpen] = useState(false);
+  const [customerSearchTerm, setCustomerSearchTerm] = useState('');
+  const customerDropdownRef = useRef<HTMLDivElement>(null);
+
+  // State for searchable product dropdowns in modal
   const [openProductDropdown, setOpenProductDropdown] = useState<number | null>(null);
   const [productSearchTerm, setProductSearchTerm] = useState('');
   const [productSearchResults, setProductSearchResults] = useState<Product[]>([]);
@@ -90,6 +96,7 @@ const OrdersPage: React.FC = () => {
   const debouncedProductSearch = useDebounce(productSearchTerm, 300);
   const productDropdownRefs = useRef<(HTMLDivElement | null)[]>([]);
 
+  // State for AI suggestions
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<Product[]>([]);
   const [showAiSuggestions, setShowAiSuggestions] = useState(false);
@@ -111,10 +118,13 @@ const OrdersPage: React.FC = () => {
       if (openProductDropdown !== null && productDropdownRefs.current[openProductDropdown] && !productDropdownRefs.current[openProductDropdown]!.contains(event.target as Node)) {
         setOpenProductDropdown(null);
       }
+      if (customerDropdownRef.current && !customerDropdownRef.current.contains(event.target as Node)) {
+        setIsCustomerDropdownOpen(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [openProductDropdown]);
+  }, [openProductDropdown, isCustomerDropdownOpen]);
 
   useEffect(() => {
     if (successMessage) {
@@ -230,6 +240,7 @@ const OrdersPage: React.FC = () => {
   const closeModal = () => {
     setModalMode(null); setViewOrder(null); setActiveOrderData({});
     setModalError(null); setAiSuggestions([]); setShowAiSuggestions(false); setAiError(null);
+    setCustomerSearchTerm('');
   };
 
   const openAddModal = () => {
@@ -238,11 +249,13 @@ const OrdersPage: React.FC = () => {
       items: [initialNewOrderItem], totalAmount: 0,
       managedByUserEmail: user?.email,
     });
+    setCustomerSearchTerm('');
     setModalMode('add');
   };
 
   const openEditModal = (order: Order) => {
     setActiveOrderData({ ...order, date: toYYYYMMDD(new Date(order.date)) });
+    setCustomerSearchTerm(order.customerName);
     setModalMode('edit');
   };
 
@@ -380,7 +393,19 @@ const OrdersPage: React.FC = () => {
         setIsSubmitting(false);
     }
   };
+  
+  const filteredCustomers = useMemo(() => {
+    if (!customerSearchTerm) return customers;
+    return customers.filter(c => 
+      c.name.toLowerCase().includes(customerSearchTerm.toLowerCase())
+    );
+  }, [customers, customerSearchTerm]);
 
+  const handleSelectCustomer = (customer: Customer) => {
+    setActiveOrderData(prev => ({ ...prev, customerId: customer.id, customerName: customer.name }));
+    setCustomerSearchTerm(customer.name);
+    setIsCustomerDropdownOpen(false);
+  };
 
     return (
         <div className="space-y-6">
@@ -534,22 +559,37 @@ const OrdersPage: React.FC = () => {
                         {modalError && <div role="alert" className="mb-4 p-3 bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-500/20 rounded-lg text-sm">{modalError}</div>}
                         
                         <form onSubmit={handleSubmitOrder} className="flex-grow overflow-y-auto pr-2 space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                                <div>
-                                    <label htmlFor="customerId" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Клієнт</label>
-                                    <select id="customerId" value={activeOrderData.customerId || ''} onChange={e => {
-                                        const custId = e.target.value;
-                                        const cust = customers.find(c => c.id === custId);
-                                        setActiveOrderData(prev => ({ ...prev, customerId: custId, customerName: cust?.name || '' }))
-                                    }} required className="mt-1 block w-full p-2.5 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-200 rounded-lg">
-                                        <option value="" disabled>Оберіть клієнта</option>
-                                        {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                    </select>
+                            <div className={`grid grid-cols-1 md:grid-cols-2 ${modalMode === 'add' ? 'lg:grid-cols-3' : 'lg:grid-cols-4'} gap-4`}>
+                                <div className="relative" ref={customerDropdownRef}>
+                                    <label htmlFor="customerSearch" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Клієнт</label>
+                                    <input
+                                        type="text"
+                                        id="customerSearch"
+                                        value={customerSearchTerm}
+                                        onChange={e => { setCustomerSearchTerm(e.target.value); if (!isCustomerDropdownOpen) setIsCustomerDropdownOpen(true); }}
+                                        onFocus={() => setIsCustomerDropdownOpen(true)}
+                                        placeholder="Почніть вводити ім'я..."
+                                        autoComplete="off"
+                                        className="mt-1 block w-full p-2.5 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-200 rounded-lg"
+                                        required
+                                    />
+                                    {isCustomerDropdownOpen && (
+                                        <div className="absolute top-full mt-1 w-full bg-white dark:bg-slate-900 rounded-lg shadow-xl z-20 max-h-60 overflow-y-auto border dark:border-slate-700">
+                                            {filteredCustomers.length > 0 ? filteredCustomers.map(c => (
+                                                <div key={c.id} onClick={() => handleSelectCustomer(c)} className="p-3 hover:bg-rose-50 dark:hover:bg-rose-500/10 cursor-pointer text-sm">
+                                                    <p className="font-semibold dark:text-slate-100">{c.name}</p>
+                                                    <p className="text-xs text-slate-500 dark:text-slate-400">{c.email}</p>
+                                                </div>
+                                            )) : <div className="p-3 text-sm text-slate-500 dark:text-slate-400">Клієнтів не знайдено.</div>}
+                                        </div>
+                                    )}
                                 </div>
-                                <div>
-                                    <label htmlFor="date" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Дата</label>
-                                    <input type="date" id="date" value={activeOrderData.date} onChange={e => setActiveOrderData(prev => ({...prev, date: e.target.value}))} required className="mt-1 block w-full p-2.5 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-200 rounded-lg"/>
-                                </div>
+                                {modalMode === 'edit' && (
+                                    <div>
+                                        <label htmlFor="date" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Дата</label>
+                                        <input type="date" id="date" value={activeOrderData.date} onChange={e => setActiveOrderData(prev => ({...prev, date: e.target.value}))} required className="mt-1 block w-full p-2.5 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-200 rounded-lg"/>
+                                    </div>
+                                )}
                                 <div>
                                     <label htmlFor="status" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Статус</label>
                                     <select id="status" value={activeOrderData.status} onChange={e => setActiveOrderData(prev => ({...prev, status: e.target.value as Order['status']}))} required className="mt-1 block w-full p-2.5 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-200 rounded-lg">
