@@ -77,13 +77,8 @@ Your JSON response:`;
     let suggestedNames: string[] = [];
     try {
         suggestedNames = JSON.parse(response.text.trim() || '[]');
-    } catch(e) {
-        if (e instanceof Error) {
-            console.error("Failed to parse Gemini JSON. Response text:", response.text, "Error:", e.message);
-        } else {
-            // Safely log the unknown error by converting it to a string.
-            console.error("Failed to parse Gemini JSON. Response text:", response.text, "Unknown Error:", String(e));
-        }
+    } catch(e: any) {
+        console.error("Failed to parse Gemini JSON. Response text:", response.text, "Error:", e.message || String(e));
         return { statusCode: 200, headers: commonHeaders, body: JSON.stringify([]) };
     }
 
