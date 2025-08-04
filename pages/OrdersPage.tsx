@@ -95,6 +95,17 @@ const OrdersPage: React.FC = () => {
   const [showAiSuggestions, setShowAiSuggestions] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
 
+  const isAnyFilterActive = useMemo(() => {
+    return (
+        searchTerm !== '' ||
+        filterStatus !== 'All' ||
+        filterCustomerId !== 'All' ||
+        (isAdmin && filterManagerEmail !== 'All') ||
+        filterStartDate !== '' ||
+        filterEndDate !== ''
+    );
+  }, [searchTerm, filterStatus, filterCustomerId, filterManagerEmail, filterStartDate, filterEndDate, isAdmin]);
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (openProductDropdown !== null && productDropdownRefs.current[openProductDropdown] && !productDropdownRefs.current[openProductDropdown]!.contains(event.target as Node)) {
@@ -214,7 +225,6 @@ const OrdersPage: React.FC = () => {
   const resetFilters = () => {
     setSearchTerm(''); setFilterStatus('All'); setFilterCustomerId('All');
     setFilterManagerEmail('All'); setFilterStartDate(''); setFilterEndDate('');
-    setShowFilters(false);
   };
 
   const closeModal = () => {
@@ -391,27 +401,53 @@ const OrdersPage: React.FC = () => {
                     </button>
                 </div>
                 {showFilters && (
-                    <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-4 border-t dark:border-slate-700">
-                        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value as Order['status'] | 'All')} className="p-2.5 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-200 rounded-lg">
-                            <option value="All">Всі статуси</option>
-                            {orderStatusValues.map(s => <option key={s} value={s}>{orderStatusTranslations[s]}</option>)}
-                        </select>
-                        <select value={filterCustomerId} onChange={e => setFilterCustomerId(e.target.value)} className="p-2.5 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-200 rounded-lg">
-                            <option value="All">Всі клієнти</option>
-                            {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                        </select>
-                        {isAdmin && (
-                             <select value={filterManagerEmail} onChange={e => setFilterManagerEmail(e.target.value)} className="p-2.5 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-200 rounded-lg">
-                                <option value="All">Всі менеджери</option>
-                                {allOrderManagers.map(m => <option key={m.email} value={m.email}>{m.name}</option>)}
-                            </select>
-                        )}
-                        <div className="flex items-center gap-2">
-                            <input type="date" value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} className="w-full p-2.5 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-200 rounded-lg"/>
-                            <span className="text-slate-500 dark:text-slate-400">-</span>
-                            <input type="date" value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} className="w-full p-2.5 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-200 rounded-lg"/>
+                    <div className="mt-4 pt-4 border-t dark:border-slate-700">
+                        <div className="flex flex-wrap gap-4 items-end">
+                            <div className="flex-grow min-w-[180px]">
+                                <label htmlFor="filterStatus" className="text-xs font-medium text-slate-500 dark:text-slate-400">Статус</label>
+                                <select id="filterStatus" value={filterStatus} onChange={e => setFilterStatus(e.target.value as Order['status'] | 'All')} className="mt-1 w-full p-2.5 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-200 rounded-lg">
+                                    <option value="All">Всі статуси</option>
+                                    {orderStatusValues.map(s => <option key={s} value={s}>{orderStatusTranslations[s]}</option>)}
+                                </select>
+                            </div>
+
+                            <div className="flex-grow min-w-[180px]">
+                                <label htmlFor="filterCustomer" className="text-xs font-medium text-slate-500 dark:text-slate-400">Клієнт</label>
+                                <select id="filterCustomer" value={filterCustomerId} onChange={e => setFilterCustomerId(e.target.value)} className="mt-1 w-full p-2.5 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-200 rounded-lg">
+                                    <option value="All">Всі клієнти</option>
+                                    {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                </select>
+                            </div>
+
+                            {isAdmin && (
+                                <div className="flex-grow min-w-[180px]">
+                                    <label htmlFor="filterManager" className="text-xs font-medium text-slate-500 dark:text-slate-400">Менеджер</label>
+                                    <select id="filterManager" value={filterManagerEmail} onChange={e => setFilterManagerEmail(e.target.value)} className="mt-1 w-full p-2.5 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-200 rounded-lg">
+                                        <option value="All">Всі менеджери</option>
+                                        {allOrderManagers.map(m => <option key={m.email} value={m.email}>{m.name}</option>)}
+                                    </select>
+                                </div>
+                            )}
+
+                            <div className="flex-grow min-w-[280px]">
+                                <label className="text-xs font-medium text-slate-500 dark:text-slate-400">Дата</label>
+                                <div className="flex items-center gap-2 mt-1">
+                                    <input type="date" value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} className="w-full p-2.5 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-200 rounded-lg"/>
+                                    <span className="text-slate-500 dark:text-slate-400">-</span>
+                                    <input type="date" value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} className="w-full p-2.5 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-200 rounded-lg"/>
+                                </div>
+                            </div>
+
+                            {isAnyFilterActive && (
+                                <button 
+                                    onClick={resetFilters} 
+                                    className="flex items-center gap-1.5 h-[42px] text-sm font-medium text-red-600 dark:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 px-3 py-2 rounded-lg border border-red-300 dark:border-red-500/30 hover:border-red-400 dark:hover:border-red-500/50 transition-colors"
+                                >
+                                    <XMarkIcon className="w-4 h-4" />
+                                    Скинути
+                                </button>
+                             )}
                         </div>
-                         <button onClick={resetFilters} className="text-sm font-semibold text-rose-600 dark:text-rose-400 hover:text-rose-800 dark:hover:text-rose-300">Скинути фільтри</button>
                     </div>
                 )}
             </div>
@@ -604,35 +640,36 @@ const OrdersPage: React.FC = () => {
                                             </div>
                                             <div className="col-span-4 md:col-span-2">
                                                 <label className="text-xs font-medium text-slate-600 dark:text-slate-300">Ціна (₴)</label>
-                                                <input type="number" value={item.price} onChange={e => handleItemChange(index, 'price', parseFloat(e.target.value) || 0)} min="0" step="0.01" required className="w-full mt-1 p-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900/50 text-slate-900 dark:text-slate-200 rounded-md disabled:bg-slate-100 dark:disabled:bg-slate-600 disabled:cursor-not-allowed" disabled={!isAdmin}/>
+                                                <input type="number" value={item.price} onChange={e => handleItemChange(index, 'price', parseFloat(e.target.value) || 0)} min="0" step="0.01" required className="w-full mt-1 p-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900/50 text-slate-900 dark:text-slate-200 rounded-md disabled:bg-slate-100 dark:disabled:bg-slate-600" disabled={!isAdmin}/>
                                             </div>
                                             <div className="col-span-3 md:col-span-2">
                                                 <label className="text-xs font-medium text-slate-600 dark:text-slate-300">Знижка (%)</label>
-                                                <input type="number" value={item.discount} onChange={e => handleItemChange(index, 'discount', parseFloat(e.target.value) || 0)} min="0" max="100" step="1" className="w-full mt-1 p-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900/50 text-slate-900 dark:text-slate-200 rounded-md"/>
+                                                <input type="number" value={item.discount} onChange={e => handleItemChange(index, 'discount', parseFloat(e.target.value) || 0)} min="0" max="100" className="w-full mt-1 p-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900/50 text-slate-900 dark:text-slate-200 rounded-md"/>
                                             </div>
-                                            <div className="col-span-2 md:col-span-1 flex items-end">
-                                                <button type="button" onClick={() => handleRemoveItem(index)} className="p-2 text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400"><TrashIcon className="w-5 h-5"/></button>
+                                            <div className="col-span-2 md:col-span-2">
+                                                <label className="text-xs font-medium text-slate-600 dark:text-slate-300">Всього</label>
+                                                <p className="w-full mt-1 p-2 font-semibold text-slate-800 dark:text-slate-100">₴{(item.quantity * item.price * (1 - (item.discount || 0) / 100)).toFixed(2)}</p>
                                             </div>
-                                            <div className="col-span-12 md:col-span-1 text-right text-sm font-semibold flex items-end justify-end dark:text-slate-200">
-                                                ₴{(item.quantity * item.price * (1-(item.discount || 0)/100)).toFixed(2)}
-                                            </div>
+                                             <button type="button" onClick={() => handleRemoveItem(index)} className="col-span-12 md:col-span-1 self-center md:self-end text-slate-400 hover:text-red-500 p-2 rounded-full hover:bg-red-50 dark:hover:bg-red-500/10">
+                                                <TrashIcon className="w-5 h-5 mx-auto"/>
+                                            </button>
                                         </div>
                                     ))}
                                 </div>
-                                <button type="button" onClick={handleAddItem} className="mt-3 flex items-center gap-2 text-sm font-semibold text-rose-600 dark:text-rose-400 hover:text-rose-800 dark:hover:text-rose-300"><PlusIcon className="w-4 h-4"/> Додати товар</button>
-                            </div>
-
-                            <div className="pt-4 mt-4 border-t dark:border-slate-700">
-                                <label htmlFor="notes" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Нотатки</label>
-                                <textarea id="notes" value={activeOrderData.notes || ''} onChange={e => setActiveOrderData(prev => ({...prev, notes: e.target.value}))} rows={3} className="mt-1 block w-full p-2.5 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-200 rounded-lg"/>
+                                <button type="button" onClick={handleAddItem} className="mt-2 text-sm font-semibold text-rose-600 dark:text-rose-400 hover:text-rose-800 dark:hover:text-rose-300">+ Додати товар</button>
                             </div>
                             
-                            <div className="flex justify-end items-center pt-6 space-x-3 border-t border-slate-200 dark:border-slate-700">
-                                <span className="text-lg font-bold text-slate-800 dark:text-slate-100">Всього: ₴{activeOrderData.totalAmount?.toFixed(2) || '0.00'}</span>
-                                <button type="button" onClick={closeModal} className="bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 py-2 px-4 rounded-lg" disabled={isSubmitting}>Скасувати</button>
-                                <button type="submit" className="bg-rose-500 hover:bg-rose-600 text-white py-2 px-4 rounded-lg" disabled={isSubmitting}>
-                                    {isSubmitting ? 'Збереження...' : (modalMode === 'edit' ? 'Зберегти зміни' : 'Створити замовлення')}
-                                </button>
+                             <div>
+                                <label htmlFor="notes" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Нотатки до замовлення</label>
+                                <textarea id="notes" value={activeOrderData.notes || ''} onChange={e => setActiveOrderData(prev => ({ ...prev, notes: e.target.value }))} rows={2} className="mt-1 block w-full p-2.5 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-200 rounded-lg"/>
+                            </div>
+                            
+                            <div className="flex justify-between items-center pt-6 border-t dark:border-slate-700">
+                                <p className="text-xl font-bold text-slate-800 dark:text-slate-100">Загальна сума: ₴{activeOrderData.totalAmount?.toFixed(2) || '0.00'}</p>
+                                <div className="flex space-x-3">
+                                    <button type="button" onClick={closeModal} className="bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 py-2 px-4 rounded-lg" disabled={isSubmitting}>Скасувати</button>
+                                    <button type="submit" className="bg-rose-500 hover:bg-rose-600 text-white py-2 px-4 rounded-lg" disabled={isSubmitting}>{isSubmitting ? 'Збереження...' : 'Зберегти замовлення'}</button>
+                                </div>
                             </div>
                         </form>
                     </div>
@@ -640,47 +677,59 @@ const OrdersPage: React.FC = () => {
             )}
 
             {viewOrder && (
-                <div role="dialog" aria-modal="true" className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+                 <div role="dialog" aria-modal="true" className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
                     <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
-                        <div className="flex justify-between items-center pb-4 mb-4 border-b border-slate-200 dark:border-slate-700">
-                            <h3 className="text-xl font-semibold text-slate-800 dark:text-slate-100">Деталі замовлення #{viewOrder.id.substring(0, 8)}</h3>
+                         <div className="flex justify-between items-center pb-4 mb-6 border-b dark:border-slate-700">
+                            <h3 className="text-xl font-semibold text-slate-800 dark:text-slate-100">Замовлення #{viewOrder.id.substring(0,8)}</h3>
                             <button onClick={closeModal}><XMarkIcon className="w-6 h-6 text-slate-400 dark:hover:text-slate-300"/></button>
                         </div>
-                        <div className="flex-grow overflow-y-auto pr-2 space-y-4 text-sm">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div><span className="font-semibold text-slate-500 dark:text-slate-400">Клієнт:</span> <span className="font-medium text-slate-800 dark:text-slate-200">{viewOrder.customerName}</span></div>
-                                <div><span className="font-semibold text-slate-500 dark:text-slate-400">Дата:</span> <span className="font-medium text-slate-800 dark:text-slate-200">{new Date(viewOrder.date).toLocaleDateString()}</span></div>
-                                <div><span className="font-semibold text-slate-500 dark:text-slate-400">Статус:</span> <StatusPill status={viewOrder.status} /></div>
-                                <div><span className="font-semibold text-slate-500 dark:text-slate-400">Сума:</span> <span className="font-bold text-slate-800 dark:text-slate-100 text-base">₴{viewOrder.totalAmount.toFixed(2)}</span></div>
-                                {viewOrder.managedByUserEmail && <div><span className="font-semibold text-slate-500 dark:text-slate-400">Менеджер:</span> <span className="font-medium text-slate-800 dark:text-slate-200">{viewOrder.managedByUserEmail}</span></div>}
-                            </div>
-                            {viewOrder.notes && (
-                                <div className="pt-4 border-t dark:border-slate-700">
-                                    <p className="font-semibold text-slate-500 dark:text-slate-400 mb-1">Нотатки:</p>
-                                    <p className="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{viewOrder.notes}</p>
+                        <div className="flex-grow overflow-y-auto pr-2 space-y-4">
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <p className="text-slate-500 dark:text-slate-400">Клієнт</p>
+                                    <p className="font-semibold text-slate-800 dark:text-slate-100">{viewOrder.customerName}</p>
                                 </div>
-                            )}
-                            <div className="pt-4 border-t dark:border-slate-700">
-                                <h4 className="font-semibold text-slate-500 dark:text-slate-400 mb-2">Товари:</h4>
-                                <ul className="divide-y divide-slate-200 dark:divide-slate-700 border dark:border-slate-700 rounded-lg overflow-hidden">
-                                    {viewOrder.items.map((item, i) => (
-                                        <li key={item.id || i} className="grid grid-cols-5 gap-2 px-3 py-2 items-center">
-                                            <span className="col-span-2 font-medium text-slate-800 dark:text-slate-200">{item.productName}</span>
-                                            <span className="text-center text-slate-600 dark:text-slate-300">{item.quantity} x ₴{item.price.toFixed(2)}</span>
-                                            {item.discount > 0 && <span className="text-center text-red-500 text-xs">(-{item.discount}%)</span>}
-                                            <span className={`text-right font-semibold text-slate-800 dark:text-slate-100 ${item.discount > 0 ? 'col-span-1' : 'col-span-2'}`}>₴{(item.quantity * item.price * (1-(item.discount || 0)/100)).toFixed(2)}</span>
+                                <div>
+                                    <p className="text-slate-500 dark:text-slate-400">Дата</p>
+                                    <p className="font-semibold text-slate-800 dark:text-slate-100">{new Date(viewOrder.date).toLocaleDateString()}</p>
+                                </div>
+                                 <div>
+                                    <p className="text-slate-500 dark:text-slate-400">Статус</p>
+                                    <StatusPill status={viewOrder.status} />
+                                </div>
+                                <div>
+                                    <p className="text-slate-500 dark:text-slate-400">Менеджер</p>
+                                    <p className="font-semibold text-slate-800 dark:text-slate-100">{allOrderManagers.find(m => m.email === viewOrder.managedByUserEmail)?.name || viewOrder.managedByUserEmail || 'Не призначено'}</p>
+                                </div>
+                            </div>
+                            <div className="pt-4 mt-4 border-t dark:border-slate-700">
+                                <h4 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-2">Товари</h4>
+                                <ul className="divide-y dark:divide-slate-700">
+                                    {viewOrder.items.map(item => (
+                                        <li key={item.id} className="py-2 flex justify-between items-center">
+                                            <div>
+                                                <p className="font-medium text-slate-800 dark:text-slate-200">{item.productName}</p>
+                                                <p className="text-sm text-slate-500 dark:text-slate-400">{item.quantity} шт. × ₴{item.price.toFixed(2)}{item.discount > 0 ? ` (-${item.discount}%)` : ''}</p>
+                                            </div>
+                                            <p className="font-semibold text-slate-800 dark:text-slate-100">₴{(item.quantity * item.price * (1 - (item.discount || 0)/100)).toFixed(2)}</p>
                                         </li>
                                     ))}
                                 </ul>
                             </div>
+                            {viewOrder.notes && (
+                                <div className="pt-4 mt-4 border-t dark:border-slate-700">
+                                    <h4 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-2">Нотатки</h4>
+                                    <p className="text-slate-600 dark:text-slate-300 whitespace-pre-wrap">{viewOrder.notes}</p>
+                                </div>
+                            )}
                         </div>
-                        <div className="mt-6 pt-6 text-right border-t border-slate-200 dark:border-slate-700">
-                            <button onClick={closeModal} className="bg-slate-600 hover:bg-slate-700 text-white font-semibold py-2 px-4 rounded-lg">Закрити</button>
+                        <div className="flex justify-between items-center pt-6 border-t dark:border-slate-700">
+                            <p className="text-xl font-bold text-slate-800 dark:text-slate-100">Всього: ₴{viewOrder.totalAmount.toFixed(2)}</p>
+                            <button type="button" onClick={closeModal} className="bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 py-2 px-4 rounded-lg">Закрити</button>
                         </div>
                     </div>
                 </div>
             )}
-
         </div>
     );
 };
