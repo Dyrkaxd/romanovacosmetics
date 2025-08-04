@@ -52,7 +52,7 @@ const handler: Handler = async (event: HandlerEvent) => {
         supabase.from(tableName).select('name')
     );
     const productResults = await Promise.all(productPromises);
-    const allProductNames = productResults.map(res => res.data?.map(p => p.name) || []).flat();
+    const allProductNames = productResults.map(res => res.data?.map((p: { name: string }) => p.name) || []).flat();
     const uniqueProductNames = [...new Set(allProductNames)];
 
     const currentItemNames = currentItems.map(item => item.productName);
