@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { authenticatedFetch } from '../utils/api';
 import { ReportData, SalesDataPoint, TopProduct, TopCustomer, RevenueByGroup, Expense } from '../types';
@@ -9,8 +10,14 @@ import { ChartBarIcon, CurrencyDollarIcon, UsersIcon, DownloadIcon, LightBulbIco
 // Helper to format date as YYYY-MM-DD
 const toYYYYMMDD = (date: Date) => date.toISOString().split('T')[0];
 
-const StatCard: React.FC<{ title: string; value: string; subValue?: string, isLoading: boolean; colorClass?: string }> = ({ title, value, subValue, isLoading, colorClass = 'text-slate-800' }) => (
-    <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+const StatCard: React.FC<{ title: string; value: string; subValue?: string, isLoading: boolean; colorClass?: string, tooltipText?: string }> = ({ title, value, subValue, isLoading, colorClass = 'text-slate-800', tooltipText }) => (
+    <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 relative group">
+        {tooltipText && (
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-slate-800 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
+                {tooltipText}
+                <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-x-8 border-x-transparent border-t-8 border-t-slate-800"></div>
+            </div>
+        )}
         <p className="text-sm font-medium text-slate-500">{title}</p>
         {isLoading ? (
             <div className="h-9 w-3/4 bg-slate-200 rounded-md mt-1 animate-pulse"></div>
@@ -463,10 +470,34 @@ const ReportsPage: React.FC = () => {
 
                 <div className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                        <StatCard title="Дохід (отримано)" value={`₴${(reportData?.totalRevenue ?? 0).toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} isLoading={isLoading} subValue={`${(reportData?.totalOrders ?? 0)} замовлень`} />
-                        <StatCard title="Валовий прибуток" value={`₴${(reportData?.grossProfit ?? 0).toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} isLoading={isLoading} colorClass="text-indigo-600" />
-                        <StatCard title="Витрати" value={`₴${(reportData?.totalExpenses ?? 0).toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} isLoading={isLoading} colorClass="text-red-600" />
-                        <StatCard title="Чистий прибуток" value={`₴${(reportData?.totalProfit ?? 0).toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} isLoading={isLoading} colorClass="text-green-600" />
+                        <StatCard 
+                            title="Дохід (отримано)" 
+                            value={`₴${(reportData?.totalRevenue ?? 0).toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} 
+                            isLoading={isLoading} 
+                            subValue={`${(reportData?.totalOrders ?? 0)} замовлень`}
+                            tooltipText="Загальна сума грошей, отримана від клієнтів за замовленнями зі статусом 'Отримано' протягом вибраного періоду. Це дохід до вирахування будь-яких витрат."
+                        />
+                        <StatCard 
+                            title="Валовий прибуток" 
+                            value={`₴${(reportData?.grossProfit ?? 0).toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} 
+                            isLoading={isLoading} 
+                            colorClass="text-indigo-600"
+                            tooltipText="Різниця між доходом від проданих товарів та їхньою собівартістю (ціна салону). Розраховується для замовлень зі статусом 'Отримано'."
+                        />
+                        <StatCard 
+                            title="Витрати" 
+                            value={`₴${(reportData?.totalExpenses ?? 0).toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} 
+                            isLoading={isLoading} 
+                            colorClass="text-red-600"
+                            tooltipText="Загальна сума всіх зафіксованих витрат (наприклад, оренда, маркетинг, зарплати) протягом вибраного періоду."
+                        />
+                        <StatCard 
+                            title="Чистий прибуток" 
+                            value={`₴${(reportData?.totalProfit ?? 0).toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} 
+                            isLoading={isLoading} 
+                            colorClass="text-green-600"
+                            tooltipText="Фінальний прибуток після вирахування всіх витрат з доходу. Розраховується як (Дохід - Витрати)."
+                        />
                     </div>
 
                     <AIAnalysisCard analysis={aiAnalysis} isLoading={isAiLoading} error={aiError} onRegenerate={() => reportData && fetchAiAnalysis(reportData)} />
