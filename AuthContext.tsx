@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, ReactNode, useCallback, useEffect } from 'react';
 import { AuthenticatedUser } from './types'; 
 import { googleLogout, CredentialResponse } from '@react-oauth/google';
@@ -25,7 +26,7 @@ interface CustomTokenPayload extends JwtPayload {
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<AuthenticatedUser | null>(null);
-  const [token, setToken] = useState<string | null>(() => sessionStorage.getItem('authToken'));
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem('authToken'));
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
 
   const performAuthCheck = useCallback(async (jwt: string): Promise<AuthenticatedUser | null> => {
@@ -72,10 +73,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return null; // Not an admin, not a managed user
   }, []);
 
-  // Effect for session restore from sessionStorage
+  // Effect for session restore from localStorage
   useEffect(() => {
     const restoreSession = async () => {
-        const storedToken = sessionStorage.getItem('authToken');
+        const storedToken = localStorage.getItem('authToken');
         if (storedToken) {
             try {
                 const userProfile = await performAuthCheck(storedToken);
@@ -90,7 +91,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 // Clear invalid session
                 setUser(null);
                 setToken(null);
-                sessionStorage.removeItem('authToken');
+                localStorage.removeItem('authToken');
             }
         }
         setIsLoadingAuth(false);
@@ -114,14 +115,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (userProfile) {
             setUser(userProfile);
             setToken(jwt);
-            sessionStorage.setItem('authToken', jwt);
+            localStorage.setItem('authToken', jwt);
             return true;
         } else {
             console.warn(`User authenticated with Google but is not authorized for this application.`);
             googleLogout();
             setUser(null);
             setToken(null);
-            sessionStorage.removeItem('authToken');
+            localStorage.removeItem('authToken');
             return false;
         }
     } catch (error) {
@@ -129,7 +130,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         googleLogout();
         setUser(null);
         setToken(null);
-        sessionStorage.removeItem('authToken');
+        localStorage.removeItem('authToken');
         // Re-throw the error so the calling component can handle it
         throw error;
     } finally {
@@ -141,7 +142,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     googleLogout();
     setUser(null);
     setToken(null);
-    sessionStorage.removeItem('authToken');
+    localStorage.removeItem('authToken');
     // Optionally, redirect to login page after sign out
     // window.location.hash = '/login';
   }, []);

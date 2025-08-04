@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useRef, useEffect, useCallback, FC, SVGProps } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SearchIcon, BellIcon, ChevronDownIcon, XMarkIcon, Bars3Icon, OrdersIcon } from './Icons';
@@ -37,7 +38,7 @@ const NotificationIcon: FC<{ type: Notification['type'], props?: SVGProps<SVGSVG
             return <OrdersIcon className="w-5 h-5 text-rose-500" {...props} />;
         // Add other cases for future notification types
         default:
-            return <BellIcon className="w-5 h-5 text-slate-500" {...props} />;
+            return <BellIcon className="w-5 h-5 text-slate-500 dark:text-slate-400" {...props} />;
     }
 };
 
@@ -177,17 +178,17 @@ const Header: React.FC<HeaderProps> = ({ title, onToggleMobileSidebar }) => {
   };
 
   return (
-    <header className="bg-slate-50 p-4 sm:px-6 lg:px-8 sticky top-0 z-30 border-b border-slate-200">
+    <header className="bg-slate-50 dark:bg-slate-900 p-4 sm:px-6 lg:px-8 sticky top-0 z-30 border-b border-slate-200 dark:border-slate-700">
       <div className="flex items-center justify-between">
         <div className="flex items-center">
           <button 
             onClick={onToggleMobileSidebar} 
-            className="md:hidden text-slate-500 hover:text-rose-600 mr-4 p-1"
+            className="md:hidden text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-500 mr-4 p-1"
             aria-label="Відкрити меню"
           >
             <Bars3Icon className="w-6 h-6" />
           </button>
-          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">{title}</h1>
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">{title}</h1>
         </div>
         <div className="flex items-center space-x-3 sm:space-x-5">
           <div className="relative hidden sm:block" ref={searchRef}>
@@ -198,7 +199,7 @@ const Header: React.FC<HeaderProps> = ({ title, onToggleMobileSidebar }) => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onFocus={() => setIsSearchFocused(true)}
-              className="pl-10 pr-4 py-2 text-sm border bg-white border-slate-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 transition-colors w-40 lg:w-96"
+              className="pl-10 pr-4 py-2 text-sm border bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 dark:text-slate-200 dark:placeholder-slate-400 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 transition-colors w-40 lg:w-96"
               aria-label="Глобальний пошук"
             />
              {isSearchFocused && (searchQuery.length > 0 || isSearchLoading) && (
@@ -211,20 +212,20 @@ const Header: React.FC<HeaderProps> = ({ title, onToggleMobileSidebar }) => {
             )}
           </div>
            <div className="relative" ref={notificationsRef}>
-             <button onClick={handleToggleNotifications} className="text-slate-500 hover:text-rose-600 relative p-2 rounded-full hover:bg-slate-100" aria-label="Сповіщення">
+             <button onClick={handleToggleNotifications} className="text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-500 relative p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700" aria-label="Сповіщення">
                 <BellIcon className="w-6 h-6" />
-                {unreadCount > 0 && <span className="absolute top-1 right-1 block h-2.5 w-2.5 rounded-full bg-rose-500 ring-2 ring-slate-50" />}
+                {unreadCount > 0 && <span className="absolute top-1 right-1 block h-2.5 w-2.5 rounded-full bg-rose-500 ring-2 ring-slate-50 dark:ring-slate-900" />}
             </button>
              {notificationsOpen && (
-                <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl z-30 ring-1 ring-black ring-opacity-5">
-                    <div className="p-3 border-b border-slate-200">
-                        <h4 className="text-sm font-semibold text-slate-800">Сповіщення</h4>
+                <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-800 rounded-lg shadow-xl z-30 ring-1 ring-black dark:ring-slate-700 ring-opacity-5">
+                    <div className="p-3 border-b border-slate-200 dark:border-slate-700">
+                        <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Сповіщення</h4>
                     </div>
                     <ul className="py-1 max-h-96 overflow-y-auto">
                         {notifications.length > 0 ? (
                             notifications.map(notification => (
                                 <li key={notification.id}
-                                    className={`flex items-start p-3 hover:bg-slate-50 cursor-pointer ${!notification.is_read ? 'bg-rose-50/50' : ''}`}
+                                    className={`flex items-start p-3 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer ${!notification.is_read ? 'bg-rose-50/50 dark:bg-rose-500/10' : ''}`}
                                     onClick={() => {
                                         if (notification.link) navigate(notification.link);
                                         setNotificationsOpen(false);
@@ -234,14 +235,14 @@ const Header: React.FC<HeaderProps> = ({ title, onToggleMobileSidebar }) => {
                                        <NotificationIcon type={notification.type} />
                                     </div>
                                     <div className="flex-1">
-                                        <p className="text-sm text-slate-700">{notification.message}</p>
-                                        <p className="text-xs text-slate-500">{timeAgo(notification.created_at)}</p>
+                                        <p className="text-sm text-slate-700 dark:text-slate-300">{notification.message}</p>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400">{timeAgo(notification.created_at)}</p>
                                     </div>
                                     {!notification.is_read && <div className="w-2 h-2 bg-rose-500 rounded-full mt-2 ml-2 flex-shrink-0"></div>}
                                 </li>
                             ))
                         ) : (
-                            <li className="p-4 text-center text-sm text-slate-500">
+                            <li className="p-4 text-center text-sm text-slate-500 dark:text-slate-400">
                                 У вас немає нових сповіщень.
                             </li>
                         )}
@@ -254,7 +255,7 @@ const Header: React.FC<HeaderProps> = ({ title, onToggleMobileSidebar }) => {
             <div className="relative" ref={dropdownRef}>
               <button 
                 onClick={() => setDropdownOpen(!dropdownOpen)} 
-                className="flex items-center space-x-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 rounded-full"
+                className="flex items-center space-x-2 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 rounded-full"
                 aria-expanded={dropdownOpen}
                 aria-haspopup="true"
                 aria-label="Меню користувача"
@@ -272,15 +273,15 @@ const Header: React.FC<HeaderProps> = ({ title, onToggleMobileSidebar }) => {
                 </div>
               </button>
               {dropdownOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl py-1 z-30 ring-1 ring-black ring-opacity-5">
+                <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-800 rounded-lg shadow-xl py-1 z-30 ring-1 ring-black dark:ring-slate-700 ring-opacity-5">
                   <div className="px-4 py-3">
-                    <p className="text-sm font-semibold text-slate-800">{user.name || 'Користувач'}</p>
-                    <p className="text-xs text-slate-500 truncate">{user.email}</p>
+                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{user.name || 'Користувач'}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{user.email}</p>
                   </div>
-                  <hr className="border-slate-200"/>
+                  <hr className="border-slate-200 dark:border-slate-700"/>
                   <button
                     onClick={handleSignOut}
-                    className="w-full text-left flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700"
+                    className="w-full text-left flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 dark:text-red-400"
                     role="menuitem"
                   >
                     Вийти

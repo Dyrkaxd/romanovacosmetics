@@ -1,5 +1,6 @@
 
 
+
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { NavItem } from '../types';
@@ -47,37 +48,37 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpenOnMobile, toggleMobileSidebar }
       className={({ isActive }) =>
         `group flex items-center px-4 py-2.5 text-sm font-medium rounded-lg transition-colors duration-150 ease-in-out ${
           isActive 
-          ? 'active bg-rose-50 text-rose-600' 
-          : 'text-slate-600 hover:text-rose-600 hover:bg-rose-50'
+          ? 'active bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400' 
+          : 'text-slate-600 hover:text-rose-600 hover:bg-rose-50 dark:text-slate-300 dark:hover:text-rose-500 dark:hover:bg-slate-700'
         }`
       }
     >
-      <item.icon className="w-5 h-5 mr-3 transition-colors text-slate-400 group-hover:text-rose-600 group-[.active]:text-rose-600" />
+      <item.icon className="w-5 h-5 mr-3 transition-colors text-slate-400 group-hover:text-rose-600 dark:group-hover:text-rose-500 group-[.active]:text-rose-600 dark:group-[.active]:text-rose-400" />
       {item.name}
     </NavLink>
   );
 
   return (
     <div 
-      className={`w-64 bg-white h-screen flex flex-col fixed inset-y-0 left-0 z-30 border-r border-slate-200
+      className={`w-64 bg-white dark:bg-slate-800 h-screen flex flex-col fixed inset-y-0 left-0 z-30 border-r border-slate-200 dark:border-slate-700
                   transform ${isOpenOnMobile ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 
                   transition-transform duration-300 ease-in-out shadow-lg md:shadow-none`}
     >
-      <div className="p-4 border-b border-slate-200 flex justify-between items-center">
+      <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
         <div className="flex items-center space-x-3">
           <img src={logoBase64} alt="Romanova Cosmetics Logo" className="h-10 w-10" />
           {isAdmin ? (
-            <span className="text-xl font-bold tracking-tight text-slate-800">ROMANOVA</span>
+            <span className="text-xl font-bold tracking-tight text-slate-800 dark:text-slate-100">ROMANOVA</span>
           ) : (
             <div>
-              <span className="text-xl font-bold tracking-tight text-slate-800">ROMANOVA</span>
+              <span className="text-xl font-bold tracking-tight text-slate-800 dark:text-slate-100">ROMANOVA</span>
               <p className="text-[10px] font-bold tracking-widest text-rose-500 -mt-1">МЕНЕДЖЕР</p>
             </div>
           )}
         </div>
         <button 
           onClick={toggleMobileSidebar} 
-          className="md:hidden text-slate-400 hover:text-slate-600"
+          className="md:hidden text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
           aria-label="Закрити меню"
         >
           <XMarkIcon className="w-6 h-6" />
@@ -88,7 +89,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpenOnMobile, toggleMobileSidebar }
           <NavLinkItem key={item.name} item={item} />
         ))}
       </nav>
-      <div className="p-4 border-t border-slate-200 space-y-1.5">
+      <div className="p-4 border-t border-slate-200 dark:border-slate-700 space-y-1.5">
         {bottomNavItems.map((item) => (
            <NavLinkItem key={item.name} item={item} />
         ))}

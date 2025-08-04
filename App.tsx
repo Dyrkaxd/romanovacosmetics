@@ -1,10 +1,12 @@
 
 
 
+
 import React, { useState, Suspense, useEffect } from 'react';
 import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider, useAuth } from './AuthContext'; 
+import { ThemeProvider } from './ThemeContext';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 
@@ -78,7 +80,7 @@ const MainAppLayout: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-slate-50">
+    <div className="flex h-screen bg-slate-50 dark:bg-slate-900">
       <Sidebar isOpenOnMobile={isMobileSidebarOpen} toggleMobileSidebar={toggleMobileSidebar} />
       <div className={`flex-1 flex flex-col md:ml-64 transition-all duration-300 ease-in-out`}>
         <Header title={pageTitle} onToggleMobileSidebar={toggleMobileSidebar} />
@@ -129,17 +131,17 @@ const AppContent: React.FC = () => {
 
   if (isLoadingAuth) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-900">
         <div className="w-12 h-12 border-4 border-rose-500 border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-slate-600 text-lg mt-4 font-medium">Завантаження автентифікації...</p>
+        <p className="text-slate-600 dark:text-slate-300 text-lg mt-4 font-medium">Завантаження автентифікації...</p>
       </div>
     );
   }
 
   const CenteredPageLoader = () => (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-900">
         <div className="w-12 h-12 border-4 border-rose-500 border-t-transparent rounded-full animate-spin"></div>
-         <p className="text-slate-600 text-lg mt-4 font-medium">Завантаження...</p>
+         <p className="text-slate-600 dark:text-slate-300 text-lg mt-4 font-medium">Завантаження...</p>
     </div>
   );
 
@@ -168,7 +170,9 @@ const App: React.FC = () => {
   return (
     <GoogleOAuthProvider clientId={googleClientId}>
       <AuthProvider>
-        <AppContent />
+        <ThemeProvider>
+          <AppContent />
+        </ThemeProvider>
       </AuthProvider>
     </GoogleOAuthProvider>
   );

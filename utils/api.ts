@@ -2,13 +2,13 @@
 // It automatically adds the Authorization header to requests.
 
 export const authenticatedFetch = async (url: string, options: RequestInit = {}): Promise<Response> => {
-  const token = sessionStorage.getItem('authToken');
+  const token = localStorage.getItem('authToken');
 
   // If there's no token, we cannot make an authenticated request.
   // Redirect to login and stop the execution flow.
   if (!token) {
     console.error('Authentication error: No token found. Redirecting to login.');
-    sessionStorage.removeItem('authToken');
+    localStorage.removeItem('authToken');
     window.location.hash = '/login';
     // Return a promise that never resolves to prevent the caller from continuing.
     return new Promise<Response>(() => {});
@@ -33,7 +33,7 @@ export const authenticatedFetch = async (url: string, options: RequestInit = {})
   // it means the token is invalid or expired. We should clear the session.
   if (response.status === 401) {
     console.error('Authentication error: Token is invalid or expired. Forcing logout.');
-    sessionStorage.removeItem('authToken');
+    localStorage.removeItem('authToken');
     // Force a reload to redirect to the login page via the App's routing logic.
     window.location.hash = '/login';
     // Return a promise that never resolves to prevent the caller from continuing.
