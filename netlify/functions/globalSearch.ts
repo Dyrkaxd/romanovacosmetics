@@ -161,7 +161,14 @@ const handler: Handler = async (event) => {
             },
         });
         
-        const aiResponse = JSON.parse(String(response.text || '{}').trim());
+        let aiResponse;
+        const responseText = response.text;
+        if (typeof responseText === 'string') {
+            aiResponse = JSON.parse(responseText.trim() || '{}');
+        } else {
+            aiResponse = { intent: 'generic_text', filters: {} };
+        }
+        
         const { intent, filters } = aiResponse;
         
         switch (intent) {

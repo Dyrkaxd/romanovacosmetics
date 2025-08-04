@@ -111,7 +111,8 @@ ${JSON.stringify(rawInsights.slice(0, 5), null, 2)}
         contents: prompt
     });
 
-    const text = String(response.text || '');
+    const responseText = response.text;
+    const text = typeof responseText === 'string' ? responseText : '';
     if (!text) {
         throw new Error('AI service failed to generate insights.');
     }

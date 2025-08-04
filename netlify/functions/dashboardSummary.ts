@@ -138,7 +138,10 @@ Your JSON response:`;
 
     let insightsArray: { message: string; severity: 'warning' | 'info' }[] = [];
     try {
-        insightsArray = JSON.parse(String(response.text || '[]').trim());
+        const responseText = response.text;
+        if (typeof responseText === 'string') {
+            insightsArray = JSON.parse(responseText.trim() || '[]');
+        }
     } catch (e) {
         console.error("Failed to parse JSON response from Gemini:", response.text);
         throw new Error("AI service returned an invalid response.");
