@@ -4,7 +4,7 @@ import { EyeIcon, XMarkIcon, PlusIcon, TrashIcon, PencilIcon, DocumentTextIcon, 
 import { authenticatedFetch } from '../utils/api';
 import Pagination from '../components/Pagination';
 import { useAuth } from '../AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const orderStatusValues: Order['status'][] = ['Ordered', 'Shipped', 'Received', 'Calculation', 'AwaitingApproval', 'PaidByClient', 'WrittenOff', 'ReadyForPickup'];
 const orderStatusTranslations: Record<Order['status'], string> = {
@@ -55,6 +55,7 @@ const OrdersPage: React.FC = () => {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [viewOrder, setViewOrder] = useState<Order | null>(null);
@@ -218,6 +219,41 @@ const OrdersPage: React.FC = () => {
     setCurrentPage(1);
   }, [debouncedSearchTerm, filterStatus, filterCustomerId, filterManagerEmail, filterStartDate, filterEndDate]);
   
+    const openViewModal = useCallback((order: Order) => setViewOrder(order), []);
+
+    useEffect(() => {
+        const orderIdToOpen = location.state?.openOrderId;
+
+        const fetchAndOpen = async (id: string) => {
+            try {
+                const res = await authenticatedFetch(`/api/orders/${id}`);
+                if (!res.ok) {
+                    const errData = await res.json().catch(() => ({}));
+                    throw new Error(errData.message || 'Замовлення не знайдено');
+                }
+                const { order } = await res.json();
+                if (order) {
+                    openViewModal(order);
+                } else {
+                    setPageError(`Не вдалося знайти замовлення з ID: ${id}`);
+                }
+            } catch (err: any) {
+                setPageError(`Помилка завантаження замовлення: ${err.message}`);
+            } finally {
+                navigate(location.pathname, { replace: true, state: {} });
+            }
+        };
+
+        if (orderIdToOpen) {
+            const orderInList = orders.find(o => o.id === orderIdToOpen);
+            if (orderInList) {
+                openViewModal(orderInList);
+                navigate(location.pathname, { replace: true, state: {} });
+            } else if (!isLoading) {
+                fetchAndOpen(orderIdToOpen);
+            }
+        }
+    }, [location.state, orders, isLoading, navigate, openViewModal]);
 
   const handlePageChange = (page: number) => setCurrentPage(page);
   
@@ -253,7 +289,7 @@ const OrdersPage: React.FC = () => {
     setModalMode('edit');
   };
 
-  const openViewModal = (order: Order) => setViewOrder(order);
+
 
   const handleDeleteOrder = async (orderId: string) => {
       if (window.confirm('Ви впевнені, що хочете видалити це замовлення?')) {
@@ -642,7 +678,7 @@ const OrdersPage: React.FC = () => {
             {viewOrder && (
                  <div role="dialog" aria-modal="true" className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
                     <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
-                         <div className="flex justify-between items-center pb-4 mb-6 border-b dark:border-slate-700">
+                         <div className="flex justify-between items-center pb-4 mb-6 border-b border-slate-200 dark:border-slate-700">
                             <h3 className="text-xl font-semibold text-slate-800 dark:text-slate-100">Замовлення #{viewOrder.id.substring(0,8)}</h3>
                             <button onClick={closeModal}><XMarkIcon className="w-6 h-6 text-slate-400 dark:hover:text-slate-300"/></button>
                         </div>
