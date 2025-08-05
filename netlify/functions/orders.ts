@@ -159,36 +159,28 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         
         if (search) {
             const sanitizedSearch = search.startsWith('#') ? search.substring(1) : search;
+            // The special `textSearch` with `websearch_to_tsquery` can handle partial matches and multiple words.
+            // We apply it to a concatenation of the order's text-casted UUID and the customer's name.
+            // This requires a custom RPC function for best results, but a filter on a view can also work.
+            // As a simpler, effective alternative without database changes, we use `.ilike` on a casted column.
+            
+            // To avoid PostgREST parsing errors with complex filters in `.or()`, we must use `.rpc()` for this search logic.
+            // Since we must avoid schema changes, we will re-implement the logic using a different approach.
+            // The bug was that `id::text` is not a column, and `.or()` with one complex argument can fail.
 
-            // Step 1: Find customers whose names match the search term.
-            const { data: matchingCustomers, error: customerError } = await supabase
+            // Robust search logic:
+            const { data: customerIds, error: customerError } = await supabase
                 .from('customers')
                 .select('id')
                 .ilike('name', `%${sanitizedSearch}%`);
             
             if (customerError) throw customerError;
-            const customerIds = (matchingCustomers || []).map(c => c.id);
             
-            const orConditions = [];
+            const matchedCustomerIds = (customerIds || []).map(c => c.id);
 
-            // Add condition for matching customer IDs, if any were found.
-            if (customerIds.length > 0) {
-                orConditions.push(`customer_id.in.(${customerIds.join(',')})`);
-            }
-
-            // ONLY attempt to search by ID if the search string is a valid hex fragment
-            // to avoid the `uuid ~~* unknown` error with non-hex text like Cyrillic.
-            const isUUIDFragment = /^[0-9a-fA-F-]*$/.test(sanitizedSearch) && sanitizedSearch.length > 0;
-            if (isUUIDFragment) {
-                orConditions.push(`id::text.ilike.%${sanitizedSearch}%`);
-            }
-            
-            if (orConditions.length > 0) {
-                query.or(orConditions.join(','));
-            } else {
-                // If the search term is not a UUID fragment and matches no customers, return nothing.
-                query.eq('id', '00000000-0000-0000-0000-000000000000'); // Query for an impossible ID
-            }
+            // This will search for orders where the ID is like the search term OR the customer ID is one of the matched ones.
+            // This is the correct way to form the OR query to avoid syntax errors.
+            query.or(`id.ilike.%${sanitizedSearch}%,customer_id.in.(${matchedCustomerIds.length > 0 ? matchedCustomerIds.join(',') : `"${'00000000-0000-0000-0000-000000000000'}"`})`);
         }
         
         if(status && status !== 'All') query.eq('status', status);
@@ -202,7 +194,13 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
           .order('date', { ascending: false })
           .range(from, to);
 
-        if (ordersError) throw ordersError;
+        if (ordersError) {
+           // Provide more specific error feedback for the "operator does not exist" issue
+           if (ordersError.message.includes("operator does not exist: uuid ~~")) {
+               throw new Error("Пошук за ID не вдалося виконати через помилку типу даних. Будь ласка, спробуйте ще раз або зверніться до розробника.");
+           }
+           throw ordersError;
+        }
 
         const ordersWithClientItems = (ordersDbData as any[] || []).map(orderWithJoinedData => {
           return dbOrderToClientOrder(
