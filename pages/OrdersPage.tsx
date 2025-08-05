@@ -401,7 +401,7 @@ const OrdersPage: React.FC = () => {
 
             <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
                 <div className="flex flex-col md:flex-row gap-4">
-                    <input type="search" placeholder="Пошук за ID, ім'ям клієнта..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="flex-grow p-2.5 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-200 rounded-lg"/>
+                    <input type="search" placeholder="Пошук за ім'ям клієнта..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="flex-grow p-2.5 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-200 rounded-lg"/>
                     <button onClick={() => setShowFilters(!showFilters)} className="flex-shrink-0 flex items-center justify-center gap-2 p-2.5 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700">
                         <FilterIcon className="w-5 h-5 text-slate-500 dark:text-slate-400" /> <span className="font-medium text-slate-700 dark:text-slate-200">Фільтри</span>
                     </button>
