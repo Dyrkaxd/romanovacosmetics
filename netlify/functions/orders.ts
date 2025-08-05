@@ -158,10 +158,36 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
           .from('orders')
           .select('*, items:order_items(*), customer:customers(id, name)', { count: 'exact' });
         
-        if(search){
+        if (search) {
             const sanitizedSearch = search.startsWith('#') ? search.substring(1) : search;
-            query.or(`id.ilike.%${sanitizedSearch}%,customers.name.ilike.%${sanitizedSearch}%`);
+
+            // Step 1: Find customer IDs that match the search term.
+            const { data: matchingCustomers, error: customerSearchError } = await supabase
+                .from('customers')
+                .select('id')
+                .ilike('name', `%${sanitizedSearch}%`);
+
+            if (customerSearchError) {
+                // Don't fail the whole request, just log the error and proceed without customer name search.
+                console.error("Error searching for customers:", customerSearchError);
+            }
+
+            const customerIds = (matchingCustomers || []).map(c => c.id);
+
+            // Step 2: Build the OR conditions for the orders query.
+            const orConditions = [
+                `id.ilike.%${sanitizedSearch}%` // Condition 1: Order ID matches.
+            ];
+
+            if (customerIds.length > 0) {
+                // Condition 2: Customer ID is one of the matched ones.
+                orConditions.push(`customer_id.in.(${customerIds.join(',')})`);
+            }
+            
+            // Apply the combined OR condition to the main query.
+            query.or(orConditions.join(','));
         }
+        
         if(status && status !== 'All') query.eq('status', status);
         if(customerId && customerId !== 'All') query.eq('customer_id', customerId);
         if(managerEmail && managerEmail !== 'All') query.eq('managed_by_user_email', managerEmail);
