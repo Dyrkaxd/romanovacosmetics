@@ -106,25 +106,25 @@ const WarehousePage: React.FC = () => {
 
     return (
         <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Керування складом</h2>
+            <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">Керування складом</h2>
 
-            {error && <div role="alert" className="p-4 bg-red-50 text-red-700 border border-red-200 rounded-lg">{error}</div>}
-            {successMessage && <div role="alert" className="p-3 bg-green-50 text-green-700 border border-green-200 rounded-lg text-sm">{successMessage}</div>}
+            {error && <div role="alert" className="p-4 bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-500/20 rounded-lg">{error}</div>}
+            {successMessage && <div role="alert" className="p-3 bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-500/20 rounded-lg text-sm">{successMessage}</div>}
 
-            <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row gap-4">
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col md:flex-row gap-4">
                 <input
                     type="search"
                     placeholder="Пошук за назвою..."
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
-                    className="w-full md:w-1/2 lg:w-2/3 p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
+                    className="w-full md:w-1/2 lg:w-2/3 p-2.5 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-200 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
                 />
                 <div className="relative w-full md:w-1/2 lg:w-1/3">
                     <FilterIcon className="w-5 h-5 text-slate-400 absolute top-1/2 left-3 transform -translate-y-1/2 pointer-events-none"/>
                     <select
                         value={selectedGroup}
                         onChange={e => setSelectedGroup(e.target.value)}
-                        className="w-full appearance-none p-2.5 pl-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
+                        className="w-full appearance-none p-2.5 pl-10 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-200 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
                     >
                         {productGroups.map(group => (
                             <option key={group} value={group}>{group === 'All' ? 'Всі групи' : group}</option>
@@ -133,20 +133,20 @@ const WarehousePage: React.FC = () => {
                 </div>
             </div>
 
-            <div className="bg-white shadow-sm rounded-xl border border-slate-200">
+            <div className="bg-white dark:bg-slate-800 shadow-sm rounded-xl border border-slate-200 dark:border-slate-700">
                 {/* Desktop Table View */}
                 <div className="overflow-x-auto hidden md:block">
-                    <table className="min-w-full divide-y divide-slate-200">
-                        <thead className="bg-slate-50">
+                    <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+                        <thead className="bg-slate-50 dark:bg-slate-700/50">
                             <tr>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Назва товару</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider">Група</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 tracking-wider w-48">Кількість на складі</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-300 tracking-wider">Назва товару</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-300 tracking-wider">Група</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-300 tracking-wider w-48">Кількість на складі</th>
                             </tr>
                         </thead>
-                        <tbody className="bg-white divide-y divide-slate-200">
+                        <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
                             {isLoading ? (
-                                <tr><td colSpan={3} className="px-6 py-10 text-center text-sm text-slate-500">Завантаження даних складу...</td></tr>
+                                <tr><td colSpan={3} className="px-6 py-10 text-center text-sm text-slate-500 dark:text-slate-400">Завантаження даних складу...</td></tr>
                             ) : filteredProducts.length > 0 ? (
                                 filteredProducts.map((product) => {
                                     const isEditing = editingQuantities[product.id] !== undefined;
@@ -154,10 +154,10 @@ const WarehousePage: React.FC = () => {
                                     const isSaving = savingStates[product.id];
                                     
                                     return (
-                                        <tr key={product.id} className={`hover:bg-rose-50/50 transition-colors ${isEditing ? 'bg-amber-50' : ''}`}>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-800">{product.name}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
-                                                <span className="font-medium bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">{product.group}</span>
+                                        <tr key={product.id} className={`hover:bg-rose-50/50 dark:hover:bg-slate-700/50 transition-colors ${isEditing ? 'bg-amber-50 dark:bg-amber-500/10' : ''}`}>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-800 dark:text-slate-100">{product.name}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300">
+                                                <span className="font-medium text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 px-2 py-0.5 rounded-full text-xs">{product.group}</span>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm">
                                                 <div className="flex items-center gap-2">
@@ -167,7 +167,7 @@ const WarehousePage: React.FC = () => {
                                                         onChange={(e) => handleQuantityChange(product.id, e.target.value)}
                                                         onKeyDown={(e) => e.key === 'Enter' && handleSaveQuantity(product.id)}
                                                         min="0"
-                                                        className="w-24 p-2 border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500"
+                                                        className="w-24 p-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-200 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500"
                                                         disabled={isSaving}
                                                     />
                                                     {isEditing && (
@@ -185,7 +185,7 @@ const WarehousePage: React.FC = () => {
                                     );
                                 })
                             ) : (
-                                <tr><td colSpan={3} className="px-6 py-10 text-center text-sm text-slate-500">
+                                <tr><td colSpan={3} className="px-6 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
                                     {products.length === 0 ? "На складі немає товарів." : "Товарів, що відповідають фільтрам, не знайдено."}
                                 </td></tr>
                             )}
@@ -196,21 +196,21 @@ const WarehousePage: React.FC = () => {
                 {/* Mobile Card View */}
                 <div className="md:hidden">
                     {isLoading ? (
-                        <div className="p-6 text-center text-sm text-slate-500">Завантаження даних складу...</div>
+                        <div className="p-6 text-center text-sm text-slate-500 dark:text-slate-400">Завантаження даних складу...</div>
                     ) : filteredProducts.length > 0 ? (
-                         <ul className="divide-y divide-slate-200">
+                         <ul className="divide-y divide-slate-200 dark:divide-slate-700">
                             {filteredProducts.map(product => {
                                 const isEditing = editingQuantities[product.id] !== undefined;
                                 const currentValue = isEditing ? editingQuantities[product.id] : product.quantity;
                                 const isSaving = savingStates[product.id];
                                 return (
-                                    <li key={product.id} className={`p-4 space-y-3 transition-colors ${isEditing ? 'bg-amber-50' : 'bg-white'}`}>
+                                    <li key={product.id} className={`p-4 space-y-3 transition-colors ${isEditing ? 'bg-amber-50 dark:bg-amber-500/10' : 'bg-white dark:bg-slate-800'}`}>
                                         <div className="flex justify-between items-start">
-                                            <p className="font-semibold text-slate-800 pr-4">{product.name}</p>
-                                            <span className="font-medium text-rose-600 bg-rose-50 px-2.5 py-0.5 rounded-full text-xs inline-block flex-shrink-0">{product.group}</span>
+                                            <p className="font-semibold text-slate-800 dark:text-slate-100 pr-4">{product.name}</p>
+                                            <span className="font-medium text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 px-2.5 py-0.5 rounded-full text-xs inline-block flex-shrink-0">{product.group}</span>
                                         </div>
-                                        <div className="flex items-center gap-2 pt-3 border-t">
-                                            <label htmlFor={`quantity-${product.id}`} className="text-sm font-medium text-slate-700">К-сть:</label>
+                                        <div className="flex items-center gap-2 pt-3 border-t border-slate-200 dark:border-slate-700">
+                                            <label htmlFor={`quantity-${product.id}`} className="text-sm font-medium text-slate-700 dark:text-slate-300">К-сть:</label>
                                             <input
                                                 type="number"
                                                 id={`quantity-${product.id}`}
@@ -218,7 +218,7 @@ const WarehousePage: React.FC = () => {
                                                 onChange={(e) => handleQuantityChange(product.id, e.target.value)}
                                                 onKeyDown={(e) => e.key === 'Enter' && handleSaveQuantity(product.id)}
                                                 min="0"
-                                                className="w-24 p-2 border-slate-300 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500"
+                                                className="w-24 p-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-200 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500"
                                                 disabled={isSaving}
                                             />
                                             {isEditing && (
@@ -236,7 +236,7 @@ const WarehousePage: React.FC = () => {
                             })}
                         </ul>
                     ) : (
-                        <div className="px-6 py-10 text-center text-sm text-slate-500">
+                        <div className="px-6 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
                             {products.length === 0 ? "На складі немає товарів." : "Товарів, що відповідають фільтрам, не знайдено."}
                         </div>
                     )}
