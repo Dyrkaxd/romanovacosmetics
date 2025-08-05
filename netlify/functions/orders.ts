@@ -143,7 +143,6 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
 
     switch (event.httpMethod) {
       case 'GET': {
-        // This now only handles the list view, as single GET is public.
         const {
             page = '1', pageSize = '20', search = '', status, customerId,
             managerEmail, startDate, endDate,
@@ -154,31 +153,42 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
           const from = (currentPage - 1) * size;
           const to = from + size - 1;
 
-         const query = supabase
+        let query = supabase
           .from('orders')
           .select('*, items:order_items(*), customer:customers(id, name)', { count: 'exact' });
         
         if (search) {
-            // Because searching a UUID column with `ilike` causes a type error,
-            // we first find potential customer IDs from the search term,
-            // then build a robust `OR` condition.
             const sanitizedSearch = search.startsWith('#') ? search.substring(1) : search;
-            
-            const { data: matchingCustomers } = await supabase
+
+            // Step 1: Find customers whose names match the search term.
+            const { data: matchingCustomers, error: customerError } = await supabase
                 .from('customers')
                 .select('id')
                 .ilike('name', `%${sanitizedSearch}%`);
-
+            
+            if (customerError) throw customerError;
             const customerIds = (matchingCustomers || []).map(c => c.id);
+            
+            const orConditions = [];
 
-            // Now, construct the OR filter string.
-            // We search for orders where the ID starts with the search term (as text),
-            // OR where the customer_id is in the list of matched customers.
-            let orConditions = [`id.like.${sanitizedSearch}*`];
+            // Add condition for matching customer IDs, if any were found.
             if (customerIds.length > 0) {
-                 orConditions.push(`customer_id.in.(${customerIds.join(',')})`);
+                orConditions.push(`customer_id.in.(${customerIds.join(',')})`);
             }
-            query.or(orConditions.join(','));
+
+            // ONLY attempt to search by ID if the search string is a valid hex fragment
+            // to avoid the `uuid ~~* unknown` error with non-hex text like Cyrillic.
+            const isUUIDFragment = /^[0-9a-fA-F-]*$/.test(sanitizedSearch) && sanitizedSearch.length > 0;
+            if (isUUIDFragment) {
+                orConditions.push(`id::text.ilike.%${sanitizedSearch}%`);
+            }
+            
+            if (orConditions.length > 0) {
+                query.or(orConditions.join(','));
+            } else {
+                // If the search term is not a UUID fragment and matches no customers, return nothing.
+                query.eq('id', '00000000-0000-0000-0000-000000000000'); // Query for an impossible ID
+            }
         }
         
         if(status && status !== 'All') query.eq('status', status);
@@ -374,10 +384,15 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     if(error.message) message = error.message;
 
     let statusCode = 500;
+    // Check for specific PostgREST error codes
     if (error?.code?.startsWith('PGRST')) {
       statusCode = 400;
-      if (error.code === '23503') {
+      if (error.code === '23503') { // foreign_key_violation
          message = "Invalid reference. The specified customer or product may not exist.";
+      }
+      // This handles "operator does not exist: uuid ~~* unknown"
+      if (error.details?.includes('operator does not exist')) {
+        message = `Search error: An invalid search operation was attempted. ${error.message}`;
       }
     }
     
