@@ -1,12 +1,11 @@
 
 
 
-
 import React, { useState, useRef, useEffect, useCallback, FC, SVGProps } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { SearchIcon, BellIcon, ChevronDownIcon, XMarkIcon, Bars3Icon, OrdersIcon } from './Icons';
+import { SearchIcon, ChevronDownIcon, XMarkIcon, Bars3Icon } from './Icons';
 import { useAuth } from '../AuthContext'; 
-import { Notification, GlobalSearchResult } from '../types';
+import { GlobalSearchResult } from '../types';
 import { authenticatedFetch } from '../utils/api';
 import GlobalSearchResults from './GlobalSearchResults';
 
@@ -14,34 +13,6 @@ interface HeaderProps {
   title: string;
   onToggleMobileSidebar: () => void;
 }
-
-const timeAgo = (dateStr: string) => {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-    
-    let interval = seconds / 31536000;
-    if (interval > 1) return `${Math.floor(interval)} р. тому`;
-    interval = seconds / 2592000;
-    if (interval > 1) return `${Math.floor(interval)} міс. тому`;
-    interval = seconds / 86400;
-    if (interval > 1) return `${Math.floor(interval)} д. тому`;
-    interval = seconds / 3600;
-    if (interval > 1) return `${Math.floor(interval)} г. тому`;
-    interval = seconds / 60;
-    if (interval > 1) return `${Math.floor(interval)} хв. тому`;
-    return `щойно`;
-};
-
-const NotificationIcon: FC<{ type: Notification['type'], props?: SVGProps<SVGSVGElement>}> = ({ type, ...props }) => {
-    switch (type) {
-        case 'NEW_ORDER':
-            return <OrdersIcon className="w-5 h-5 text-rose-500" {...props} />;
-        // Add other cases for future notification types
-        default:
-            return <BellIcon className="w-5 h-5 text-slate-500 dark:text-slate-400" {...props} />;
-    }
-};
 
 const useDebounce = (value: string, delay: number) => {
     const [debouncedValue, setDebouncedValue] = useState(value);
@@ -57,15 +28,9 @@ const useDebounce = (value: string, delay: number) => {
 
 const Header: React.FC<HeaderProps> = ({ title, onToggleMobileSidebar }) => {
   const { user, signOut } = useAuth();
-  const navigate = useNavigate();
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
   
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const notificationsRef = useRef<HTMLDivElement>(null);
   
   // Global Search State
   const [searchQuery, setSearchQuery] = useState('');
@@ -75,20 +40,6 @@ const Header: React.FC<HeaderProps> = ({ title, onToggleMobileSidebar }) => {
   const searchRef = useRef<HTMLDivElement>(null);
   const debouncedSearchQuery = useDebounce(searchQuery, 400);
 
-  const fetchNotifications = useCallback(async () => {
-    if (!user) return;
-    try {
-        const response = await authenticatedFetch('/api/notifications');
-        if (response.ok) {
-            const data: Notification[] = await response.json();
-            setNotifications(data);
-            setUnreadCount(data.filter(n => !n.is_read).length);
-        }
-    } catch (error) {
-        console.error("Failed to fetch notifications:", error);
-    }
-  }, [user]);
-  
   // Global Search Effect
   useEffect(() => {
     if (debouncedSearchQuery.length > 2) {
@@ -117,47 +68,9 @@ const Header: React.FC<HeaderProps> = ({ title, onToggleMobileSidebar }) => {
 
 
   useEffect(() => {
-    fetchNotifications();
-    const intervalId = setInterval(fetchNotifications, 60000); // Poll every 60 seconds
-    return () => clearInterval(intervalId);
-  }, [fetchNotifications]);
-
-  const handleToggleNotifications = async () => {
-    setNotificationsOpen(prev => {
-        const isOpen = !prev;
-        if(isOpen && unreadCount > 0){
-            markAllAsRead();
-        }
-        return isOpen;
-    });
-  };
-
-  const markAllAsRead = async () => {
-    try {
-        const unreadIds = notifications.filter(n => !n.is_read).map(n => n.id);
-        if (unreadIds.length === 0) return;
-
-        const response = await authenticatedFetch('/api/notifications/mark-read', {
-            method: 'POST',
-            body: JSON.stringify({ ids: unreadIds })
-        });
-        if(response.ok){
-            setUnreadCount(0);
-            setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
-        }
-    } catch (error) {
-        console.error("Failed to mark notifications as read:", error);
-    }
-  };
-
-
-  useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setDropdownOpen(false);
-      }
-      if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) {
-        setNotificationsOpen(false);
       }
       if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
         setIsSearchFocused(false);
@@ -212,45 +125,6 @@ const Header: React.FC<HeaderProps> = ({ title, onToggleMobileSidebar }) => {
               />
             )}
           </div>
-           <div className="relative" ref={notificationsRef}>
-             <button onClick={handleToggleNotifications} className="text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-500 relative p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Сповіщення">
-                <BellIcon className="w-6 h-6" />
-                {unreadCount > 0 && <span className="absolute top-1 right-1 block h-2.5 w-2.5 rounded-full bg-rose-500 ring-2 ring-white dark:ring-slate-900" />}
-            </button>
-             {notificationsOpen && (
-                <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-850 rounded-lg shadow-xl z-30 ring-1 ring-black dark:ring-slate-700 ring-opacity-5">
-                    <div className="p-3 border-b border-slate-200 dark:border-slate-700">
-                        <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Сповіщення</h4>
-                    </div>
-                    <ul className="py-1 max-h-96 overflow-y-auto">
-                        {notifications.length > 0 ? (
-                            notifications.map(notification => (
-                                <li key={notification.id}
-                                    className={`flex items-start p-3 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer ${!notification.is_read ? 'bg-rose-50/50 dark:bg-rose-500/10' : ''}`}
-                                    onClick={() => {
-                                        if (notification.link) navigate(notification.link);
-                                        setNotificationsOpen(false);
-                                    }}
-                                >
-                                    <div className="flex-shrink-0 mr-3 mt-1">
-                                       <NotificationIcon type={notification.type} />
-                                    </div>
-                                    <div className="flex-1">
-                                        <p className="text-sm text-slate-700 dark:text-slate-300">{notification.message}</p>
-                                        <p className="text-xs text-slate-500 dark:text-slate-400">{timeAgo(notification.created_at)}</p>
-                                    </div>
-                                    {!notification.is_read && <div className="w-2 h-2 bg-rose-500 rounded-full mt-2 ml-2 flex-shrink-0"></div>}
-                                </li>
-                            ))
-                        ) : (
-                            <li className="p-4 text-center text-sm text-slate-500 dark:text-slate-400">
-                                У вас немає нових сповіщень.
-                            </li>
-                        )}
-                    </ul>
-                </div>
-            )}
-           </div>
           
           {user && (
             <div className="relative" ref={dropdownRef}>

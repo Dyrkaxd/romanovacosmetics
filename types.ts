@@ -59,16 +59,6 @@ export interface Order {
   created_at?: string;
 }
 
-export interface Notification {
-  id: string;
-  user_email: string;
-  message: string;
-  link?: string;
-  type: 'NEW_ORDER' | 'STATUS_UPDATE' | 'LOW_STOCK' | 'GENERAL';
-  is_read: boolean;
-  created_at: string;
-}
-
 export interface NavItem {
   name: string;
   path: string;

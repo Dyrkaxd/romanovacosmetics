@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, FC, SVGProps } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ManagerDashboardData, Order } from '../types';
 import { OrdersIcon, CurrencyDollarIcon, ArrowTrendingUpIcon, ArrowTrendingDownIcon } from '../components/Icons'; 
 import { authenticatedFetch } from '../utils/api';
@@ -34,18 +35,31 @@ const StatCard: FC<{ title: string; value: string; change: number; icon: FC<SVGP
 };
 
 const RecentOrdersList: FC<{ orders: ManagerDashboardData['recentOrders']; isLoading: boolean }> = ({ orders, isLoading }) => {
+    const navigate = useNavigate();
     const orderStatusTranslations: Record<Order['status'], string> = { Ordered: 'Замовлено', Shipped: 'Відправлено', Received: 'Отримано', Calculation: 'Прорахунок', AwaitingApproval: 'На погодженні', PaidByClient: 'Сплачено клієнтом', WrittenOff: 'Списано', ReadyForPickup: 'Готово для видачі'};
+    
+    const handleOrderClick = (orderId: string) => {
+        navigate(`/orders?search=${orderId}`);
+    };
+
     return (
         <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 h-full">
             <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4">Мої останні замовлення</h3>
-            <div className="space-y-4">
+            <div className="space-y-1">
                 {isLoading ? (
-                     [...Array(5)].map((_, i) => <div key={i} className="h-10 bg-slate-200 dark:bg-slate-800 rounded-md animate-pulse"></div>)
+                     [...Array(5)].map((_, i) => <div key={i} className="h-16 bg-slate-200 dark:bg-slate-800 rounded-md animate-pulse"></div>)
                 ) : orders.length === 0 ? (
                     <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-8">У вас ще немає замовлень за цей період.</p>
                 ) : (
                     orders.map(order => (
-                        <div key={order.id} className="flex justify-between items-center text-sm">
+                        <div 
+                            key={order.id} 
+                            onClick={() => handleOrderClick(order.id)}
+                            className="flex justify-between items-center text-sm p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors"
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => e.key === 'Enter' && handleOrderClick(order.id)}
+                        >
                             <div>
                                 <p className="font-semibold text-slate-800 dark:text-slate-100">{order.customerName}</p>
                                 <p className="text-xs text-slate-500 dark:text-slate-400">{new Date(order.date).toLocaleDateString('uk-UA')}</p>
