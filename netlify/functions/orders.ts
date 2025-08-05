@@ -158,29 +158,22 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
           .select('*, items:order_items(*), customer:customers(id, name)', { count: 'exact' });
         
         if (search) {
-            const sanitizedSearch = search.startsWith('#') ? search.substring(1) : search;
-            // The special `textSearch` with `websearch_to_tsquery` can handle partial matches and multiple words.
-            // We apply it to a concatenation of the order's text-casted UUID and the customer's name.
-            // This requires a custom RPC function for best results, but a filter on a view can also work.
-            // As a simpler, effective alternative without database changes, we use `.ilike` on a casted column.
-            
-            // To avoid PostgREST parsing errors with complex filters in `.or()`, we must use `.rpc()` for this search logic.
-            // Since we must avoid schema changes, we will re-implement the logic using a different approach.
-            // The bug was that `id::text` is not a column, and `.or()` with one complex argument can fail.
-
-            // Robust search logic:
             const { data: customerIds, error: customerError } = await supabase
                 .from('customers')
                 .select('id')
-                .ilike('name', `%${sanitizedSearch}%`);
+                .ilike('name', `%${search}%`);
             
             if (customerError) throw customerError;
             
             const matchedCustomerIds = (customerIds || []).map(c => c.id);
 
-            // This will search for orders where the ID is like the search term OR the customer ID is one of the matched ones.
-            // This is the correct way to form the OR query to avoid syntax errors.
-            query.or(`id.ilike.%${sanitizedSearch}%,customer_id.in.(${matchedCustomerIds.length > 0 ? matchedCustomerIds.join(',') : `"${'00000000-0000-0000-0000-000000000000'}"`})`);
+            if (matchedCustomerIds.length > 0) {
+                query.in('customer_id', matchedCustomerIds);
+            } else {
+                // If no customer matches the search term, no orders should be returned.
+                // We add a condition that will always be false.
+                query.eq('id', '00000000-0000-0000-0000-000000000000');
+            }
         }
         
         if(status && status !== 'All') query.eq('status', status);
@@ -195,10 +188,6 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
           .range(from, to);
 
         if (ordersError) {
-           // Provide more specific error feedback for the "operator does not exist" issue
-           if (ordersError.message.includes("operator does not exist: uuid ~~")) {
-               throw new Error("Пошук за ID не вдалося виконати через помилку типу даних. Будь ласка, спробуйте ще раз або зверніться до розробника.");
-           }
            throw ordersError;
         }
 
@@ -387,10 +376,6 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       statusCode = 400;
       if (error.code === '23503') { // foreign_key_violation
          message = "Invalid reference. The specified customer or product may not exist.";
-      }
-      // This handles "operator does not exist: uuid ~~* unknown"
-      if (error.details?.includes('operator does not exist')) {
-        message = `Search error: An invalid search operation was attempted. ${error.message}`;
       }
     }
     
