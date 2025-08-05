@@ -76,12 +76,14 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
 
               const customerMetrics: { [key: string]: { totalSpent: number; lastOrder: string } } = {};
               for (const order of allOrders || []) {
-                  if (!customerMetrics[order.customer_id]) {
-                      customerMetrics[order.customer_id] = { totalSpent: 0, lastOrder: '1970-01-01' };
-                  }
-                  customerMetrics[order.customer_id].totalSpent += order.total_amount;
-                  if (order.date > customerMetrics[order.customer_id].lastOrder) {
-                      customerMetrics[order.customer_id].lastOrder = order.date;
+                  if (order.customer_id) { // FIX: Ensure customer_id is not null
+                    if (!customerMetrics[order.customer_id]) {
+                        customerMetrics[order.customer_id] = { totalSpent: 0, lastOrder: '1970-01-01' };
+                    }
+                    customerMetrics[order.customer_id].totalSpent += order.total_amount;
+                    if (order.date > customerMetrics[order.customer_id].lastOrder) {
+                        customerMetrics[order.customer_id].lastOrder = order.date;
+                    }
                   }
               }
               
