@@ -159,7 +159,8 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
           .select('*, items:order_items(*), customer:customers(id, name)', { count: 'exact' });
         
         if(search){
-            query.or(`id.ilike.%${search}%,customers.name.ilike.%${search}%`);
+            const sanitizedSearch = search.startsWith('#') ? search.substring(1) : search;
+            query.or(`id.ilike.%${sanitizedSearch}%,customers.name.ilike.%${sanitizedSearch}%`);
         }
         if(status && status !== 'All') query.eq('status', status);
         if(customerId && customerId !== 'All') query.eq('customer_id', customerId);
