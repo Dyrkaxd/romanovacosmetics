@@ -156,6 +156,7 @@ export interface Database {
           instagram_handle: string | null
           viber_number: string | null
           created_at: string | null
+          notes: string | null
         }
         Insert: {
           id?: string
@@ -171,6 +172,7 @@ export interface Database {
           instagram_handle?: string | null
           viber_number?: string | null
           created_at?: string | null
+          notes?: string | null
         }
         Update: {
           id?: string
@@ -186,6 +188,7 @@ export interface Database {
           instagram_handle?: string | null
           viber_number?: string | null
           created_at?: string | null
+          notes?: string | null
         }
         Relationships: []
       }

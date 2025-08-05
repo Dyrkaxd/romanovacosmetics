@@ -31,6 +31,7 @@ const transformDbRowToCustomer = (dbCustomer: CustomerDbRow): Customer => {
     joinDate: dbCustomer.join_date, 
     instagramHandle: dbCustomer.instagram_handle || undefined,
     viberNumber: dbCustomer.viber_number || undefined,
+    notes: dbCustomer.notes || undefined,
     created_at: dbCustomer.created_at || undefined,
   };
 };
@@ -137,12 +138,13 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       case 'DELETE':
         if (event.httpMethod === 'POST') {
             const newCustomerClientData = JSON.parse(event.body || '{}');
-            const { address, joinDate, instagramHandle, viberNumber, ...restOfCustomerData } = newCustomerClientData;
+            const { address, joinDate, instagramHandle, viberNumber, notes, ...restOfCustomerData } = newCustomerClientData;
             const customerToInsert = {
                 ...restOfCustomerData,
                 join_date: joinDate, 
                 instagram_handle: instagramHandle || null,
                 viber_number: viberNumber || null,
+                notes: notes || null,
                 address_street: address?.street || null,
                 address_city: address?.city || null,
                 address_state: address?.state || null,
@@ -163,12 +165,13 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         if (event.httpMethod === 'PUT') {
             if (!resourceId) return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: 'Customer ID required' }) };
             const updatedCustomerClientData = JSON.parse(event.body || '{}');
-            const { address: updatedAddress, joinDate: updatedJoinDate, instagramHandle: updatedInstagram, viberNumber: updatedViber, ...restOfUpdatedCustomerData } = updatedCustomerClientData;
+            const { address: updatedAddress, joinDate: updatedJoinDate, instagramHandle: updatedInstagram, viberNumber: updatedViber, notes: updatedNotes, ...restOfUpdatedCustomerData } = updatedCustomerClientData;
             const customerToUpdate = {
                 ...restOfUpdatedCustomerData,
                 join_date: updatedJoinDate, 
                 instagram_handle: updatedInstagram || null,
                 viber_number: updatedViber || null,
+                notes: updatedNotes || null,
                 address_street: updatedAddress?.street || null,
                 address_city: updatedAddress?.city || null,
                 address_state: updatedAddress?.state || null,

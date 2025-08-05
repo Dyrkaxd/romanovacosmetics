@@ -77,11 +77,12 @@ Your JSON response:`;
     let suggestedNames: string[] = [];
     try {
         const responseText = response.text;
-        if (typeof responseText === 'string') {
-            suggestedNames = JSON.parse(responseText.trim() || '[]');
-        }
+        const text = typeof responseText === 'string' ? responseText : '';
+        // The Gemini response for a schema is a stringified JSON.
+        // We trim it and provide a fallback empty array string for safety.
+        suggestedNames = JSON.parse(text.trim() || '[]');
     } catch (e) {
-        console.error("Failed to parse Gemini JSON. Response text:", response.text, "Original error:", e);
+        console.error("Failed to parse Gemini JSON. Response text:", String(response.text), "Original error:", e);
         return { statusCode: 200, headers: commonHeaders, body: JSON.stringify([]) };
     }
 

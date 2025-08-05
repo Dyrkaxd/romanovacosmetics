@@ -49,7 +49,8 @@ const CustomersPage: React.FC = () => {
     phone: '', 
     instagramHandle: '', 
     viberNumber: '', 
-    address: defaultAddress 
+    address: defaultAddress,
+    notes: '',
   };
   const [currentCustomer, setCurrentCustomer] = useState<Partial<Customer>>(initialCustomerState);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
@@ -162,7 +163,7 @@ const CustomersPage: React.FC = () => {
   }, [isViewModalOpen, currentCustomer, fetchOrdersForCustomer]);
 
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     if (name.startsWith('address.')) {
       const addressField = name.split('.')[1];
@@ -190,6 +191,7 @@ const CustomersPage: React.FC = () => {
       phone: currentCustomer.phone || '',
       instagramHandle: currentCustomer.instagramHandle || '',
       viberNumber: currentCustomer.viberNumber || '',
+      notes: currentCustomer.notes || '',
       address: currentCustomer.address || defaultAddress,
       joinDate: editingCustomer ? editingCustomer.joinDate : new Date().toISOString().split('T')[0],
     };
@@ -289,7 +291,7 @@ const CustomersPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-3 sm:space-y-0">
+       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-3 sm:space-y-0">
         <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">Керування клієнтами</h2>
         <button
             onClick={openAddModal}
@@ -301,20 +303,20 @@ const CustomersPage: React.FC = () => {
         </button>
       </div>
 
-      <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+       <div className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
         <div className="flex flex-col md:flex-row gap-4">
             <input
                 type="search"
                 aria-label="Пошук клієнтів"
                 placeholder="Пошук за ім'ям, email, або телефоном..."
-                className="flex-grow p-2.5 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-200"
+                className="flex-grow p-2.5 border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 bg-slate-50 dark:bg-slate-850 text-slate-900 dark:text-slate-200"
                 value={searchTerm}
                 onChange={handleSearchChange}
             />
             <select 
                 value={filter} 
                 onChange={handleFilterChange} 
-                className="p-2.5 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 w-full md:w-auto bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-200"
+                className="p-2.5 border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 w-full md:w-auto bg-slate-50 dark:bg-slate-850 text-slate-900 dark:text-slate-200"
                 aria-label="Фільтрувати клієнтів"
             >
                 <option value="default">За замовчуванням</option>
@@ -326,11 +328,11 @@ const CustomersPage: React.FC = () => {
 
       {pageError && <div role="alert" className="p-4 bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-500/20 rounded-lg">{pageError}</div>}
       
-      <div className="bg-white dark:bg-slate-800 shadow-sm rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700">
+      <div className="bg-white dark:bg-slate-900 shadow-sm rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800">
          {/* Desktop Table View */}
         <div className="overflow-x-auto hidden md:block">
           <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
-            <thead className="bg-slate-50 dark:bg-slate-700/50">
+            <thead className="bg-slate-50 dark:bg-slate-800/50">
               <tr>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-300 tracking-wider">Ім'я</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-300 tracking-wider">Email</th>
@@ -339,12 +341,12 @@ const CustomersPage: React.FC = () => {
                 <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-300 tracking-wider">Дії</th>
               </tr>
             </thead>
-            <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
+            <tbody className="bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-700">
               {isLoading ? (
                  <tr><td colSpan={5} className="px-6 py-10 text-center text-sm text-slate-500 dark:text-slate-400">Завантаження...</td></tr>
               ) : customers.length > 0 ? (
                 customers.map((customer) => (
-                  <tr key={customer.id} className="hover:bg-rose-50/50 dark:hover:bg-slate-700/50 transition-colors">
+                  <tr key={customer.id} className="hover:bg-rose-50/50 dark:hover:bg-slate-800/50 transition-colors">
                     <td className="px-6 py-4 text-sm font-medium text-slate-800 dark:text-slate-100 break-words">{customer.name}</td>
                     <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300 break-words">{customer.email}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300">{customer.phone || 'Н/Д'}</td>
@@ -469,6 +471,11 @@ const CustomersPage: React.FC = () => {
                 </div>
               </fieldset>
               
+              <div>
+                <label htmlFor="notes" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Нотатки</label>
+                <textarea name="notes" id="notes" value={currentCustomer.notes || ''} onChange={handleInputChange} rows={3} className="block w-full border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-200 rounded-lg shadow-sm focus:ring-rose-500 focus:border-rose-500 sm:text-sm p-2.5" />
+              </div>
+
               <div className="flex flex-col sm:flex-row justify-end pt-6 space-y-2 sm:space-y-0 sm:space-x-3 border-t border-slate-200 dark:border-slate-700">
                 <button 
                     type="button" 
@@ -517,6 +524,12 @@ const CustomersPage: React.FC = () => {
                     ) : <p className="text-slate-500 dark:text-slate-400 italic">Адреса не вказана</p>}
                   </div>
               </div>
+              {currentCustomer.notes && (
+                <div className="pt-4 mt-4 border-t border-slate-200 dark:border-slate-700">
+                  <h4 className="font-semibold text-slate-500 dark:text-slate-400 mb-1">Нотатки:</h4>
+                  <p className="text-slate-700 dark:text-slate-300 whitespace-pre-wrap bg-slate-50 dark:bg-slate-700/50 p-3 rounded-md">{currentCustomer.notes}</p>
+                </div>
+              )}
                <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
                   <h4 className="font-semibold text-slate-500 dark:text-slate-400 mb-2">Історія замовлень ({customerOrders.length})</h4>
                   {isCustomerOrdersLoading ? <p className="text-slate-500 dark:text-slate-400">Завантаження замовлень...</p> 
@@ -574,7 +587,7 @@ const CustomersPage: React.FC = () => {
 
 // Simple ChevronDownIcon for the collapsible orders
 const ChevronDownIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24" strokeWidth={1.5} stroke="currentColor" {...props}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
   </svg>
 );

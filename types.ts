@@ -41,6 +41,7 @@ export interface Customer {
   joinDate: string; // Consider making this a date type if DB supports it easily
   instagramHandle?: string;
   viberNumber?: string;
+  notes?: string;
   created_at?: string;
   // future: avatarUrl?: string;
 }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, FC, SVGProps } from 'react';
 import { Order, OrderItem, Customer, Product, ManagedUser, PaginatedResponse } from '../types';
-import { EyeIcon, XMarkIcon, PlusIcon, TrashIcon, PencilIcon, DocumentTextIcon, FilterIcon, DownloadIcon, ChevronDownIcon, ShareIcon, LightBulbIcon } from '../components/Icons';
+import { EyeIcon, XMarkIcon, PlusIcon, TrashIcon, PencilIcon, DocumentTextIcon, FilterIcon, DownloadIcon, ChevronDownIcon, ShareIcon } from '../components/Icons';
 import { authenticatedFetch } from '../utils/api';
 import Pagination from '../components/Pagination';
 import { useAuth } from '../AuthContext';
@@ -95,12 +95,6 @@ const OrdersPage: React.FC = () => {
   const [isProductSearching, setIsProductSearching] = useState(false);
   const debouncedProductSearch = useDebounce(productSearchTerm, 300);
   const productDropdownRefs = useRef<(HTMLDivElement | null)[]>([]);
-
-  // State for AI suggestions
-  const [isAiLoading, setIsAiLoading] = useState(false);
-  const [aiSuggestions, setAiSuggestions] = useState<Product[]>([]);
-  const [showAiSuggestions, setShowAiSuggestions] = useState(false);
-  const [aiError, setAiError] = useState<string | null>(null);
 
   const isAnyFilterActive = useMemo(() => {
     return (
@@ -239,7 +233,7 @@ const OrdersPage: React.FC = () => {
 
   const closeModal = () => {
     setModalMode(null); setViewOrder(null); setActiveOrderData({});
-    setModalError(null); setAiSuggestions([]); setShowAiSuggestions(false); setAiError(null);
+    setModalError(null);
     setCustomerSearchTerm('');
   };
 
@@ -324,55 +318,6 @@ const OrdersPage: React.FC = () => {
     setProductSearchTerm('');
     setProductSearchResults([]);
   };
-
-  const handleGetAiSuggestions = async () => {
-    if (!activeOrderData.items || activeOrderData.items.filter(i => i.productId).length === 0) {
-      setAiError("Додайте хоча б один товар, щоб отримати поради.");
-      return;
-    }
-    setIsAiLoading(true);
-    setAiError(null);
-    try {
-        const response = await authenticatedFetch(`${API_BASE_URL}/productSuggestions`, {
-            method: 'POST',
-            body: JSON.stringify({ items: activeOrderData.items.filter(i => i.productId) }),
-        });
-        if (!response.ok) throw new Error((await response.json()).message || 'Не вдалося отримати поради від AI.');
-        const suggestions: Product[] = await response.json();
-        setAiSuggestions(suggestions);
-        setShowAiSuggestions(true);
-    } catch (err: any) {
-        setAiError(err.message);
-    } finally {
-        setIsAiLoading(false);
-    }
-  };
-  
-  const handleAddSuggestionToOrder = (product: Product) => {
-    const newItem: OrderItem = {
-        productId: product.id,
-        productName: product.name,
-        quantity: 1,
-        price: product.retailPrice * product.exchangeRate,
-        discount: 0,
-        salonPriceUsd: product.salonPrice,
-        exchangeRate: product.exchangeRate,
-    };
-    const currentItems = activeOrderData.items || [];
-    // Check if the last item is empty, if so replace it, otherwise add new
-    if (currentItems.length > 0 && !currentItems[currentItems.length - 1].productId) {
-        const updatedItems = [...currentItems];
-        updatedItems[updatedItems.length - 1] = newItem;
-        const totalAmount = updatedItems.reduce((acc, item) => acc + (item.quantity * item.price * (1 - (item.discount || 0) / 100)), 0);
-        setActiveOrderData({ ...activeOrderData, items: updatedItems, totalAmount });
-    } else {
-        const updatedItems = [...currentItems, newItem];
-        const totalAmount = updatedItems.reduce((acc, item) => acc + (item.quantity * item.price * (1 - (item.discount || 0) / 100)), 0);
-        setActiveOrderData({ ...activeOrderData, items: updatedItems, totalAmount });
-    }
-    setAiSuggestions(prev => prev.filter(p => p.id !== product.id));
-  };
-
 
   const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -619,29 +564,7 @@ const OrdersPage: React.FC = () => {
                             </div>
                             
                             <div className="pt-4 mt-4 border-t dark:border-slate-700">
-                                <div className="flex justify-between items-center mb-2">
-                                    <h4 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Товари в замовленні</h4>
-                                    <button type="button" onClick={handleGetAiSuggestions} disabled={isAiLoading || !activeOrderData.items?.some(i => !!i.productId)} className="flex items-center gap-2 text-sm font-semibold text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-300 disabled:opacity-50">
-                                        <LightBulbIcon className={`w-5 h-5 ${isAiLoading ? 'animate-pulse' : ''}`}/> {isAiLoading ? 'Думаю...' : '💡 AI Поради'}
-                                    </button>
-                                </div>
-                                {aiError && <p className="text-sm text-red-600 dark:text-red-400">{aiError}</p>}
-                                {showAiSuggestions && aiSuggestions.length > 0 && (
-                                    <div className="p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-lg mb-4">
-                                        <div className="flex justify-between items-center mb-2">
-                                            <h5 className="text-sm font-semibold text-amber-800 dark:text-amber-200">Рекомендовані товари:</h5>
-                                            <button type="button" onClick={() => setShowAiSuggestions(false)}><XMarkIcon className="w-4 h-4 text-amber-500"/></button>
-                                        </div>
-                                        <div className="flex flex-wrap gap-2">
-                                            {aiSuggestions.map(p => (
-                                                <button key={p.id} type="button" onClick={() => handleAddSuggestionToOrder(p)} className="flex items-center gap-1.5 text-xs bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-500/50 rounded-full px-3 py-1 text-amber-800 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-500/20">
-                                                    <PlusIcon className="w-3 h-3"/> {p.name}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                                
+                                <h4 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-2">Товари в замовленні</h4>
                                 <div className="space-y-3">
                                     {(activeOrderData.items || []).map((item, index) => (
                                         <div key={index} className="grid grid-cols-12 gap-2 items-start p-3 bg-slate-50/70 dark:bg-slate-700/50 rounded-lg">
