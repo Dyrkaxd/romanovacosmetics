@@ -1,9 +1,3 @@
-
-
-
-
-
-
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import { supabase } from '../../services/supabaseClient'; 
 import type { Order, OrderItem, Product, Customer, PaginatedResponse } from '../../types';
@@ -165,7 +159,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
           .select('*, items:order_items(*), customer:customers(id, name)', { count: 'exact' });
         
         if(search){
-            query.or(`id.ilike.%${search}%,customer.name.ilike.%${search}%`, { referencedTable: 'customers' });
+            query.or(`id.ilike.%${search}%,customers.name.ilike.%${search}%`);
         }
         if(status && status !== 'All') query.eq('status', status);
         if(customerId && customerId !== 'All') query.eq('customer_id', customerId);
