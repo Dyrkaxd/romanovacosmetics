@@ -194,12 +194,6 @@ export interface GlobalSearchResult {
   url: string;
 }
 
-export interface AIInsight {
-  type: 'low_stock' | 'inactive_customer' | 'general';
-  message: string;
-  severity: 'warning' | 'info' | 'success';
-}
-
 export interface ManagerDashboardData {
   kpis: {
     totalSales: KPI;

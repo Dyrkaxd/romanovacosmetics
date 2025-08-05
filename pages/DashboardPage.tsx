@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, FC, SVGProps, useRef } from 'react';
-import { DashboardData, AIInsight, Order } from '../types';
+import { DashboardData, Order } from '../types';
 import { OrdersIcon, UsersIcon, CurrencyDollarIcon, LightBulbIcon, ArrowPathIcon, ArrowTrendingUpIcon, ArrowTrendingDownIcon } from '../components/Icons'; 
 import { authenticatedFetch } from '../utils/api';
 import { useAuth } from '../AuthContext';
@@ -163,82 +163,6 @@ const TopProducts: FC<{ products: DashboardData['topProducts']; isLoading: boole
     );
 };
 
-
-const AIInsights: React.FC = () => {
-  const [insights, setInsights] = useState<AIInsight[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchInsights = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await authenticatedFetch(`/api/dashboardSummary`);
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Failed to fetch AI insights.' }));
-        throw new Error(errorData.message);
-      }
-      const data = await response.json();
-      setInsights(data.insights);
-    } catch (err: any) {
-      setError(err.message || 'Could not load AI insights.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchInsights();
-  }, [fetchInsights]);
-
-
-  return (
-    <div className="bg-white dark:bg-slate-900 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
-      <div className="flex justify-between items-center mb-4">
-        <div className="flex items-center space-x-3">
-          <div className="p-3 rounded-full bg-amber-100 dark:bg-amber-500/10 h-fit">
-            <LightBulbIcon className="w-7 h-7 text-amber-500" />
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">AI Поради</h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400">Проактивні поради для вашого бізнесу</p>
-          </div>
-        </div>
-        <button
-          onClick={fetchInsights}
-          disabled={isLoading}
-          className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors disabled:opacity-50 disabled:cursor-wait"
-          aria-label="Оновити AI-поради"
-        >
-          <ArrowPathIcon className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-        </button>
-      </div>
-
-      <div className="space-y-3">
-        {isLoading ? (
-          <div className="space-y-2 mt-2">
-            {[...Array(2)].map((_, i) => (
-              <div key={i} className="h-10 bg-slate-200 dark:bg-slate-800 rounded w-full animate-pulse"></div>
-            ))}
-          </div>
-        ) : error ? (
-          <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 p-3 rounded-md">{error}</p>
-        ) : insights.length === 0 ? (
-          <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-4">Нових порад від AI немає. Все добре!</p>
-        ) : (
-          insights.map((insight, index) => (
-            <div key={index} className={`p-3 rounded-lg border flex items-start space-x-3 ${insight.severity === 'warning' ? 'bg-red-50/50 dark:bg-red-500/10 border-red-200 dark:border-red-500/20' : 'bg-sky-50/50 dark:bg-sky-500/10 border-sky-200 dark:border-sky-500/20'}`}>
-                <span className="text-xl">{insight.severity === 'warning' ? '⚠️' : '📈'}</span>
-                <p className="text-sm text-slate-700 dark:text-slate-300 font-medium leading-relaxed">{insight.message}</p>
-            </div>
-          ))
-        )}
-      </div>
-    </div>
-  );
-};
-
-
 const DashboardPage: React.FC = () => {
   const { user } = useAuth();
   const [data, setData] = useState<DashboardData | null>(null);
@@ -315,9 +239,8 @@ const DashboardPage: React.FC = () => {
             <SalesProfitChart data={data?.chartData || []} isLoading={isLoading}/>
           </div>
           
-          {/* AI Insights and Recent Orders */}
-          <div className="lg:col-span-2 space-y-6">
-             <AIInsights />
+          {/* Recent Orders */}
+          <div className="lg:col-span-2">
              <RecentOrders orders={data?.recentOrders || []} isLoading={isLoading}/>
           </div>
           
