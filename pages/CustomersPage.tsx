@@ -290,7 +290,7 @@ const CustomersPage: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-3 sm:space-y-0">
-        <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">Клієнти</h2>
+        <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">Керування клієнтами</h2>
         <button
             onClick={openAddModal}
             aria-label="Додати нового клієнта"
@@ -301,25 +301,27 @@ const CustomersPage: React.FC = () => {
         </button>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-4">
-        <input
-            type="search"
-            aria-label="Пошук клієнтів"
-            placeholder="Пошук за ім'ям, email, або телефоном..."
-            className="flex-grow p-2.5 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-200"
-            value={searchTerm}
-            onChange={handleSearchChange}
-        />
-        <select 
-            value={filter} 
-            onChange={handleFilterChange} 
-            className="p-2.5 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 w-full md:w-auto bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-200"
-            aria-label="Фільтрувати клієнтів"
-        >
-            <option value="default">За замовчуванням</option>
-            <option value="vip">VIP Клієнти (за витратами)</option>
-            <option value="inactive">Неактивні клієнти</option>
-        </select>
+      <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+        <div className="flex flex-col md:flex-row gap-4">
+            <input
+                type="search"
+                aria-label="Пошук клієнтів"
+                placeholder="Пошук за ім'ям, email, або телефоном..."
+                className="flex-grow p-2.5 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-200"
+                value={searchTerm}
+                onChange={handleSearchChange}
+            />
+            <select 
+                value={filter} 
+                onChange={handleFilterChange} 
+                className="p-2.5 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 w-full md:w-auto bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-200"
+                aria-label="Фільтрувати клієнтів"
+            >
+                <option value="default">За замовчуванням</option>
+                <option value="vip">VIP Клієнти (за витратами)</option>
+                <option value="inactive">Неактивні клієнти</option>
+            </select>
+        </div>
       </div>
 
       {pageError && <div role="alert" className="p-4 bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-500/20 rounded-lg">{pageError}</div>}
@@ -343,8 +345,8 @@ const CustomersPage: React.FC = () => {
               ) : customers.length > 0 ? (
                 customers.map((customer) => (
                   <tr key={customer.id} className="hover:bg-rose-50/50 dark:hover:bg-slate-700/50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-800 dark:text-slate-100">{customer.name}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300">{customer.email}</td>
+                    <td className="px-6 py-4 text-sm font-medium text-slate-800 dark:text-slate-100 break-words">{customer.name}</td>
+                    <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300 break-words">{customer.email}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300">{customer.phone || 'Н/Д'}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300">{new Date(customer.joinDate).toLocaleDateString()}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-1">
