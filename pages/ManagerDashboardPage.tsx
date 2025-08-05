@@ -39,7 +39,7 @@ const RecentOrdersList: FC<{ orders: ManagerDashboardData['recentOrders']; isLoa
     const orderStatusTranslations: Record<Order['status'], string> = { Ordered: 'Замовлено', Shipped: 'Відправлено', Received: 'Отримано', Calculation: 'Прорахунок', AwaitingApproval: 'На погодженні', PaidByClient: 'Сплачено клієнтом', WrittenOff: 'Списано', ReadyForPickup: 'Готово для видачі'};
     
     const handleOrderClick = (orderId: string) => {
-        navigate(`/orders?search=${orderId}`);
+        navigate('/orders', { state: { openOrderId: orderId } });
     };
 
     return (
