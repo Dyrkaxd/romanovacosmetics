@@ -101,6 +101,7 @@ export interface TopProduct {
   productName: string;
   totalRevenue: number;
   totalQuantity: number;
+  group: string;
 }
 
 export interface TopCustomer {

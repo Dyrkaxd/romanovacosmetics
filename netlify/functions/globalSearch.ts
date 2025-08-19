@@ -1,4 +1,5 @@
 
+
 import { Handler } from '@netlify/functions';
 import { supabase } from '../../services/supabaseClient';
 import { GoogleGenAI, GenerateContentResponse, Type } from "@google/genai";
@@ -39,7 +40,7 @@ const searchOrders = async (filters: any): Promise<GlobalSearchResult[]> => {
         id: o.id,
         title: `Замовлення #${o.id.substring(0, 8)}`,
         description: `Клієнт: ${o.customer?.name || 'N/A'}, Статус: ${o.status}`,
-        url: `/orders?search=${o.id}` // Link to the orders page with search pre-filled
+        url: `/invoice/${o.id}`
     }));
 };
 
@@ -58,7 +59,7 @@ const searchCustomers = async (filters: any): Promise<GlobalSearchResult[]> => {
         id: c.id,
         title: c.name,
         description: `Email: ${c.email}, Телефон: ${c.phone || 'N/A'}`,
-        url: `/customers` // Customer page doesn't have deep links yet
+        url: `/customers/${c.id}`
     }));
 };
 
@@ -89,7 +90,7 @@ const searchProducts = async (filters: any): Promise<GlobalSearchResult[]> => {
         id: p.id,
         title: p.name,
         description: `Група: ${p.group}, Залишок: ${p.quanity || 0}`,
-        url: `/products?search=${p.name}`
+        url: `/products/${p.id}`
     }));
 };
 

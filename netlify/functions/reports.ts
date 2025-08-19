@@ -137,6 +137,7 @@ const handler: Handler = async (event) => {
 
       order.items.forEach(item => {
         const itemRevenue = item.quantity * item.price * (1 - (item.discount || 0) / 100);
+        const productGroup = productToGroupMap.get(item.product_id || '') || 'Інші';
         
         if (item.product_id) {
             const product = productsMap.get(item.product_id);
@@ -144,15 +145,14 @@ const handler: Handler = async (event) => {
                 product.totalQuantity += item.quantity;
                 product.totalRevenue += itemRevenue;
             } else {
-                productsMap.set(item.product_id, { productId: item.product_id, productName: item.product_name, totalQuantity: item.quantity, totalRevenue: itemRevenue });
+                productsMap.set(item.product_id, { productId: item.product_id, productName: item.product_name, totalQuantity: item.quantity, totalRevenue: itemRevenue, group: productGroup });
             }
-            const productGroup = productToGroupMap.get(item.product_id) || 'Інші';
             revenueByGroupMap.set(productGroup, (revenueByGroupMap.get(productGroup) || 0) + itemRevenue);
         }
       });
     });
     
-    const netProfit = totalRevenue - totalExpenses;
+    const netProfit = grossProfit - totalExpenses;
 
     const getDateRange = (start: string, end: string): string[] => {
       const dates = [];

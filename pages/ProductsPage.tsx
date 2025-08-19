@@ -3,13 +3,13 @@ import { Product, PaginatedResponse } from '../types';
 import { PlusIcon, XMarkIcon, EyeIcon, PencilIcon, TrashIcon } from '../components/Icons';
 import { authenticatedFetch } from '../utils/api';
 import Pagination from '../components/Pagination';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const productGroups = ['BDR', 'LA', 'АГ', 'АБ', 'АР', 'без сокращений', 'АФ', 'ДС', 'м8', 'JDA', 'Faith', 'AB', 'ГФ', 'ЕС', 'ГП', 'СД', 'ATA', 'W'];
 
 const ProductsPage: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   
   const initialProductState: Partial<Product> = { 
     name: '', 
@@ -32,7 +32,16 @@ const ProductsPage: React.FC = () => {
   const [pageSize, setPageSize] = useState(20);
   const [totalCount, setTotalCount] = useState(0);
   
+  const navigate = useNavigate();
+  const location = useLocation();
   const API_BASE_URL = '/api'; 
+
+  const openEditModal = useCallback((product: Product) => {
+    setEditingProduct(product);
+    setCurrentProduct(product);
+    setIsModalOpen(true);
+    setModalError(null);
+  }, []);
 
   const fetchProducts = useCallback(async (page = 1, size = pageSize, search = searchTerm) => {
     setIsLoading(true);
@@ -54,13 +63,21 @@ const ProductsPage: React.FC = () => {
       setTotalCount(data.totalCount);
       setCurrentPage(data.currentPage);
       setPageSize(data.pageSize);
+      
+      const editId = location.state?.openEditId;
+      if (editId) {
+          const productToEdit = data.data.find(p => p.id === editId);
+          if (productToEdit) openEditModal(productToEdit);
+          navigate(location.pathname, { replace: true, state: {} });
+      }
+
     } catch (err: any) {
       console.error("Failed to fetch products:", err);
       setPageError(err.message || 'Could not load products. Please try again.');
     } finally {
       setIsLoading(false);
     }
-  }, [pageSize, searchTerm]);
+  }, [pageSize, searchTerm, location.state, navigate, openEditModal]);
 
   useEffect(() => {
     fetchProducts(1, pageSize, searchTerm);
@@ -146,21 +163,8 @@ const ProductsPage: React.FC = () => {
     setModalError(null);
   };
   
-  const openEditModal = (product: Product) => {
-    setEditingProduct(product);
-    setCurrentProduct(product);
-    setIsModalOpen(true);
-    setModalError(null);
-  };
-
-  const openViewModal = (product: Product) => {
-    setCurrentProduct(product);
-    setIsViewModalOpen(true);
-  };
-
   const closeModal = () => {
     setIsModalOpen(false);
-    setIsViewModalOpen(false);
     setCurrentProduct(initialProductState);
     setModalError(null);
   };
@@ -237,7 +241,7 @@ const ProductsPage: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-700 dark:text-slate-200">{product.quantity}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300">${product.retailPrice.toFixed(2)}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-1">
-                    <button onClick={() => openViewModal(product)} className="text-slate-500 dark:text-slate-400 hover:text-sky-600 dark:hover:text-sky-400 transition-colors p-2 rounded-md hover:bg-sky-50 dark:hover:bg-sky-500/10" aria-label={`Переглянути деталі для ${product.name}`} title="Переглянути"><EyeIcon className="w-5 h-5"/></button>
+                    <button onClick={() => navigate(`/products/${product.id}`)} className="text-slate-500 dark:text-slate-400 hover:text-sky-600 dark:hover:text-sky-400 transition-colors p-2 rounded-md hover:bg-sky-50 dark:hover:bg-sky-500/10" aria-label={`Переглянути деталі для ${product.name}`} title="Переглянути"><EyeIcon className="w-5 h-5"/></button>
                     <button onClick={() => openEditModal(product)} className="text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors p-2 rounded-md hover:bg-rose-50 dark:hover:bg-rose-500/10" aria-label={`Редагувати ${product.name}`} title="Редагувати">
                          <PencilIcon className="w-5 h-5"/>
                     </button>
@@ -284,7 +288,7 @@ const ProductsPage: React.FC = () => {
                     </div>
                   </div>
                   <div className="flex justify-end space-x-1 border-t border-slate-100 dark:border-slate-700 pt-3">
-                    <button onClick={() => openViewModal(product)} className="text-slate-500 dark:text-slate-400 hover:text-sky-600 dark:hover:text-sky-400 transition-colors p-2 rounded-md hover:bg-sky-50 dark:hover:bg-sky-500/10" aria-label={`Переглянути деталі для ${product.name}`} title="Переглянути"><EyeIcon className="w-5 h-5"/></button>
+                    <button onClick={() => navigate(`/products/${product.id}`)} className="text-slate-500 dark:text-slate-400 hover:text-sky-600 dark:hover:text-sky-400 transition-colors p-2 rounded-md hover:bg-sky-50 dark:hover:bg-sky-500/10" aria-label={`Переглянути деталі для ${product.name}`} title="Переглянути"><EyeIcon className="w-5 h-5"/></button>
                     <button onClick={() => openEditModal(product)} className="text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors p-2 rounded-md hover:bg-rose-50 dark:hover:bg-rose-500/10" aria-label={`Редагувати ${product.name}`} title="Редагувати">
                       <PencilIcon className="w-5 h-5"/>
                     </button>
@@ -380,31 +384,6 @@ const ProductsPage: React.FC = () => {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-      {isViewModalOpen && currentProduct && currentProduct.id && (
-        <div role="dialog" aria-modal="true" aria-labelledby={`view-product-modal-title-${currentProduct.id}`} className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-xl w-full max-w-md max-h-[90vh] flex flex-col">
-            <div className="flex justify-between items-center pb-4 mb-4 border-b border-slate-200 dark:border-slate-700">
-              <h3 id={`view-product-modal-title-${currentProduct.id}`} className="text-xl font-semibold text-slate-800 dark:text-slate-100">{currentProduct.name}</h3>
-              <button onClick={closeModal} aria-label="Закрити модальне вікно"><XMarkIcon className="w-6 h-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"/></button>
-            </div>
-            <div className="space-y-4 overflow-y-auto pr-2">
-              <div className='space-y-2'>
-                <p><span className="font-semibold text-slate-600 dark:text-slate-400">Назва:</span> <span className="text-slate-800 dark:text-slate-200">{currentProduct.name}</span></p>
-                <p><span className="font-semibold text-slate-600 dark:text-slate-400">Група:</span> <span className="font-medium text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 px-2 py-0.5 rounded-full text-sm inline-block">{currentProduct.group}</span></p>
-                 <p><span className="font-semibold text-slate-600 dark:text-slate-400">Кількість на складі:</span> <span className="text-slate-800 dark:text-slate-200 font-bold">{currentProduct.quantity}</span></p>
-                <p><span className="font-semibold text-slate-600 dark:text-slate-400">Ціна роздрібна:</span> <span className="text-slate-800 dark:text-slate-200">${currentProduct.retailPrice?.toFixed(2)}</span></p>
-                <p><span className="font-semibold text-slate-600 dark:text-slate-400">Ціна салону:</span> <span className="text-slate-800 dark:text-slate-200">${currentProduct.salonPrice?.toFixed(2)}</span></p>
-                <p><span className="font-semibold text-slate-600 dark:text-slate-400">Курс:</span> <span className="text-slate-800 dark:text-slate-200">{currentProduct.exchangeRate?.toFixed(2)}</span></p>
-              </div>
-            </div>
-            <div className="mt-6 pt-6 text-right border-t border-slate-200 dark:border-slate-700">
-                <button onClick={closeModal} className="bg-slate-600 hover:bg-slate-700 text-white font-semibold py-2 px-4 rounded-lg shadow-sm transition-colors">
-                  Закрити
-                </button>
-            </div>
           </div>
         </div>
       )}

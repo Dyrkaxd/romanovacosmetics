@@ -4,43 +4,12 @@ import { PlusIcon, XMarkIcon, EyeIcon, PencilIcon, TrashIcon } from '../componen
 import { authenticatedFetch } from '../utils/api';
 import Pagination from '../components/Pagination';
 import { useAuth } from '../AuthContext';
-
-const orderStatusValues: Order['status'][] = ['Ordered', 'Shipped', 'Received', 'Calculation', 'AwaitingApproval', 'PaidByClient', 'WrittenOff', 'ReadyForPickup'];
-const orderStatusTranslations: Record<Order['status'], string> = {
-  Ordered: 'Замовлено',
-  Shipped: 'Відправлено',
-  Received: 'Отримано',
-  Calculation: 'Прорахунок',
-  AwaitingApproval: 'На погодженні',
-  PaidByClient: 'Сплачено клієнтом',
-  WrittenOff: 'Списано',
-  ReadyForPickup: 'Готово для видачі',
-};
-
-const StatusPill: React.FC<{ status: Order['status'] }> = ({ status }) => {
-  const styles: Record<Order['status'], string> = {
-    Ordered: 'bg-amber-100 text-amber-700 ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-400 dark:ring-amber-400/20',
-    Shipped: 'bg-blue-100 text-blue-700 ring-blue-600/20 dark:bg-blue-500/10 dark:text-blue-400 dark:ring-blue-400/20',
-    Received: 'bg-green-100 text-green-700 ring-green-600/20 dark:bg-green-500/10 dark:text-green-400 dark:ring-green-400/20',
-    Calculation: 'bg-indigo-100 text-indigo-700 ring-indigo-600/20 dark:bg-indigo-500/10 dark:text-indigo-400 dark:ring-indigo-400/20',
-    AwaitingApproval: 'bg-purple-100 text-purple-700 ring-purple-600/20 dark:bg-purple-500/10 dark:text-purple-400 dark:ring-purple-400/20',
-    PaidByClient: 'bg-teal-100 text-teal-700 ring-teal-600/20 dark:bg-teal-500/10 dark:text-teal-400 dark:ring-teal-400/20',
-    WrittenOff: 'bg-red-100 text-red-700 ring-red-600/20 dark:bg-red-500/10 dark:text-red-400 dark:ring-red-400/20',
-    ReadyForPickup: 'bg-lime-100 text-lime-700 ring-lime-600/20 dark:bg-lime-500/10 dark:text-lime-400 dark:ring-lime-400/20',
-  };
-  return (
-    <span className={`px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ring-1 ring-inset ${styles[status]}`}>
-      {orderStatusTranslations[status] || status}
-    </span>
-  );
-};
-
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const CustomersPage: React.FC = () => {
   const { user } = useAuth();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   
   const defaultAddress = { street: '', city: '', state: '', zip: '', country: '' };
   const initialCustomerState: Partial<Customer> = { 
@@ -66,13 +35,17 @@ const CustomersPage: React.FC = () => {
   const [pageSize, setPageSize] = useState(20);
   const [totalCount, setTotalCount] = useState(0);
 
-  const [customerOrders, setCustomerOrders] = useState<Order[]>([]);
-  const [isCustomerOrdersLoading, setIsCustomerOrdersLoading] = useState(false);
-  const [customerOrdersError, setCustomerOrdersError] = useState<string | null>(null);
-  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
-
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const API_BASE_URL = '/api';
+
+  const openEditModal = useCallback((customer: Customer) => {
+    setEditingCustomer(customer);
+    setCurrentCustomer({ ...customer, address: { ...(customer.address || defaultAddress) }});
+    setIsModalOpen(true);
+    setModalError(null);
+  }, []);
 
   const fetchCustomers = useCallback(async (page = 1, size = pageSize, search = searchTerm, sort = filter) => {
     setIsLoading(true);
@@ -99,6 +72,13 @@ const CustomersPage: React.FC = () => {
       setTotalCount(data.totalCount);
       setCurrentPage(data.currentPage);
       setPageSize(data.pageSize);
+      
+      const editId = location.state?.openEditId;
+      if (editId) {
+          const customerToEdit = data.data.find(c => c.id === editId);
+          if (customerToEdit) openEditModal(customerToEdit);
+          navigate(location.pathname, { replace: true, state: {} });
+      }
 
     } catch (err: any) {
       console.error("Failed to fetch customers:", err);
@@ -106,7 +86,7 @@ const CustomersPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [pageSize, searchTerm, filter]);
+  }, [pageSize, searchTerm, filter, location.state, navigate, openEditModal]);
 
   useEffect(() => {
     fetchCustomers(currentPage, pageSize, searchTerm, filter);
@@ -130,37 +110,6 @@ const CustomersPage: React.FC = () => {
       setPageSize(size);
       setCurrentPage(1); // Reset to first page
   };
-
-
-  const fetchOrdersForCustomer = useCallback(async (customerId: string) => {
-    if (!customerId) return;
-    setIsCustomerOrdersLoading(true);
-    setCustomerOrdersError(null);
-    try {
-      // Note: This endpoint might also need pagination if a customer can have many orders.
-      // For now, fetching all for the modal view.
-      const response = await authenticatedFetch(`${API_BASE_URL}/orders?customerId=${customerId}`);
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Failed to fetch customer orders' }));
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-      }
-      const data: Order[] | PaginatedResponse<Order> = await response.json();
-      setCustomerOrders(Array.isArray(data) ? data : data.data);
-    } catch (err: any) {
-      console.error("Failed to fetch customer orders:", err);
-      setCustomerOrdersError(err.message || 'Could not load customer orders.');
-      setCustomerOrders([]);
-    } finally {
-      setIsCustomerOrdersLoading(false);
-    }
-  }, []);
-
-
-  useEffect(() => {
-    if (isViewModalOpen && currentCustomer?.id) {
-      fetchOrdersForCustomer(currentCustomer.id);
-    }
-  }, [isViewModalOpen, currentCustomer, fetchOrdersForCustomer]);
 
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -235,26 +184,10 @@ const CustomersPage: React.FC = () => {
     setModalError(null);
   };
 
-  const openEditModal = (customer: Customer) => {
-    setEditingCustomer(customer);
-    setCurrentCustomer({ ...customer, address: { ...(customer.address || defaultAddress) }});
-    setIsModalOpen(true);
-    setModalError(null);
-  };
-
-  const openViewModal = (customer: Customer) => {
-    setCurrentCustomer(customer);
-    setIsViewModalOpen(true);
-  };
-
   const closeModal = () => {
     setIsModalOpen(false);
-    setIsViewModalOpen(false);
     setCurrentCustomer(initialCustomerState);
     setModalError(null);
-    setCustomerOrders([]);
-    setCustomerOrdersError(null);
-    setExpandedOrderId(null);
   };
 
   const handleDeleteCustomer = async (customerId: string) => {
@@ -283,10 +216,6 @@ const CustomersPage: React.FC = () => {
         setIsLoading(false);
       }
     }
-  };
-
-  const handleToggleOrderDetails = (orderId: string) => {
-    setExpandedOrderId(prevId => (prevId === orderId ? null : orderId));
   };
 
   return (
@@ -352,7 +281,7 @@ const CustomersPage: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300">{customer.phone || 'Н/Д'}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300">{new Date(customer.joinDate).toLocaleDateString()}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-1">
-                      <button onClick={() => openViewModal(customer)} className="text-slate-500 dark:text-slate-400 hover:text-sky-600 dark:hover:text-sky-400 transition-colors p-2 rounded-md hover:bg-sky-50 dark:hover:bg-sky-500/10" title="Переглянути деталі клієнта" aria-label={`Переглянути деталі для ${customer.name}`}><EyeIcon className="w-5 h-5"/></button>
+                      <button onClick={() => navigate(`/customers/${customer.id}`)} className="text-slate-500 dark:text-slate-400 hover:text-sky-600 dark:hover:text-sky-400 transition-colors p-2 rounded-md hover:bg-sky-50 dark:hover:bg-sky-500/10" title="Переглянути деталі клієнта" aria-label={`Переглянути деталі для ${customer.name}`}><EyeIcon className="w-5 h-5"/></button>
                       <button onClick={() => openEditModal(customer)} className="text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors p-2 rounded-md hover:bg-rose-50 dark:hover:bg-rose-500/10" title="Редагувати клієнта" aria-label={`Редагувати ${customer.name}`}><PencilIcon className="w-5 h-5"/></button>
                       <button onClick={() => handleDeleteCustomer(customer.id)} className="text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-colors p-2 rounded-md hover:bg-red-50 dark:hover:bg-red-500/10" title="Видалити клієнта" aria-label={`Видалити ${customer.name}`}><TrashIcon className="w-5 h-5"/></button>
                     </td>
@@ -378,7 +307,7 @@ const CustomersPage: React.FC = () => {
                             <div className="flex justify-between items-start">
                                 <p className="font-semibold text-slate-800 dark:text-slate-100 pr-4">{customer.name}</p>
                                 <div className="flex-shrink-0 flex items-center space-x-1">
-                                    <button onClick={() => openViewModal(customer)} className="text-slate-500 dark:text-slate-400 hover:text-sky-600 dark:hover:text-sky-400 p-2 rounded-md hover:bg-sky-50 dark:hover:bg-sky-500/10"><EyeIcon className="w-5 h-5"/></button>
+                                    <button onClick={() => navigate(`/customers/${customer.id}`)} className="text-slate-500 dark:text-slate-400 hover:text-sky-600 dark:hover:text-sky-400 p-2 rounded-md hover:bg-sky-50 dark:hover:bg-sky-500/10"><EyeIcon className="w-5 h-5"/></button>
                                     <button onClick={() => openEditModal(customer)} className="text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 p-2 rounded-md hover:bg-rose-50 dark:hover:bg-rose-500/10"><PencilIcon className="w-5 h-5"/></button>
                                     <button onClick={() => handleDeleteCustomer(customer.id)} className="text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 p-2 rounded-md hover:bg-red-50 dark:hover:bg-red-500/10"><TrashIcon className="w-5 h-5"/></button>
                                 </div>
@@ -495,102 +424,8 @@ const CustomersPage: React.FC = () => {
           </div>
         </div>
       )}
-
-      {isViewModalOpen && currentCustomer && currentCustomer.id && (
-         <div role="dialog" aria-modal="true" aria-labelledby="view-customer-modal-title" className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
-            <div className="flex justify-between items-center pb-4 mb-4 border-b border-slate-200 dark:border-slate-700">
-              <h3 id="view-customer-modal-title" className="text-xl font-semibold text-slate-800 dark:text-slate-100">{currentCustomer.name}</h3>
-              <button onClick={closeModal} aria-label="Закрити модальне вікно"><XMarkIcon className="w-6 h-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"/></button>
-            </div>
-            <div className="space-y-4 text-sm overflow-y-auto pr-2 flex-grow">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <p><span className="font-semibold text-slate-500 dark:text-slate-400 w-28 inline-block">ID Клієнта:</span> <span className="font-medium text-slate-800 dark:text-slate-200">{currentCustomer.id}</span></p>
-                    <p><span className="font-semibold text-slate-500 dark:text-slate-400 w-28 inline-block">Email:</span> <span className="font-medium text-slate-800 dark:text-slate-200">{currentCustomer.email}</span></p>
-                    <p><span className="font-semibold text-slate-500 dark:text-slate-400 w-28 inline-block">Телефон:</span> <span className="font-medium text-slate-800 dark:text-slate-200">{currentCustomer.phone || 'Н/Д'}</span></p>
-                    <p><span className="font-semibold text-slate-500 dark:text-slate-400 w-28 inline-block">Instagram:</span> <span className="font-medium text-slate-800 dark:text-slate-200">{currentCustomer.instagramHandle || 'Н/Д'}</span></p>
-                    <p><span className="font-semibold text-slate-500 dark:text-slate-400 w-28 inline-block">Viber:</span> <span className="font-medium text-slate-800 dark:text-slate-200">{currentCustomer.viberNumber || 'Н/Д'}</span></p>
-                    <p><span className="font-semibold text-slate-500 dark:text-slate-400 w-28 inline-block">Дата реєстрації:</span> <span className="font-medium text-slate-800 dark:text-slate-200">{currentCustomer.joinDate ? new Date(currentCustomer.joinDate).toLocaleDateString() : 'N/A'}</span></p>
-                  </div>
-                  <div>
-                    <p className="font-semibold text-slate-500 dark:text-slate-400 mb-1">Адреса:</p>
-                    {currentCustomer.address && (currentCustomer.address.street || currentCustomer.address.city) ? (
-                      <div className='font-medium text-slate-800 dark:text-slate-200'>
-                        <p>{currentCustomer.address.street}</p>
-                        <p>{currentCustomer.address.city}{currentCustomer.address.state && `, ${currentCustomer.address.state}`} {currentCustomer.address.zip}</p>
-                        <p>{currentCustomer.address.country}</p>
-                      </div>
-                    ) : <p className="text-slate-500 dark:text-slate-400 italic">Адреса не вказана</p>}
-                  </div>
-              </div>
-              {currentCustomer.notes && (
-                <div className="pt-4 mt-4 border-t border-slate-200 dark:border-slate-700">
-                  <h4 className="font-semibold text-slate-500 dark:text-slate-400 mb-1">Нотатки:</h4>
-                  <p className="text-slate-700 dark:text-slate-300 whitespace-pre-wrap bg-slate-50 dark:bg-slate-700/50 p-3 rounded-md">{currentCustomer.notes}</p>
-                </div>
-              )}
-               <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
-                  <h4 className="font-semibold text-slate-500 dark:text-slate-400 mb-2">Історія замовлень ({customerOrders.length})</h4>
-                  {isCustomerOrdersLoading ? <p className="text-slate-500 dark:text-slate-400">Завантаження замовлень...</p> 
-                   : customerOrdersError ? <p className="text-red-600 dark:text-red-400">{customerOrdersError}</p>
-                   : customerOrders.length > 0 ? (
-                      <div className="max-h-64 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded-lg">
-                        <ul className="divide-y divide-slate-200 dark:divide-slate-700">
-                          {customerOrders.map(order => (
-                            <li key={order.id}>
-                               <div className="p-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer" onClick={() => handleToggleOrderDetails(order.id)}>
-                                  <div className="flex justify-between items-center">
-                                    <div className="flex-1">
-                                      <p className="font-semibold text-slate-800 dark:text-slate-200">Замовлення #{order.id.substring(0, 8)}</p>
-                                      <p className="text-xs text-slate-500 dark:text-slate-400">{new Date(order.date).toLocaleDateString()}</p>
-                                    </div>
-                                    <div className="flex-1 text-center"><StatusPill status={order.status} /></div>
-                                    <div className="flex-1 text-right font-bold text-slate-800 dark:text-slate-200">₴{order.totalAmount.toFixed(2)}</div>
-                                    <ChevronDownIcon className={`w-5 h-5 text-slate-400 ml-2 transition-transform ${expandedOrderId === order.id ? 'rotate-180' : ''}`} />
-                                  </div>
-                               </div>
-                               {expandedOrderId === order.id && (
-                                   <div className="p-3 bg-slate-50 dark:bg-slate-700/50 border-t border-slate-200 dark:border-slate-600">
-                                      <h5 className="font-semibold text-slate-600 dark:text-slate-300 text-xs mb-1">Товари:</h5>
-                                      <ul className="text-xs space-y-0.5 text-slate-600 dark:text-slate-400">
-                                        {order.items.map(item => (
-                                          <li key={item.id} className="flex justify-between">
-                                            <span>{item.productName} x {item.quantity}</span>
-                                            <span>₴{(item.price * item.quantity).toFixed(2)}</span>
-                                          </li>
-                                        ))}
-                                      </ul>
-                                   </div>
-                               )}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                   ) : <p className="text-slate-500 dark:text-slate-400 italic">У цього клієнта ще немає замовлень.</p>
-                  }
-               </div>
-            </div>
-             <div className="flex justify-end pt-6 space-x-3 border-t border-slate-200 dark:border-slate-700">
-                <button 
-                    type="button" 
-                    onClick={closeModal} 
-                    className="w-full sm:w-auto bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold py-2 px-4 rounded-lg shadow-sm transition-colors"
-                >Закрити</button>
-              </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
-
-// Simple ChevronDownIcon for the collapsible orders
-const ChevronDownIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-  </svg>
-);
-
 
 export default CustomersPage;

@@ -71,8 +71,8 @@ const WarehousePage: React.FC = () => {
             return;
         }
 
-        if (newQuantity === originalProduct.quantity) {
-             // No change, just clear editing state
+        const originalQuantity = originalProduct.quantity;
+        if (newQuantity === originalQuantity) {
             const newEditing = { ...editingQuantities };
             delete newEditing[productId];
             setEditingQuantities(newEditing);
@@ -82,6 +82,13 @@ const WarehousePage: React.FC = () => {
         setSavingStates(prev => ({ ...prev, [productId]: true }));
         setError(null);
         setSuccessMessage(null);
+
+        // Optimistic UI Update
+        setProducts(prev => prev.map(p => p.id === productId ? { ...p, quantity: newQuantity } : p));
+        const newEditing = { ...editingQuantities };
+        delete newEditing[productId];
+        setEditingQuantities(newEditing);
+
         try {
             const response = await authenticatedFetch(`/api/warehouse/${productId}`, {
                 method: 'PUT',
@@ -91,14 +98,11 @@ const WarehousePage: React.FC = () => {
                 const errData = await response.json();
                 throw new Error(errData.message || 'Failed to update quantity.');
             }
-            // Update local state for immediate feedback
-            setProducts(prev => prev.map(p => p.id === productId ? { ...p, quantity: newQuantity } : p));
-            const newEditing = { ...editingQuantities };
-            delete newEditing[productId];
-            setEditingQuantities(newEditing);
             setSuccessMessage(`Кількість для "${originalProduct.name}" оновлено.`);
         } catch (err: any) {
-            setError(err.message);
+            // Revert on error
+            setError(`Не вдалося оновити "${originalProduct.name}": ${err.message}`);
+            setProducts(prev => prev.map(p => p.id === productId ? { ...p, quantity: originalQuantity } : p));
         } finally {
             setSavingStates(prev => ({ ...prev, [productId]: false }));
         }

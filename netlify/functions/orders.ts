@@ -103,7 +103,8 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
   }
   
   const pathParts = event.path.split('/').filter(Boolean);
-  const resourceId = pathParts.length > 2 ? pathParts[2] : null;
+  const isBulkUpdate = pathParts[pathParts.length - 1] === 'bulk-status-update';
+  const resourceId = (pathParts.length > 2 && !isBulkUpdate) ? pathParts[2] : null;
 
   // PUBLIC ACCESS FOR INVOICE VIEW: Allow GET for a single order without authentication.
   // Security relies on the unguessable UUID of the order ID.
@@ -140,6 +141,23 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
   // All other requests require authentication
   try {
     const user = await requireAuth(event);
+
+    if (event.httpMethod === 'POST' && isBulkUpdate) {
+        if (user.role !== 'admin') {
+            return { statusCode: 403, headers: commonHeaders, body: JSON.stringify({ message: 'Forbidden: Admins only.' }) };
+        }
+        const { ids, status } = JSON.parse(event.body || '{}');
+        if (!Array.isArray(ids) || ids.length === 0 || !status) {
+            return { statusCode: 400, headers: commonHeaders, body: JSON.stringify({ message: 'Order IDs and a new status are required.' }) };
+        }
+        const { count, error } = await supabase
+            .from('orders')
+            .update({ status: status })
+            .in('id', ids);
+        
+        if (error) throw error;
+        return { statusCode: 200, headers: commonHeaders, body: JSON.stringify({ message: `Successfully updated ${count} orders.` }) };
+    }
 
     switch (event.httpMethod) {
       case 'GET': {

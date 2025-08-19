@@ -1,7 +1,5 @@
 
 
-
-
 import React, { useState, Suspense, useEffect } from 'react';
 import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
@@ -14,8 +12,10 @@ import Header from './components/Header';
 const DashboardPage = React.lazy(() => import('./pages/DashboardPage.tsx'));
 const ManagerDashboardPage = React.lazy(() => import('./pages/ManagerDashboardPage.tsx'));
 const ProductsPage = React.lazy(() => import('./pages/ProductsPage.tsx'));
+const ProductDetailPage = React.lazy(() => import('./pages/ProductDetailPage.tsx'));
 const OrdersPage = React.lazy(() => import('./pages/OrdersPage.tsx'));
 const CustomersPage = React.lazy(() => import('./pages/CustomersPage.tsx'));
+const CustomerDetailPage = React.lazy(() => import('./pages/CustomerDetailPage.tsx'));
 const SettingsPage = React.lazy(() => import('./pages/SettingsPage.tsx'));
 const LoginPage = React.lazy(() => import('./pages/LoginPage.tsx'));
 const ReportsPage = React.lazy(() => import('./pages/ReportsPage.tsx'));
@@ -28,6 +28,9 @@ const HelpPage = React.lazy(() => import('./pages/HelpPage.tsx'));
 
 const getPageTitle = (pathname: string, role?: 'admin' | 'manager'): string => {
   const normalizedPathname = pathname.endsWith('/') && pathname.length > 1 ? pathname.slice(0, -1) : pathname;
+
+  if (normalizedPathname.startsWith('/products/')) return 'Деталі товару';
+  if (normalizedPathname.startsWith('/customers/')) return 'Деталі клієнта';
 
   switch (normalizedPathname) {
     case '': 
@@ -54,8 +57,6 @@ const getPageTitle = (pathname: string, role?: 'admin' | 'manager'): string => {
       return 'Довідка';
     default:
       if (normalizedPathname.startsWith('/orders/')) return 'Деталі замовлення';
-      if (normalizedPathname.startsWith('/products/')) return 'Деталі товару';
-      if (normalizedPathname.startsWith('/customers/')) return 'Деталі клієнта';
       if (normalizedPathname.startsWith('/invoice/')) return 'Рахунок-фактура';
       return 'Менеджер ел. комерції';
   }
@@ -96,9 +97,11 @@ const MainAppLayout: React.FC = () => {
               {isAdmin && <Route path="/reports/managers" element={<ManagerReportPage />} />}
               {isAdmin && <Route path="/expenses" element={<ExpensesPage />} />}
               {isAdmin && <Route path="/products" element={<ProductsPage />} />}
+              {isAdmin && <Route path="/products/:productId" element={<ProductDetailPage />} />}
               {isAdmin && <Route path="/warehouse" element={<WarehousePage />} />}
               <Route path="/orders" element={<OrdersPage />} />
               <Route path="/customers" element={<CustomersPage />} />
+              <Route path="/customers/:customerId" element={<CustomerDetailPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/help" element={<HelpPage />} />
               {/* Redirect any unknown paths to the user's appropriate home page */}
@@ -165,7 +168,7 @@ const AppContent: React.FC = () => {
 };
 
 const App: React.FC = () => {
-  const googleClientId = "207911989595-0d5jo71ibh1q3rr6qg9gdai9j8v8b75i.apps.googleusercontent.com"; 
+  const googleClientId = "207911989595-0d5jo71ibh1q3rr6qg9gdai9j8v8b75i.apps.googleusercontent.com";
 
   return (
     <GoogleOAuthProvider clientId={googleClientId}>
