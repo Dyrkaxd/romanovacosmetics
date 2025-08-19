@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ManagerStats } from '../types';
 import { authenticatedFetch } from '../utils/api';
 import { UsersIcon, CurrencyDollarIcon, OrdersIcon } from '../components/Icons';
+import StatCard from '../components/StatCard';
 
 type SortKey = keyof ManagerStats | 'name';
 type SortOrder = 'asc' | 'desc';
@@ -93,18 +94,30 @@ const ManagerReportPage: React.FC = () => {
       {error && <div role="alert" className="p-4 bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-500/20 rounded-lg">{error}</div>}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
-            <div className="flex justify-between items-center"><p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Загальний прибуток</p><CurrencyDollarIcon className="w-7 h-7 text-green-500" /></div>
-            {isLoading ? <div className="h-9 w-3/4 bg-slate-200 dark:bg-slate-700 rounded-md mt-1 animate-pulse"></div> : <p className="text-3xl font-bold mt-1 text-green-600">₴{totalProfit.toLocaleString('uk-UA', { minimumFractionDigits: 2 })}</p>}
-        </div>
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
-            <div className="flex justify-between items-center"><p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Загальна кількість замовлень</p><OrdersIcon className="w-7 h-7 text-blue-500" /></div>
-            {isLoading ? <div className="h-9 w-2/4 bg-slate-200 dark:bg-slate-700 rounded-md mt-1 animate-pulse"></div> : <p className="text-3xl font-bold mt-1 text-blue-600">{stats.reduce((acc, s) => acc + s.totalOrders, 0)}</p>}
-        </div>
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
-            <div className="flex justify-between items-center"><p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Кількість менеджерів</p><UsersIcon className="w-7 h-7 text-indigo-500" /></div>
-            {isLoading ? <div className="h-9 w-1/4 bg-slate-200 dark:bg-slate-700 rounded-md mt-1 animate-pulse"></div> : <p className="text-3xl font-bold mt-1 text-indigo-600">{stats.length}</p>}
-        </div>
+        <StatCard
+            title="Загальний прибуток"
+            value={`₴${totalProfit.toLocaleString('uk-UA', { minimumFractionDigits: 2 })}`}
+            icon={CurrencyDollarIcon}
+            isLoading={isLoading}
+            colorClass="text-green-600"
+            iconColorClass="text-green-500"
+        />
+        <StatCard
+            title="Загальна кількість замовлень"
+            value={`${stats.reduce((acc, s) => acc + s.totalOrders, 0)}`}
+            icon={OrdersIcon}
+            isLoading={isLoading}
+            colorClass="text-blue-600"
+            iconColorClass="text-blue-500"
+        />
+        <StatCard
+            title="Кількість менеджерів"
+            value={`${stats.length}`}
+            icon={UsersIcon}
+            isLoading={isLoading}
+            colorClass="text-indigo-600"
+            iconColorClass="text-indigo-500"
+        />
       </div>
       
       <div className="bg-white dark:bg-slate-800 shadow-sm rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700">

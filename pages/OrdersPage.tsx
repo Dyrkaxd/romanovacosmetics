@@ -289,6 +289,10 @@ const OrdersPage: React.FC = () => {
     setModalMode('edit');
   };
 
+  const handleEditFromView = (orderToEdit: Order) => {
+    setViewOrder(null); // Close the view modal
+    openEditModal(orderToEdit); // Open the edit modal with the correct data
+  };
 
 
   const handleDeleteOrder = async (orderId: string) => {
@@ -724,7 +728,17 @@ const OrdersPage: React.FC = () => {
                         </div>
                         <div className="flex justify-between items-center pt-6 border-t dark:border-slate-700">
                             <p className="text-xl font-bold text-slate-800 dark:text-slate-100">Всього: ₴{viewOrder.totalAmount.toFixed(2)}</p>
-                            <button type="button" onClick={closeModal} className="bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 py-2 px-4 rounded-lg">Закрити</button>
+                            <div className="flex space-x-3">
+                                <button type="button" onClick={closeModal} className="bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold py-2 px-4 rounded-lg shadow-sm transition-colors">Закрити</button>
+                                <button 
+                                    type="button" 
+                                    onClick={() => handleEditFromView(viewOrder)} 
+                                    className="flex items-center bg-rose-500 hover:bg-rose-600 text-white font-semibold py-2 px-4 rounded-lg shadow-sm transition-colors"
+                                >
+                                    <PencilIcon className="w-4 h-4 mr-2" />
+                                    Редагувати
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
