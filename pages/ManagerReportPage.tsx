@@ -121,7 +121,8 @@ const ManagerReportPage: React.FC = () => {
       </div>
       
       <div className="bg-white dark:bg-slate-800 shadow-sm rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700">
-         <div className="overflow-x-auto">
+         {/* Desktop Table View */}
+         <div className="overflow-x-auto hidden md:block">
           <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
             <thead className="bg-slate-50 dark:bg-slate-700/50">
               <tr>
@@ -152,6 +153,42 @@ const ManagerReportPage: React.FC = () => {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Card View */}
+        <div className="md:hidden">
+            {isLoading ? (
+                <div className="p-6 text-center text-sm text-slate-500 dark:text-slate-400">Завантаження...</div>
+            ) : sortedStats.length > 0 ? (
+                <ul className="divide-y divide-slate-200 dark:divide-slate-700">
+                    {sortedStats.map(manager => (
+                        <li key={manager.email} className="p-4 space-y-3">
+                            <div>
+                                <p className="font-semibold text-slate-800 dark:text-slate-100">{manager.name}</p>
+                                <p className="text-sm text-slate-500 dark:text-slate-400 truncate">{manager.email}</p>
+                            </div>
+                            <div className="grid grid-cols-3 gap-y-2 text-sm pt-3 border-t border-slate-100 dark:border-slate-700">
+                                <div>
+                                    <p className="text-slate-500 dark:text-slate-400">Замовлень</p>
+                                    <p className="font-medium text-slate-700 dark:text-slate-200">{manager.totalOrders}</p>
+                                </div>
+                                <div className="text-center">
+                                    <p className="text-slate-500 dark:text-slate-400">Продажі</p>
+                                    <p className="font-medium text-slate-700 dark:text-slate-200">₴{manager.totalSales.toLocaleString('uk-UA')}</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-slate-500 dark:text-slate-400">Прибуток</p>
+                                    <p className="font-bold text-green-600 dark:text-green-500">₴{manager.totalProfit.toLocaleString('uk-UA')}</p>
+                                </div>
+                            </div>
+                        </li>
+                    ))}
+                </ul>
+            ) : (
+                <div className="px-6 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
+                    Дані про ефективність менеджерів відсутні.
+                </div>
+            )}
         </div>
       </div>
     </div>
