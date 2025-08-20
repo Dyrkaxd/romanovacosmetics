@@ -10,7 +10,7 @@ const API_BASE_URL = '/api';
 type ManagedUserRow = Database['public']['Tables']['managed_users']['Row'];
 type AdminRow = Database['public']['Tables']['admins']['Row'];
 
-const productGroups = ['BDR', 'LA', 'АГ', 'АБ', 'АР', 'без сокращений', 'АФ', 'ДС', 'м8', 'JDA', 'Faith', 'AB', 'ГФ', 'ЕС', 'ГП', 'СД', 'ATA', 'W'];
+const productGroups = ['BDR', 'LA', 'АГ', 'АБ', 'АР', 'без сокращений', 'АФ', 'ДС', 'м8', 'JDA', 'Faith', 'AB', 'ГФ', 'ЕС', 'ГП', 'СД', 'ATA', 'W', 'Гуаша'];
 
 const ThemeSwitcher: React.FC = () => {
     const { theme, toggleTheme } = useTheme();

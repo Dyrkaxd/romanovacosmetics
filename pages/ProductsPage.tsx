@@ -5,7 +5,7 @@ import { authenticatedFetch } from '../utils/api';
 import Pagination from '../components/Pagination';
 import { useNavigate, useLocation } from 'react-router-dom';
 
-const productGroups = ['BDR', 'LA', 'АГ', 'АБ', 'АР', 'без сокращений', 'АФ', 'ДС', 'м8', 'JDA', 'Faith', 'AB', 'ГФ', 'ЕС', 'ГП', 'СД', 'ATA', 'W'];
+const productGroups = ['BDR', 'LA', 'АГ', 'АБ', 'АР', 'без сокращений', 'АФ', 'ДС', 'м8', 'JDA', 'Faith', 'AB', 'ГФ', 'ЕС', 'ГП', 'СД', 'ATA', 'W', 'Гуаша'];
 
 const ProductsPage: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);

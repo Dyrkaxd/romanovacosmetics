@@ -20,6 +20,7 @@ const productGroups = {
   'ДС': 'products_ds', 'м8': 'products_m8', 'JDA': 'products_jda', 'Faith': 'products_faith',
   'AB': 'products_ab_lat', 'ГФ': 'products_gf', 'ЕС': 'products_es', 'ГП': 'products_gp',
   'СД': 'products_sd', 'ATA': 'products_ata', 'W': 'products_w',
+  'Гуаша': 'products_guasha',
 };
 type ProductGroupName = keyof typeof productGroups;
 type ProductTableName = typeof productGroups[ProductGroupName];

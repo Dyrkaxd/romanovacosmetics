@@ -1,7 +1,3 @@
-
-
-
-
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import { supabase } from '../../services/supabaseClient';
 import type { Product, PaginatedResponse } from '../../types';
@@ -38,6 +34,7 @@ const productGroups = {
   'СД': 'products_sd',
   'ATA': 'products_ata',
   'W': 'products_w',
+  'Гуаша': 'products_guasha',
 };
 type ProductGroupName = keyof typeof productGroups;
 type ProductTableName = typeof productGroups[ProductGroupName];

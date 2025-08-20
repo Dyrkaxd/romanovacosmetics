@@ -15,6 +15,7 @@ const productGroups = {
   'ДС': 'products_ds', 'м8': 'products_m8', 'JDA': 'products_jda', 'Faith': 'products_faith',
   'AB': 'products_ab_lat', 'ГФ': 'products_gf', 'ЕС': 'products_es', 'ГП': 'products_gp',
   'СД': 'products_sd', 'ATA': 'products_ata', 'W': 'products_w',
+  'Гуаша': 'products_guasha',
 };
 
 const handler: Handler = async (event) => {
@@ -37,19 +38,22 @@ const handler: Handler = async (event) => {
         }
 
         const productsByGroup = productsToImport.reduce((acc, p) => {
-            if (!acc[p.group]) acc[p.group] = [];
-            acc[p.group].push({
+            let groupKey = p.group;
+            if (groupKey.toLowerCase() === 'la') groupKey = 'LA';
+            if (groupKey.toLowerCase() === 'bez_sokr') groupKey = 'без сокращений';
+
+            if (!acc[groupKey]) acc[groupKey] = [];
+            acc[groupKey].push({
                 name: p.name,
                 price: p.retailPrice,
                 salon_price: p.salonPrice,
                 exchange_rate: p.exchangeRate,
-                // Quantity is intentionally omitted to avoid overwriting existing stock levels for updated products.
-                // New products will get the default quantity (0 or NULL) from the database.
             });
             return acc;
         }, {} as Record<string, any[]>);
 
-        let totalUpsertedCount = 0;
+        let totalUpdatedCount = 0;
+        let totalInsertedCount = 0;
         const errors: string[] = [];
 
         for (const groupName in productsByGroup) {
@@ -59,20 +63,58 @@ const handler: Handler = async (event) => {
                 continue;
             }
 
-            const { count, error } = await supabase
-                .from(tableName)
-                .upsert(productsByGroup[groupName], { onConflict: 'name' }); // Assumes unique constraint on 'name' per table
+            const productsForThisGroup = productsByGroup[groupName];
+            const productNames = productsForThisGroup.map(p => p.name);
 
-            if (error) {
-                console.error(`Error upserting to ${tableName}:`, error);
-                errors.push(`Помилка при імпорті в групу '${groupName}': ${error.message}`);
-            } else {
-                totalUpsertedCount += count || 0;
+            const { data: existingProducts, error: fetchError } = await supabase
+                .from(tableName)
+                .select('id, name')
+                .in('name', productNames);
+
+            if (fetchError) {
+                errors.push(`Помилка отримання існуючих товарів для групи '${groupName}': ${fetchError.message}`);
+                continue;
+            }
+
+            const existingProductsMap = new Map((existingProducts || []).map(p => [p.name, p.id]));
+            const toInsert: any[] = [];
+            const toUpdate: any[] = [];
+
+            for (const product of productsForThisGroup) {
+                const existingId = existingProductsMap.get(product.name);
+                if (existingId) {
+                    toUpdate.push({ ...product, id: existingId });
+                } else {
+                    toInsert.push(product);
+                }
+            }
+
+            if (toInsert.length > 0) {
+                const { error: insertError } = await supabase.from(tableName).insert(toInsert);
+                if (insertError) {
+                    errors.push(`Помилка додавання нових товарів в групу '${groupName}': ${insertError.message}`);
+                } else {
+                    totalInsertedCount += toInsert.length;
+                }
+            }
+            
+            if (toUpdate.length > 0) {
+                for (const product of toUpdate) {
+                    const { id, ...updateData } = product;
+                    const { error: updateError } = await supabase.from(tableName).update(updateData).eq('id', id);
+                    if (updateError) {
+                        errors.push(`Помилка оновлення товару '${product.name}': ${updateError.message}`);
+                    } else {
+                        totalUpdatedCount++;
+                    }
+                }
             }
         }
         
+        const totalProcessedCount = totalInsertedCount + totalUpdatedCount;
+        
         if (errors.length > 0) {
-             const errorMessage = `Імпорт частково не вдався. Оброблено: ${totalUpsertedCount}. Помилки: ${errors.join('; ')}`;
+             const errorMessage = `Імпорт частково не вдався. Оброблено: ${totalProcessedCount}. Помилки: ${errors.join('; ')}`;
             return {
                 statusCode: 400,
                 headers: commonHeaders,
@@ -83,7 +125,7 @@ const handler: Handler = async (event) => {
         return {
             statusCode: 200,
             headers: commonHeaders,
-            body: JSON.stringify({ message: `Успішно оброблено ${totalUpsertedCount} товарів.` })
+            body: JSON.stringify({ message: `Успішно оброблено ${totalProcessedCount} товарів (${totalInsertedCount} додано, ${totalUpdatedCount} оновлено).` })
         };
 
     } catch (error: any) {
