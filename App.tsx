@@ -73,17 +73,30 @@ const MainAppLayout: React.FC = () => {
   const { user } = useAuth();
   const pageTitle = getPageTitle(location.pathname, user?.role);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => localStorage.getItem('sidebarCollapsed') === 'true');
   const isAdmin = user?.role === 'admin';
-
 
   const toggleMobileSidebar = () => {
     setIsMobileSidebarOpen(!isMobileSidebarOpen);
   };
 
+  const toggleSidebarCollapse = () => {
+    setIsSidebarCollapsed(prev => {
+        const newState = !prev;
+        localStorage.setItem('sidebarCollapsed', String(newState));
+        return newState;
+    });
+  };
+
   return (
     <div className="flex h-screen bg-slate-100 dark:bg-slate-950">
-      <Sidebar isOpenOnMobile={isMobileSidebarOpen} toggleMobileSidebar={toggleMobileSidebar} />
-      <div className={`flex-1 flex flex-col md:ml-64 transition-all duration-300 ease-in-out`}>
+      <Sidebar 
+        isOpenOnMobile={isMobileSidebarOpen} 
+        toggleMobileSidebar={toggleMobileSidebar}
+        isCollapsed={isSidebarCollapsed}
+        toggleCollapse={toggleSidebarCollapse}
+      />
+      <div className={`flex-1 flex flex-col ${isSidebarCollapsed ? 'md:ml-20' : 'md:ml-64'} transition-all duration-300 ease-in-out`}>
         <Header title={pageTitle} onToggleMobileSidebar={toggleMobileSidebar} />
         <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
           <Suspense fallback={<PageLoader />}>
