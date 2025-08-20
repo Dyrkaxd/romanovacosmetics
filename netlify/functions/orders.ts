@@ -1,3 +1,4 @@
+
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import { supabase } from '../../services/supabaseClient'; 
 import type { Order, OrderItem, Product, Customer, PaginatedResponse } from '../../types';
@@ -23,6 +24,7 @@ const productGroupsMap: Record<string, string> = {
   'ДС': 'products_ds', 'м8': 'products_m8', 'JDA': 'products_jda', 'Faith': 'products_faith',
   'AB': 'products_ab_lat', 'ГФ': 'products_gf', 'ЕС': 'products_es', 'ГП': 'products_gp',
   'СД': 'products_sd', 'ATA': 'products_ata', 'W': 'products_w',
+  'Гуаша': 'products_guasha',
 };
 
 

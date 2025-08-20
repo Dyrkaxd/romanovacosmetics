@@ -1,3 +1,4 @@
+
 import { Handler } from '@netlify/functions';
 import { supabase } from '../../services/supabaseClient';
 import { requireAuth } from '../utils/auth';
@@ -16,6 +17,12 @@ const productGroups = {
   'AB': 'products_ab_lat', 'ГФ': 'products_gf', 'ЕС': 'products_es', 'ГП': 'products_gp',
   'СД': 'products_sd', 'ATA': 'products_ata', 'W': 'products_w',
   'Гуаша': 'products_guasha',
+};
+
+// Map of common variations to the canonical group name
+const groupNameMap: Record<string, keyof typeof productGroups> = {
+    'la': 'LA',
+    'bez_sokr': 'без сокращений',
 };
 
 const handler: Handler = async (event) => {
@@ -39,8 +46,11 @@ const handler: Handler = async (event) => {
 
         const productsByGroup = productsToImport.reduce((acc, p) => {
             let groupKey = p.group;
-            if (groupKey.toLowerCase() === 'la') groupKey = 'LA';
-            if (groupKey.toLowerCase() === 'bez_sokr') groupKey = 'без сокращений';
+            // Normalize group name
+            const normalizedKey = groupNameMap[groupKey.toLowerCase()];
+            if (normalizedKey) {
+                groupKey = normalizedKey;
+            }
 
             if (!acc[groupKey]) acc[groupKey] = [];
             acc[groupKey].push({
